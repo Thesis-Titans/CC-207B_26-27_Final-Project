@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../models/activity.dart';
 import '../../models/child.dart';
 import '../../models/recommendation.dart';
 import '../../models/weather.dart';
@@ -112,7 +111,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     return _materialsController.text
         .split(',')
         .map((m) => m.trim().toLowerCase())
-        .filter((m) => m.isNotEmpty && m.length <= 40)
+        .where((m) => m.isNotEmpty && m.length <= 40)
         .take(10)
         .toList();
   }
@@ -160,93 +159,60 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     }
   }
 
-  void _handleRateLimit() {
+  Future<void> _handleRateLimit() async {
+    final picks = await _catalogPicks();
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
       _rateLimitMessage = "Let's take a short break. You've asked for many ideas in a row. Please wait a minute, then try again.";
-      _response = RecommendationResponse(
-        suggestions: _buildOfflineCatalogPicks(),
-        source: 'catalog_fallback',
-        tier: 3,
-        label: 'Our picks',
-        disclaimer:
-            'Observational play suggestion only. Not developmental assessment.',
-      );
+      _response = _fallbackResponse(picks);
     });
   }
 
-  void _handleGenericFallback() {
+  Future<void> _handleGenericFallback() async {
+    final picks = await _catalogPicks();
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
       _fallbackNotice = "The idea helper isn't working right now. Here are a few favorites for this age from our activity list.";
-      _response = RecommendationResponse(
-        suggestions: _buildOfflineCatalogPicks(),
-        source: 'catalog_fallback',
-        tier: 3,
-        label: 'Our picks',
-        disclaimer:
-            'Observational play suggestion only. Not developmental assessment.',
-      );
+      _response = _fallbackResponse(picks);
     });
   }
 
-  List<Recommendation> _buildOfflineCatalogPicks() {
-    return [
-      Recommendation(
-        activityId: 'act-sensory-water',
-        title: 'Water and Cups Exploration',
-        whyPicked: 'Simple everyday items support fine motor grasping and cause-and-effect exploration.',
-        activity: Activity(
-          id: 'act-sensory-water',
-          title: 'Water and Cups Exploration',
-          type: 'activity',
-          language: _language,
-          domain: 'motor',
-          ageBand: _ageBand,
-          durationMinutes: _timeMinutes,
-          durationEstimate: '$_timeMinutes mins',
-          setting: _setting,
-          materials: const ['plastic cups', 'water bowl'],
-          instructions: const [
-            'Place cups with a shallow bowl of water.',
-            'Let your child scoop and pour water freely.',
-            'Name actions like scoop, pour, and splash.',
-          ],
-          limitations: 'Ensure active adult supervision near water.',
-          status: 'reviewed_approved',
-          provenanceSource: 'LittleSteps Learning Catalog',
-        ),
-      ),
-      Recommendation(
-        activityId: 'act-peekaboo-cloth',
-        title: 'Peekaboo with a Towel',
-        whyPicked: 'Builds object permanence and interactive communication between caregiver and child.',
-        activity: Activity(
-          id: 'act-peekaboo-cloth',
-          title: 'Peekaboo with a Towel',
-          type: 'activity',
-          language: _language,
-          domain: 'socioEmotional',
-          ageBand: _ageBand,
-          durationMinutes: _timeMinutes,
-          durationEstimate: '$_timeMinutes mins',
-          setting: _setting,
-          materials: const ['towel or washcloth'],
-          instructions: const [
-            'Hold the towel gently in front of your face.',
-            'Pull it down with a gentle smile and say Peekaboo!',
-            'Encourage your child to reach or pull the towel.',
-          ],
-          limitations: 'Do not leave cloths over the face unattended.',
-          status: 'reviewed_approved',
-          provenanceSource: 'LittleSteps Learning Catalog',
-        ),
-      ),
-    ];
+  RecommendationResponse _fallbackResponse(List<Recommendation> picks) {
+    return RecommendationResponse(
+      suggestions: picks,
+      source: 'catalog_fallback',
+      tier: 3,
+      label: 'Our picks',
+      disclaimer:
+          'Observational play suggestion only. Not developmental assessment.',
+    );
+  }
+
+  /// Real approved catalog activities for the age band. Empty when the
+  /// catalog cannot be reached, so no card can point to an unknown activity.
+  Future<List<Recommendation>> _catalogPicks() async {
+    try {
+      final activities = await _catalogService.getActivities(ageBand: _ageBand);
+      return activities
+          .take(3)
+          .map(
+            (a) => Recommendation(
+              activityId: a.id,
+              title: a.title,
+              whyPicked: 'A popular pick for this age from our activity list.',
+              activity: a,
+            ),
+          )
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   Future<void> _addToPlan(Recommendation item) async {
-    final childId = widget.initialChild?.id ?? 'demo-child';
+    final childId = widget.initialChild!.id;
     final today = DateTime.now().toIso8601String().substring(0, 10);
 
     try {
@@ -266,7 +232,9 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Saved to today\'s plan offline'),
+          content: Text(
+            'Could not add this to today\'s plan. Please try again.',
+          ),
           duration: Duration(seconds: 4),
         ),
       );
@@ -580,10 +548,10 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                 const SizedBox(height: AppSpacing.space12),
                 OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/');
+                    Navigator.of(context).pop();
                   },
-                  icon: const Icon(Icons.explore_outlined),
-                  label: const Text('Browse activity catalog'),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to activities'),
                 ),
               ],
             ),
@@ -863,10 +831,21 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
               ],
             ],
 
+            if (widget.initialChild == null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+                child: Text(
+                  'Choose a child to add this to a plan.',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+              ),
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
-                onPressed: () => _addToPlan(suggestion),
+                onPressed: widget.initialChild == null
+                    ? null
+                    : () => _addToPlan(suggestion),
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text("Add to today's plan"),
               ),
@@ -876,8 +855,4 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       ),
     );
   }
-}
-
-extension _IterableFilter<T> on Iterable<T> {
-  Iterable<T> filter(bool Function(T) test) => where(test);
 }

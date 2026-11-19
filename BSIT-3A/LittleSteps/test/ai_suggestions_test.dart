@@ -196,6 +196,17 @@ void main() {
             429,
           );
         }
+        if (request.url.path.contains('/catalog/activities')) {
+          return http.Response(
+            jsonEncode({
+              'items': [
+                (sampleAiSuccessResponse['suggestions'] as List)
+                    .first['activity'],
+              ],
+            }),
+            200,
+          );
+        }
         return http.Response(jsonEncode({}), 200);
       });
 
@@ -222,7 +233,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Browse activity catalog'), findsOneWidget);
+      expect(find.text('Back to activities'), findsOneWidget);
       expect(find.text('Catalog picks · not AI'), findsOneWidget);
       expect(find.text('Suggested by AI'), findsNothing);
     },
@@ -236,6 +247,17 @@ void main() {
       final client = MockClient((request) async {
         if (request.url.path.contains('/api/v1/ai/recommendations')) {
           return http.Response('Server Error', 500);
+        }
+        if (request.url.path.contains('/catalog/activities')) {
+          return http.Response(
+            jsonEncode({
+              'items': [
+                (sampleAiSuccessResponse['suggestions'] as List)
+                    .first['activity'],
+              ],
+            }),
+            200,
+          );
         }
         return http.Response(jsonEncode({}), 200);
       });
@@ -264,7 +286,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Suggested by AI'), findsNothing);
-      expect(find.text('Water and Cups Exploration'), findsOneWidget);
+      expect(find.text('Build a Cup Tower'), findsOneWidget);
       expect(find.text("Add to today's plan"), findsWidgets);
     },
   );
@@ -356,5 +378,34 @@ void main() {
     completer.complete(http.Response(jsonEncode(sampleAiSuccessResponse), 200));
     await tester.pumpAndSettle();
     expect(find.text('Suggested by AI'), findsOneWidget);
+  });
+
+  testWidgets('disables Add to plan when no child is selected', (tester) async {
+    configureViewport(tester);
+
+    final client = MockClient((request) async {
+      if (request.url.path.contains('/api/v1/ai/recommendations')) {
+        return http.Response(jsonEncode(sampleAiSuccessResponse), 200);
+      }
+      return http.Response(jsonEncode({}), 200);
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiSuggestionsScreen(
+          apiClient: ApiClient(baseUrl: 'http://test', httpClient: client),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Find play ideas'));
+    await tester.tap(find.text('Find play ideas'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose a child to add this to a plan.'), findsOneWidget);
+    final button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, "Add to today's plan"),
+    );
+    expect(button.onPressed, isNull);
   });
 }
