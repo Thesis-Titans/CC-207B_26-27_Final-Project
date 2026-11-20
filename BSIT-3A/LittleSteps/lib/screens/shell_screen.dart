@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../models/child.dart';
 import '../widgets/child_chip.dart';
+import '../widgets/auth_scope.dart';
+import '../widgets/state_views.dart';
 import 'today/today_screen.dart';
 import 'explore/explore_screen.dart';
 import 'milestones/milestones_screen.dart';
@@ -19,25 +20,66 @@ class ShellScreen extends StatefulWidget {
 class _ShellScreenState extends State<ShellScreen> {
   int _currentIndex = 0;
 
-  // Set by the shared app state (issue #13).
-  final Child? _activeChild = null;
-
-  final List<Widget> _screens = const [
-    TodayScreen(),
-    ExploreScreen(),
-    MilestonesScreen(),
-    JournalScreen(),
-    WeeklySummaryScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final sessionState = AuthScope.maybeOf(context);
+    final isAuthenticated = sessionState?.isAuthenticated ?? false;
+    final activeChild = sessionState?.activeChild;
+
+    final screens = <Widget>[
+      isAuthenticated
+          ? const TodayScreen()
+          : EmptyStateView(
+              title: "Sign in to see today's plan",
+              message: 'Sign in with your caregiver account to view and plan play activities.',
+              icon: Icons.lock_outline,
+              actionLabel: 'Sign in',
+              onAction: () => Navigator.pushNamed(context, '/sign-in'),
+            ),
+      const ExploreScreen(),
+      isAuthenticated
+          ? const MilestonesScreen()
+          : EmptyStateView(
+              title: 'Sign in to view milestones',
+              message: 'Milestone observations are private to your caregiver account.',
+              icon: Icons.flag_outlined,
+              actionLabel: 'Sign in',
+              onAction: () => Navigator.pushNamed(context, '/sign-in'),
+            ),
+      isAuthenticated
+          ? const JournalScreen()
+          : EmptyStateView(
+              title: 'Sign in for private journal',
+              message: 'Your caregiver notes are private and encrypted in your account.',
+              icon: Icons.book_outlined,
+              actionLabel: 'Sign in',
+              onAction: () => Navigator.pushNamed(context, '/sign-in'),
+            ),
+      isAuthenticated
+          ? const WeeklySummaryScreen()
+          : EmptyStateView(
+              title: 'Sign in for weekly summary',
+              message: 'Weekly play progress is available when signed in.',
+              icon: Icons.insights_outlined,
+              actionLabel: 'Sign in',
+              onAction: () => Navigator.pushNamed(context, '/sign-in'),
+            ),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: ChildChip(
-          activeChild: _activeChild,
+          activeChild: activeChild,
           onTap: () {
-            Navigator.pushNamed(context, '/children');
+            if (!isAuthenticated) {
+              Navigator.pushNamed(
+                context,
+                '/sign-in',
+                arguments: 'Please sign in to select or manage child profiles.',
+              );
+            } else {
+              Navigator.pushNamed(context, '/children');
+            }
           },
         ),
         actions: [
@@ -57,7 +99,7 @@ class _ShellScreenState extends State<ShellScreen> {
           ),
         ],
       ),
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
