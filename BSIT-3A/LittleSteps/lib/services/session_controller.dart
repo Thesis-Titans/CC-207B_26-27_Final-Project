@@ -4,8 +4,7 @@ import 'api_client.dart';
 
 /// A controller for managing the app's session.
 class SessionController extends ChangeNotifier {
-  /// The constructor that
-  /// creates a session that shares [apiClient] across the app
+  /// creates a session that shares [apiClient] across the app.
   SessionController({ApiClient? apiClient})
     : apiClient = apiClient ?? ApiClient();
 
@@ -13,6 +12,8 @@ class SessionController extends ChangeNotifier {
   final ApiClient apiClient;
 
   bool _isSignedIn = false;
+
+  /// Whether a caregiver is currently signed in.
   bool get isSignedIn => _isSignedIn;
 
   ///SIGNS IN the caregiver and attaches [idToken] to every API request.
