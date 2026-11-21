@@ -83,9 +83,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
             Text(
               'LittleSteps',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.forest,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: AppColors.forest,
+              ),
             ),
           ],
         ),
@@ -116,16 +116,15 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
         Text(
           'Milestones',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
         ),
         const SizedBox(height: AppSpacing.space4),
         Text(
           'Every child develops at their own pace.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.space12),
 
@@ -178,9 +177,8 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                 children: [
                   Text(
                     "Child's age",
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: AppSpacing.space4),
                   Container(
@@ -200,8 +198,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),
                         SizedBox(width: AppSpacing.space8),
-                        Icon(Icons.arrow_drop_down,
-                            size: 18, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          size: 18,
+                          color: AppColors.textSecondary,
+                        ),
                       ],
                     ),
                   ),
@@ -228,9 +229,8 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       children: [
         Text(
           'Loading milestones...',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: AppColors.textSecondary),
         ),
         const SizedBox(height: AppSpacing.space16),
         for (int i = 0; i < 3; i++)
@@ -264,7 +264,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                           width: 140,
                           height: 10,
                           decoration: BoxDecoration(
-                            color: AppColors.borderSubtle.withValues(alpha: 0.6),
+                            color: AppColors.borderSubtle.withValues(
+                              alpha: 0.6,
+                            ),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -395,8 +397,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
             CircleAvatar(
               backgroundColor: AppColors.softGreen,
               radius: 24,
-              child: const Icon(Icons.eco_outlined,
-                  color: AppColors.forest, size: 24),
+              child: const Icon(
+                Icons.eco_outlined,
+                color: AppColors.forest,
+                size: 24,
+              ),
             ),
             const SizedBox(height: AppSpacing.space12),
             const Text(
@@ -426,8 +431,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline,
-              size: 20, color: AppColors.textPrimary),
+          const Icon(
+            Icons.info_outline,
+            size: 20,
+            color: AppColors.textPrimary,
+          ),
           const SizedBox(width: AppSpacing.space8),
           Expanded(
             child: Column(
@@ -443,10 +451,8 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                 const SizedBox(height: AppSpacing.space4),
                 Text(
                   "LittleSteps shares play ideas and things to look for. It's not a test. Children develop at different rates. Talk to a health professional, like your pediatrician or barangay health worker, if you have concerns.",
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textPrimary,
-                        height: 1.3,
-                      ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textPrimary, height: 1.3),
                 ),
               ],
             ),
@@ -526,8 +532,8 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     final filteredPrompts = _selectedDomainFilter == null
         ? widget.prompts
         : widget.prompts
-            .where((p) => p.domain == _selectedDomainFilter)
-            .toList();
+              .where((p) => p.domain == _selectedDomainFilter)
+              .toList();
 
     final Map<MilestoneDomain, List<MilestonePrompt>> grouped = {};
     for (final p in filteredPrompts) {
@@ -546,9 +552,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           child: Text(
             domain.label,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       );
@@ -580,9 +586,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                       Expanded(
                         child: Text(
                           prompt.title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
+                          style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.textPrimary,
@@ -597,12 +601,15 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                             ? OutlinedButton(
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.space16),
+                                    horizontal: AppSpacing.space16,
+                                  ),
                                   side: const BorderSide(
-                                      color: AppColors.forest),
+                                    color: AppColors.forest,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
-                                        AppRadius.control),
+                                      AppRadius.control,
+                                    ),
                                   ),
                                 ),
                                 onPressed: () => _openObservationSheet(prompt),
@@ -619,10 +626,12 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                                   backgroundColor: AppColors.forest,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: AppSpacing.space16),
+                                    horizontal: AppSpacing.space16,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(
-                                        AppRadius.control),
+                                      AppRadius.control,
+                                    ),
                                   ),
                                 ),
                                 onPressed: () => _openObservationSheet(prompt),
@@ -639,9 +648,8 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                   // Look-for line formatted with dot separator as in Figma
                   Text(
                     'Look for: ${prompt.lookFor.join(' · ')}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: AppColors.textSecondary),
                   ),
 
                   const SizedBox(height: AppSpacing.space8),
@@ -655,20 +663,22 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                         padding: const EdgeInsets.all(AppSpacing.space8),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.8),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.control),
+                          borderRadius: BorderRadius.circular(
+                            AppRadius.control,
+                          ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.note_outlined,
-                                size: 14, color: AppColors.textSecondary),
+                            const Icon(
+                              Icons.note_outlined,
+                              size: 14,
+                              color: AppColors.textSecondary,
+                            ),
                             const SizedBox(width: AppSpacing.space4),
                             Expanded(
                               child: Text(
                                 obs.notes!,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(fontStyle: FontStyle.italic),
                               ),
                             ),
@@ -679,9 +689,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                     Text(
                       'Not seen yet',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 4),
                   ],
@@ -689,15 +699,16 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                   // Provenance source indicator with blue info icon
                   Row(
                     children: [
-                      const Icon(Icons.info_outline,
-                          size: 14, color: Color(0xFF2B6CB0)),
+                      const Icon(
+                        Icons.info_outline,
+                        size: 14,
+                        color: Color(0xFF2B6CB0),
+                      ),
                       const SizedBox(width: AppSpacing.space4),
                       Expanded(
                         child: Text(
                           prompt.provenance,
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
+                          style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: AppColors.textTertiary),
                         ),
                       ),

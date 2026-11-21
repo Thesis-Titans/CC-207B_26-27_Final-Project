@@ -41,7 +41,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
     _isObserved = widget.initialObservation?.isObserved ?? true;
     _selectedDate = widget.initialObservation != null
         ? DateTime.tryParse(widget.initialObservation!.observedDate) ??
-            DateTime.now()
+              DateTime.now()
         : DateTime.now();
     _notesController = TextEditingController(
       text: widget.initialObservation?.notes ?? '',
@@ -70,7 +70,8 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
   void _submit() {
     final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     final obs = MilestoneObservation(
-      id: widget.initialObservation?.id ??
+      id:
+          widget.initialObservation?.id ??
           'obs-${DateTime.now().millisecondsSinceEpoch}',
       childId: widget.initialObservation?.childId ?? 'child-maya',
       milestoneId: widget.prompt.id,
@@ -90,7 +91,8 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dateDisplay = DateFormat('MMM d').format(_selectedDate);
-    final isToday = DateFormat('yyyy-MM-dd').format(_selectedDate) ==
+    final isToday =
+        DateFormat('yyyy-MM-dd').format(_selectedDate) ==
         DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     return Padding(
@@ -111,8 +113,11 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.chevron_left,
-                      size: 20, color: AppColors.forest),
+                  const Icon(
+                    Icons.chevron_left,
+                    size: 20,
+                    color: AppColors.forest,
+                  ),
                   Text(
                     'Milestones',
                     style: theme.textTheme.labelMedium?.copyWith(
@@ -139,8 +144,11 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.wifi_off,
-                            color: AppColors.textOffline, size: 20),
+                        Icon(
+                          Icons.wifi_off,
+                          color: AppColors.textOffline,
+                          size: 20,
+                        ),
                         SizedBox(width: AppSpacing.space8),
                         Text(
                           "You're offline",
@@ -163,8 +171,9 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.control),
+                          borderRadius: BorderRadius.circular(
+                            AppRadius.control,
+                          ),
                         ),
                       ),
                       onPressed: widget.onRetryOffline,
@@ -213,8 +222,10 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                   const Spacer(),
-                  const Icon(Icons.arrow_drop_down,
-                      color: AppColors.textSecondary),
+                  const Icon(
+                    Icons.arrow_drop_down,
+                    color: AppColors.textSecondary,
+                  ),
                 ],
               ),
             ),
@@ -324,7 +335,8 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               child: Container(
                 height: AppSizes.touchTarget,
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space12),
+                  horizontal: AppSpacing.space12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border.all(color: AppColors.borderSubtle),
@@ -337,8 +349,10 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const Spacer(),
-                    const Icon(Icons.arrow_drop_down,
-                        color: AppColors.textSecondary),
+                    const Icon(
+                      Icons.arrow_drop_down,
+                      color: AppColors.textSecondary,
+                    ),
                   ],
                 ),
               ),
