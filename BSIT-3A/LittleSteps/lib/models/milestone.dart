@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 /// A caregiver's saved observation for one milestone prompt.
 ///
 /// The prompt text itself is not stored by the API; [milestoneId] links the
@@ -18,7 +20,7 @@ class MilestoneObservation {
   final String childId;
   final String milestoneId;
 
-  /// One of `observed`, `not_yet_observed` or `not_sure`.
+  /// One of `observed`, `not_yet_observed` or `not_sure`
   final String status;
 
   /// Local calendar date in `YYYY-MM-DD` form.
@@ -42,7 +44,9 @@ class MilestoneObservation {
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
   }
+}
 
+/// The 4 ECCD developmental domains with parent-friendly display labels.
 enum MilestoneDomain {
   cognitive('cognitive', 'Thinking', Icons.psychology_outlined),
   motor('motor', 'Moving', Icons.directions_run_outlined),
@@ -75,7 +79,6 @@ class MilestonePrompt {
   final String provenance;
 }
 
-/// Synthetic developmental prompts matching the wireframe for 12–23 months.
 const List<MilestonePrompt> sampleMilestonePrompts = [
   MilestonePrompt(
     id: 'lan-12-01',
@@ -85,6 +88,13 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
       'Points at the ball when you say "ball"',
       'Looks toward a named person',
     ],
+    ageBand: '12-23 months',
+  ),
+  MilestonePrompt(
+    id: 'lan-12-02',
+    domain: MilestoneDomain.language,
+    title: 'Says one or two simple words',
+    lookFor: ['Says "mama" or "dada" on purpose', 'Names a favorite toy'],
     ageBand: '12-23 months',
   ),
   MilestonePrompt(
@@ -111,11 +121,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
     id: 'mot-12-01',
     domain: MilestoneDomain.motor,
     title: 'Takes a few steps independently',
-    lookFor: [
-      'Walks a few paces without holding onto furniture or hands',
-    ],
+    lookFor: ['Walks a few paces without holding onto furniture or hands'],
     ageBand: '12-23 months',
   ),
 ];
-
-}
