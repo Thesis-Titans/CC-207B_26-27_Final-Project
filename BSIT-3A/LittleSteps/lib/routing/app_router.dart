@@ -6,7 +6,8 @@ import '../screens/auth/sign_in_screen.dart';
 import '../screens/explore/activity_detail_screen.dart';
 import '../screens/children/child_profile_screen.dart';
 import '../screens/children/add_child_screen.dart';
-import '../screens/account/account_screen.dart';
+import '../screens/account/account_info_screen.dart';
+import '../screens/account/settings_screen.dart';
 import '../screens/ai/ai_suggestions_screen.dart';
 
 /// Application route generator and path constants.
@@ -22,7 +23,21 @@ abstract final class AppRouter {
       case '/sign-in':
         return MaterialPageRoute(builder: (_) => const SignInScreen());
       case '/account':
-        return MaterialPageRoute(builder: (_) => const AccountScreen());
+      case '/account/settings':
+        return MaterialPageRoute(builder: (_) => const SettingsScreen());
+      case '/account/privacy':
+        return MaterialPageRoute(
+          builder: (_) =>
+              const AccountInfoScreen(page: AccountInfoPage.privacy),
+        );
+      case '/account/about':
+        return MaterialPageRoute(
+          builder: (_) => const AccountInfoScreen(page: AccountInfoPage.about),
+        );
+      case '/account/help':
+        return MaterialPageRoute(
+          builder: (_) => const AccountInfoScreen(page: AccountInfoPage.help),
+        );
       case '/children':
         return MaterialPageRoute(builder: (_) => const ChildProfileScreen());
       case '/children/add':
