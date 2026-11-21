@@ -15,14 +15,16 @@ class SessionController extends ChangeNotifier {
   bool _isSignedIn = false;
   bool get isSignedIn => _isSignedIn;
 
-///SIGNS IN the caregiver and attaches [idToken] to every API request.
+  ///SIGNS IN the caregiver and attaches [idToken] to every API request.
   void signIn(String idToken) {
     apiClient.setAuthToken(idToken); // sets the token in the API client
-    _isSignedIn = true; /// this checks whether a caregiver is currently signed in.
+    _isSignedIn = true;
+
+    /// this checks whether a caregiver is currently signed in.
     notifyListeners(); //tells listeners
   }
 
-/// SIGNS OUT the caregiver and CLEARS the auth token from the API client.
+  /// SIGNS OUT the caregiver and CLEARS the auth token from the API client.
   void signOut() {
     apiClient.setAuthToken(null); // clears the token in the API client
     _isSignedIn = false; // sets _isSignedIn to false
