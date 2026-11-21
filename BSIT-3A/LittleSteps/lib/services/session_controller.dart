@@ -20,8 +20,6 @@ class SessionController extends ChangeNotifier {
   void signIn(String idToken) {
     apiClient.setAuthToken(idToken); // sets the token in the API client
     _isSignedIn = true;
-
-    /// this checks whether a caregiver is currently signed in.
     notifyListeners(); //tells listeners
   }
 
