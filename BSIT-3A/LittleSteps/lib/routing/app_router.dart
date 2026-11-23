@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/activity.dart';
 import '../screens/account/account_info_screen.dart';
-import '../screens/account/account_screen.dart';
 import '../screens/account/settings_screen.dart';
 import '../screens/ai/ai_suggestions_screen.dart';
 import '../screens/auth/register_screen.dart';

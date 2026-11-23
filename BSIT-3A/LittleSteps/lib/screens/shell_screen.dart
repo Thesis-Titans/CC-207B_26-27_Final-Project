@@ -181,12 +181,7 @@ class _ShellScreenState extends State<ShellScreen> {
     );
   }
 
-  Child? get _activeChild {
-    for (final child in widget.children) {
-      if (child.id == widget.activeChildId) return child;
-    }
-    return null;
-  }
+
 
   Future<void> _showAccountMenu() async {
     await showModalBottomSheet<void>(
