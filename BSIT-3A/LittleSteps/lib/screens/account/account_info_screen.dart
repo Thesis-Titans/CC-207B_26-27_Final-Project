@@ -69,9 +69,16 @@ class AccountInfoScreen extends StatelessWidget {
       ),
       _InfoSection(
         'Where content comes from',
-        'Activities and information are informed by WHO and CDC guidance and '
-            'the Philippine Early Learning Standards. They support play and '
-            'caregiver-child interaction.',
+        'Activities and milestone prompts are grounded in published pediatric '
+            'and early childhood frameworks:\n\n'
+            '• CDC Developmental Milestones (Learn the Signs. Act Early.)\n'
+            '  https://www.cdc.gov/ncbddd/actearly/milestones/\n\n'
+            '• American Academy of Pediatrics (AAP)\n'
+            '  https://www.healthychildren.org\n\n'
+            '• WHO Nurturing Care Framework for Early Childhood Development\n'
+            '  https://nurturing-care.org\n\n'
+            '• Philippine Early Learning Standards (ECCD Council)\n'
+            '  https://eccdcouncil.gov.ph',
       ),
       _InfoSection(
         'Who made LittleSteps',

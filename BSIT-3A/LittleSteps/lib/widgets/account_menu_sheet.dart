@@ -123,18 +123,26 @@ class AccountMenuSheet extends StatelessWidget {
                 onTap: () => _openRoute(context, '/account/help'),
               ),
               const SizedBox(height: AppSpacing.space8),
-              OutlinedButton.icon(
-                onPressed: onSignOut,
-                icon: const Icon(Icons.logout),
-                label: const Text('Sign out'),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'If you share this phone, sign out when you are done.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: AppColors.textSecondary),
-              ),
+              if (email != null) ...[
+                OutlinedButton.icon(
+                  onPressed: onSignOut,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sign out'),
+                ),
+                const SizedBox(height: AppSpacing.space8),
+                Text(
+                  'If you share this phone, sign out when you are done.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+              ] else ...[
+                FilledButton.icon(
+                  onPressed: () => _openRoute(context, '/sign-in'),
+                  icon: const Icon(Icons.login),
+                  label: const Text('Sign in'),
+                ),
+              ],
             ],
           ),
         ),

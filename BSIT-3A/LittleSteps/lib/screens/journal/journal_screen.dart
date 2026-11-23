@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/state_views.dart';
 
-/// Journal tab. Skeleton only; the feature is built in issue #7.
+/// Journal navigation tab displaying private caregiver observations and reflections.
 class JournalScreen extends StatelessWidget {
   const JournalScreen({super.key});
 

@@ -75,9 +75,9 @@ class WeeklySummary {
   }
 }
 
-/// Synthetic weekly summaries matching the Figma wireframes for testing and offline demo.
+/// Sample weekly summary dataset used for local development, previews, and testing.
 final Map<String, WeeklySummary> sampleWeeklySummaries = {
-  // Populated week (Matching Figma Screen 1: Oct 19 - 25, 2026)
+  // Populated week record with activity counts and milestone observations.
   '2026-W43': WeeklySummary(
     id: '2026-W43',
     weekStartDate: '2026-10-19',
@@ -115,7 +115,7 @@ final Map<String, WeeklySummary> sampleWeeklySummaries = {
     generatedAt: DateTime(2026, 10, 18),
   ),
 
-  // Empty week (Matching Figma Screen 2: Oct 5 - 11, 2026)
+  // Zero-activity week demonstrating the clean empty state.
   '2026-W41': WeeklySummary(
     id: '2026-W41',
     weekStartDate: '2026-10-05',

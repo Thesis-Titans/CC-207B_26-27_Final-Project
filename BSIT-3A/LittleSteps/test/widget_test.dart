@@ -1,12 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:littlesteps/main.dart';
+import 'package:littlesteps/models/auth_user.dart';
+import 'package:littlesteps/models/child.dart';
+import 'package:littlesteps/screens/shell_screen.dart';
+import 'package:littlesteps/services/api_client.dart';
+import 'package:littlesteps/services/auth_service.dart';
+import 'package:littlesteps/services/auth_session_state.dart';
+import 'package:littlesteps/widgets/auth_scope.dart';
+import 'package:littlesteps/widgets/child_chip.dart';
+import 'package:littlesteps/widgets/idea_helper_card.dart';
+import 'package:littlesteps/widgets/no_children_view.dart';
+
+class _FakeAuthService implements AuthService {
+  @override
+  Future<AuthUser> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    return AuthUser(
+      id: 'test-user',
+      email: email,
+      idToken: 'token',
+      refreshToken: 'refresh',
+    );
+  }
+
+  @override
+  Future<AuthUser> signUpWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    return AuthUser(
+      id: 'test-user',
+      email: email,
+      idToken: 'token',
+      refreshToken: 'refresh',
+    );
+  }
+
+  @override
+  Future<AuthUser> refreshToken(String refreshToken) async {
+    return AuthUser(
+      id: 'test-user',
+      email: 'test@example.com',
+      idToken: 'token',
+      refreshToken: refreshToken,
+    );
+  }
+
+  @override
+  Future<void> signOut() async {}
+}
 
 void main() {
   testWidgets('shell shows five tabs and switches between them', (
     tester,
   ) async {
-    await tester.pumpWidget(const LittleStepsApp());
+    await tester.pumpWidget(const MaterialApp(home: ShellScreen()));
 
     final nav = find.byType(NavigationBar);
     for (final label in [
@@ -21,7 +71,7 @@ void main() {
         findsOneWidget,
       );
     }
-    expect(find.text('Select Child'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
 
     await tester.tap(find.descendant(of: nav, matching: find.text('Explore')));
     await tester.pumpAndSettle();
@@ -30,4 +80,166 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'shell shows NoChildrenView across tabs when caregiver has no active child',
+    (tester) async {
+      final sessionState = AuthSessionState(authService: _FakeAuthService());
+      await sessionState.signIn(
+        email: 'lovelly@example.com',
+        password: 'password123',
+      );
+
+      await tester.pumpWidget(
+        AuthScope(
+          sessionState: sessionState,
+          apiClient: ApiClient(baseUrl: 'http://test'),
+          child: const MaterialApp(home: ShellScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Child selector chip is omitted when no child profile exists
+      expect(find.byType(ChildChip), findsNothing);
+
+      // Today tab displays NoChildrenView onboarding
+      expect(find.byType(NoChildrenView), findsOneWidget);
+      expect(find.text('Welcome, Lovelly'), findsOneWidget);
+      expect(
+        find.text("Let's set up your first child profile."),
+        findsOneWidget,
+      );
+      expect(find.text('No children added yet'), findsOneWidget);
+      expect(find.text('Add a child'), findsOneWidget);
+
+      final nav = find.byType(NavigationBar);
+
+      // Explore tab also displays NoChildrenView onboarding
+      await tester.tap(
+        find.descendant(of: nav, matching: find.text('Explore')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('No children added yet'), findsOneWidget);
+
+      // Milestones tab displays NoChildrenView onboarding
+      await tester.tap(
+        find.descendant(of: nav, matching: find.text('Milestones')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('No children added yet'), findsOneWidget);
+
+      // This week tab displays NoChildrenView onboarding
+      await tester.tap(
+        find.descendant(of: nav, matching: find.text('This week')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('No children added yet'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'shell displays child chip and populated screens when active child is present',
+    (tester) async {
+      final sessionState = AuthSessionState(authService: _FakeAuthService());
+      await sessionState.signIn(
+        email: 'caregiver@example.com',
+        password: 'password123',
+      );
+
+      final activeChild = Child(
+        id: 'child-1',
+        nickname: 'Maya',
+        ageBand: '12-23m',
+        createdAt: DateTime.utc(2026),
+        updatedAt: DateTime.utc(2026),
+      );
+      sessionState.setActiveChild(activeChild);
+
+      await tester.pumpWidget(
+        AuthScope(
+          sessionState: sessionState,
+          apiClient: ApiClient(baseUrl: 'http://test'),
+          child: const MaterialApp(home: ShellScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Child selector chip is rendered when active child exists
+      expect(find.byType(ChildChip), findsOneWidget);
+      expect(find.text('Maya (12-23m)'), findsOneWidget);
+
+      // Unlabelled header brain icon is omitted in favor of in-situ cards
+      expect(find.byIcon(Icons.psychology_outlined), findsNothing);
+
+      final nav = find.byType(NavigationBar);
+
+      // Explore tab shows IdeaHelperCard and activity catalog for active child
+      await tester.tap(
+        find.descendant(of: nav, matching: find.text('Explore')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(IdeaHelperCard), findsOneWidget);
+      expect(find.text('Idea helper'), findsOneWidget);
+      expect(
+        find.text('The age-aware activity catalog appears here.'),
+        findsOneWidget,
+      );
+
+      // Switch to This week tab - displays Maya's summary
+      await tester.tap(
+        find.descendant(of: nav, matching: find.text('This week')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('This week with Maya'), findsOneWidget);
+
+      // Switch to Milestones tab - displays developmental prompt header
+      await tester.tap(
+        find.descendant(of: nav, matching: find.text('Milestones')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Every child develops at their own pace.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'tapping Add a child in NoChildrenView pushes child registration route',
+    (tester) async {
+      final sessionState = AuthSessionState(authService: _FakeAuthService());
+      await sessionState.signIn(
+        email: 'caregiver@example.com',
+        password: 'password123',
+      );
+
+      bool navigatedToAddChild = false;
+
+      await tester.pumpWidget(
+        AuthScope(
+          sessionState: sessionState,
+          apiClient: ApiClient(baseUrl: 'http://test'),
+          child: MaterialApp(
+            home: const ShellScreen(),
+            routes: {
+              '/children/add': (context) {
+                navigatedToAddChild = true;
+                return const Scaffold(body: Text('Add Child Route'));
+              },
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final addButton = find.text('Add a child');
+      await tester.ensureVisible(addButton);
+      await tester.pumpAndSettle();
+      await tester.tap(addButton);
+      await tester.pumpAndSettle();
+
+      expect(navigatedToAddChild, isTrue);
+      expect(find.text('Add Child Route'), findsOneWidget);
+    },
+  );
 }

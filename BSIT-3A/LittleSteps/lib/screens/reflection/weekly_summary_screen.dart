@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../models/summary.dart';
 import '../../theme/app_tokens.dart';
+import '../../widgets/auth_scope.dart';
+import '../../widgets/screen_header.dart';
 
-/// Interaction states matching the project 5-state spec.
+/// View states for the weekly summary screen.
 enum WeeklySummaryViewState { ready, loading, error, offline }
 
 /// "This week" reflection tab presenting factual weekly summaries for the active child.
@@ -13,11 +15,15 @@ class WeeklySummaryScreen extends StatefulWidget {
     this.initialState = WeeklySummaryViewState.ready,
     this.initialWeek = '2026-W43',
     this.summaries,
+    this.childName,
+    this.childAgeBand,
   });
 
   final WeeklySummaryViewState initialState;
   final String initialWeek;
   final Map<String, WeeklySummary>? summaries;
+  final String? childName;
+  final String? childAgeBand;
 
   @override
   State<WeeklySummaryScreen> createState() => _WeeklySummaryScreenState();
@@ -28,8 +34,21 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
   late String _selectedWeekId;
   late Map<String, WeeklySummary> _summaries;
 
-  final String _childName = 'Maya';
-  final int _childAgeMonths = 14;
+  String get _childName {
+    final session = AuthScope.maybeOf(context);
+    return session?.activeChild?.nickname ?? widget.childName ?? 'Maya';
+  }
+
+  String get _childAgeDisplay {
+    final session = AuthScope.maybeOf(context);
+    final activeChild = session?.activeChild;
+    if (activeChild != null) {
+      return activeChild.ageBand.contains('month')
+          ? activeChild.ageBand
+          : '${activeChild.ageBand} months';
+    }
+    return widget.childAgeBand ?? '14 months';
+  }
 
   @override
   void initState() {
@@ -113,58 +132,21 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceCanvas,
-      appBar: AppBar(
-        backgroundColor: AppColors.surfaceCanvas,
-        elevation: 0,
-        title: Row(
-          children: [
-            const Icon(Icons.eco, color: AppColors.forest),
-            const SizedBox(width: AppSpacing.space8),
-            Text(
-              'LittleSteps',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.forest,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          CircleAvatar(
-            backgroundColor: AppColors.softGreen,
-            radius: 16,
-            child: Text(
-              _childName[0],
-              style: const TextStyle(
-                color: AppColors.forest,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.space16),
-        ],
-      ),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space16,
+        vertical: AppSpacing.space16,
+      ),
       children: [
         // Title & Subtitle
-        Text(
-          'This week',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space4),
-        Text(
-          'A look back at the moments you wrote down.',
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: AppColors.textSecondary),
+        const ScreenHeader(
+          title: 'This week',
+          subtitle: 'A look back at the moments you wrote down.',
         ),
         const SizedBox(height: AppSpacing.space12),
 
@@ -182,7 +164,7 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           child: Row(
             children: [
               Text(
-                'For $_childName · $_childAgeMonths months',
+                'For $_childName · $_childAgeDisplay',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
               const Spacer(),

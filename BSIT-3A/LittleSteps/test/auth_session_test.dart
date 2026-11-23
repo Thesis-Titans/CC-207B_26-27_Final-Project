@@ -54,7 +54,7 @@ class MockAuthService implements AuthService {
 }
 
 void main() {
-  group('AuthSessionState (Issue #13 Minimal Session State)', () {
+  group('AuthSessionState Session Management', () {
     late MockAuthService authService;
     late AuthSessionState sessionState;
 
