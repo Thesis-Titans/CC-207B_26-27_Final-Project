@@ -138,28 +138,41 @@ class ErrorView extends StatelessWidget {
 
 /// A banner indicating that the device is currently offline.
 class OfflineBanner extends StatelessWidget {
-  const OfflineBanner({super.key});
+  const OfflineBanner({
+    super.key,
+    this.message = 'Working offline. Changes will sync when reconnected.',
+  });
+
+  /// The message displayed in the offline banner.
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: AppColors.statusOffline,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space8,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.cloud_off, size: 16, color: AppColors.textOffline),
-          const SizedBox(width: AppSpacing.space8),
-          Text(
-            'Working offline. Changes will sync when reconnected.',
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppColors.textOffline),
-          ),
-        ],
+    return Semantics(
+      liveRegion: true,
+      label: message,
+      child: Container(
+        width: double.infinity,
+        color: AppColors.statusOffline,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space8,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off, size: 16, color: AppColors.textOffline),
+            const SizedBox(width: AppSpacing.space8),
+            Flexible(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: AppColors.textOffline),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
