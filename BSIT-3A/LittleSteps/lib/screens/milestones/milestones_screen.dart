@@ -36,6 +36,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   /// Defaults to the active child's age band; caregiver can browse other bands.
   late String _selectedAgeBand;
 
+  /// True after [didChangeDependencies] seeds [_selectedAgeBand] once.
+  bool _ageBandSeeded = false;
+
   String get _childName {
     final session = AuthScope.maybeOf(context);
     return session?.activeChild?.nickname ?? 'Maya';
@@ -88,15 +91,18 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     super.initState();
     _currentState = widget.initialState;
     _observations = Map.from(widget.initialObservations);
-    _selectedAgeBand = '12-23 months'; // seeded in didChangeDependencies
+    _selectedAgeBand = '12-23 months'; // overwritten in didChangeDependencies
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Seed the age-band picker to match the active child on first load.
-    // After that the caregiver may browse other bands without it resetting.
-    _selectedAgeBand = _childAgeBand;
+    // Seed once so the picker defaults to the active child's band.
+    // Guard prevents resetting the picker when the widget tree rebuilds.
+    if (!_ageBandSeeded) {
+      _selectedAgeBand = _childAgeBand;
+      _ageBandSeeded = true;
+    }
   }
 
   void _showAgeBandPicker() {
@@ -124,9 +130,8 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                 const SizedBox(height: AppSpacing.space4),
                 Text(
                   'You can browse any age range.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: AppSpacing.space12),
                 ..._ageBands.map((band) {
