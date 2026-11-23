@@ -1,24 +1,74 @@
 import 'package:flutter/material.dart';
 
 import 'routing/app_router.dart';
+import 'services/api_client.dart';
+import 'services/auth_service.dart';
+import 'services/auth_session_state.dart';
 import 'theme/app_theme.dart';
+import 'widgets/auth_scope.dart';
 
 void main() {
   runApp(const LittleStepsApp());
 }
 
 /// The root application widget for LittleSteps.
-class LittleStepsApp extends StatelessWidget {
-  const LittleStepsApp({super.key});
+class LittleStepsApp extends StatefulWidget {
+  /// Creates a [LittleStepsApp].
+  ///
+  /// Optional [sessionState] and [apiClient] can be injected for testing.
+  const LittleStepsApp({super.key, this.sessionState, this.apiClient});
+
+  /// Injected session state for testing or custom configuration.
+  final AuthSessionState? sessionState;
+
+  /// Injected API client for testing or custom configuration.
+  final ApiClient? apiClient;
+
+  @override
+  State<LittleStepsApp> createState() => _LittleStepsAppState();
+}
+
+class _LittleStepsAppState extends State<LittleStepsApp> {
+  late final AuthSessionState _sessionState;
+  late final ApiClient _apiClient;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionState =
+        widget.sessionState ??
+        AuthSessionState(authService: FirebaseAuthRestService());
+
+    _apiClient =
+        widget.apiClient ??
+        ApiClient(
+          tokenProvider: () => _sessionState.idToken,
+          onRefreshToken: () => _sessionState.refreshToken(),
+          onSessionExpired: () {
+            _sessionState.handleSessionExpired();
+            _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              '/signed-out',
+              (route) => false,
+              arguments: 'Please sign in again to continue',
+            );
+          },
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'LittleSteps',
-      theme: AppTheme.light(),
-      initialRoute: AppRouter.initialRoute,
-      onGenerateRoute: AppRouter.onGenerateRoute,
-      debugShowCheckedModeBanner: false,
+    return AuthScope(
+      sessionState: _sessionState,
+      apiClient: _apiClient,
+      child: MaterialApp(
+        navigatorKey: _navigatorKey,
+        title: 'LittleSteps',
+        theme: AppTheme.light(),
+        initialRoute: AppRouter.initialRoute,
+        onGenerateRoute: AppRouter.onGenerateRoute,
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }

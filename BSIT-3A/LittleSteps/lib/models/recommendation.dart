@@ -33,6 +33,7 @@ class RecommendationResponse {
     required this.source,
     required this.tier,
     this.badge,
+    this.label,
     required this.disclaimer,
   });
 
@@ -40,7 +41,10 @@ class RecommendationResponse {
   final String source;
   final int tier;
   final String? badge;
+  final String? label;
   final String disclaimer;
+
+  bool get isAiGenerated => tier == 1 && source == 'ai' && badge != null;
 
   factory RecommendationResponse.fromJson(Map<String, dynamic> json) {
     final rawSuggestions = json['suggestions'] as List<dynamic>? ?? [];
@@ -54,6 +58,7 @@ class RecommendationResponse {
       source: json['source'] as String? ?? 'catalog_fallback',
       tier: json['tier'] as int? ?? 3,
       badge: provenance?['badge'] as String?,
+      label: provenance?['label'] as String?,
       disclaimer:
           provenance?['disclaimer'] as String? ??
           'Observational play suggestion only. Not developmental assessment.',
