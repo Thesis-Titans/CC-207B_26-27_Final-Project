@@ -7,9 +7,10 @@ import '../../theme/app_tokens.dart';
 
 /// Form for adding a child profile (issue #3).
 ///
-/// Validates the nickname and birth month and year on the device first,
-/// and shows the age band they lead to. The server still checks every
-/// field when the profile is saved.
+/// Caregivers give either a birth month and year (the app shows the age
+/// band it leads to) or, if they prefer, an age band directly. Fields are
+/// checked on the device first, and the server still checks every field
+/// when the profile is saved.
 class AddChildScreen extends StatefulWidget {
   /// Creates the add child profile screen.
   const AddChildScreen({super.key});
@@ -30,6 +31,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _nicknameController = TextEditingController();
   int? _birthYear;
   int? _birthMonth;
+
+  /// Whether the caregiver picks an age band instead of a birth date.
+  bool _useAgeBand = false;
+
+  /// The age band picked when [_useAgeBand] is true.
+  AgeBand? _ageBand;
 
   /// Disposes the nickname controller when the screen is removed from the tree.
   @override
@@ -101,48 +108,83 @@ class _AddChildScreenState extends State<AddChildScreen> {
               onFieldSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: AppSpacing.space16),
-            DropdownButtonFormField<int>(
-              isExpanded: true,
-              initialValue: _birthMonth,
-              decoration: const InputDecoration(labelText: 'Birth month'),
-              items: [
-                for (var month = 1; month <= 12; month++)
-                  DropdownMenuItem(
-                    value: month,
-                    child: Text(
-                      DateFormat.MMMM().format(DateTime(2000, month)),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Choose an age band instead'),
+              value: _useAgeBand,
+              onChanged: (value) {
+                setState(() {
+                  _useAgeBand = value;
+                });
+              },
+            ),
+            const SizedBox(height: AppSpacing.space8),
+            // Only one way of giving the age is on screen, so the form only
+            // checks that one. The API needs exactly one of the two.
+            if (_useAgeBand)
+              DropdownButtonFormField<AgeBand>(
+                isExpanded: true,
+                initialValue: _ageBand,
+                decoration: const InputDecoration(labelText: 'Age band'),
+                items: [
+                  for (final ageBand in ageBands)
+                    DropdownMenuItem(
+                      value: ageBand,
+                      child: Text(ageBand.label),
                     ),
-                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _ageBand = value;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? 'Choose an age band' : null,
+              )
+            else ...[
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                initialValue: _birthMonth,
+                decoration: const InputDecoration(labelText: 'Birth month'),
+                items: [
+                  for (var month = 1; month <= 12; month++)
+                    DropdownMenuItem(
+                      value: month,
+                      child: Text(
+                        DateFormat.MMMM().format(DateTime(2000, month)),
+                      ),
+                    ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _birthMonth = value;
+                  });
+                },
+                validator: (value) => value == null ? 'Choose a month' : null,
+              ),
+              const SizedBox(height: AppSpacing.space16),
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                initialValue: _birthYear,
+                decoration: const InputDecoration(labelText: 'Birth year'),
+                items: [
+                  for (var i = 0; i < _yearCount; i++)
+                    DropdownMenuItem(
+                      value: currentYear - i,
+                      child: Text('${currentYear - i}'),
+                    ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _birthYear = value;
+                  });
+                },
+                validator: _validateBirthYear,
+              ),
+              if (band != null) ...[
+                const SizedBox(height: AppSpacing.space8),
+                Text('Age band: ${band.label}'),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _birthMonth = value;
-                });
-              },
-              validator: (value) => value == null ? 'Choose a month' : null,
-            ),
-            const SizedBox(height: AppSpacing.space16),
-            DropdownButtonFormField<int>(
-              isExpanded: true,
-              initialValue: _birthYear,
-              decoration: const InputDecoration(labelText: 'Birth year'),
-              items: [
-                for (var i = 0; i < _yearCount; i++)
-                  DropdownMenuItem(
-                    value: currentYear - i,
-                    child: Text('${currentYear - i}'),
-                  ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _birthYear = value;
-                });
-              },
-              validator: _validateBirthYear,
-            ),
-            if (band != null) ...[
-              const SizedBox(height: AppSpacing.space8),
-              Text('Age band: ${band.label}'),
             ],
             const SizedBox(height: AppSpacing.space16),
             SizedBox(
