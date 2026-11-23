@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../models/activity.dart';
-import '../screens/account/account_screen.dart';
+import '../screens/account/account_info_screen.dart';
+import '../screens/account/settings_screen.dart';
 import '../screens/ai/ai_suggestions_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/sign_in_screen.dart';
@@ -34,7 +35,21 @@ abstract final class AppRouter {
           builder: (_) => SignedOutScreen(message: message),
         );
       case '/account':
-        return MaterialPageRoute(builder: (_) => const AccountScreen());
+      case '/account/settings':
+        return MaterialPageRoute(builder: (_) => const SettingsScreen());
+      case '/account/privacy':
+        return MaterialPageRoute(
+          builder: (_) =>
+              const AccountInfoScreen(page: AccountInfoPage.privacy),
+        );
+      case '/account/about':
+        return MaterialPageRoute(
+          builder: (_) => const AccountInfoScreen(page: AccountInfoPage.about),
+        );
+      case '/account/help':
+        return MaterialPageRoute(
+          builder: (_) => const AccountInfoScreen(page: AccountInfoPage.help),
+        );
       case '/children':
         return MaterialPageRoute(
           builder: (context) {
