@@ -1,0 +1,65 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:littlesteps/models/child_validators.dart';
+
+// Rules follow the child profile contract in littlesteps-api.
+void main() {
+  // A fixed "today" so the results never depend on the real date.
+  final now = DateTime(2026, 11);
+
+  group('validateNickname', () {
+    test('accepts a normal nickname', () {
+      expect(validateNickname('Mia'), isNull);
+    });
+
+    test('rejects an empty or spaces-only nickname', () {
+      expect(validateNickname(''), 'Enter a nickname');
+      expect(validateNickname('   '), 'Enter a nickname');
+      expect(validateNickname(null), 'Enter a nickname');
+    });
+
+    test('accepts 50 characters but rejects 51', () {
+      expect(validateNickname('a' * 50), isNull);
+      expect(validateNickname('a' * 51), 'Use 50 characters or fewer');
+    });
+
+    test('rejects a nickname with a line break or tab', () {
+      expect(
+        validateNickname('Mi\na'),
+        "Nickname can't contain line breaks or tabs",
+      );
+      expect(
+        validateNickname('Mi\ta'),
+        "Nickname can't contain line breaks or tabs",
+      );
+    });
+  });
+
+  group('validateBirthMonthYear', () {
+    test('accepts a birth date within the supported range', () {
+      // 2025-03 to 2026-11 is 20 months.
+      expect(validateBirthMonthYear(year: 2025, month: 3, now: now), isNull);
+    });
+
+    test('accepts a child born this month (0 months)', () {
+      expect(validateBirthMonthYear(year: 2026, month: 11, now: now), isNull);
+    });
+
+    test('accepts exactly 71 months, the oldest allowed', () {
+      expect(validateBirthMonthYear(year: 2020, month: 12, now: now), isNull);
+    });
+
+    test('rejects a birth date in the future', () {
+      expect(
+        validateBirthMonthYear(year: 2026, month: 12, now: now),
+        "Birth date can't be in the future",
+      );
+    });
+
+    test('rejects 72 months, one past the oldest allowed', () {
+      expect(
+        validateBirthMonthYear(year: 2020, month: 11, now: now),
+        'Little Steps supports ages 0-71 months',
+      );
+    });
+  });
+}
