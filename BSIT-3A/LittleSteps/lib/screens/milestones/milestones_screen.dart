@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../models/milestone.dart';
 import '../../theme/app_tokens.dart';
+import '../../widgets/auth_scope.dart';
+import '../../widgets/screen_header.dart';
 import 'observation_form_sheet.dart';
 
-/// Interaction states matching the project 5-state spec.
+/// View states for the milestones screen.
 enum MilestonesViewState { ready, loading, empty, error, offline }
 
 /// Milestones tab displaying developmental observation prompts grouped by ECCD domain.
@@ -30,8 +32,33 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   MilestoneDomain? _selectedDomainFilter;
   bool _showAdvisory = true;
 
-  final String _childName = 'Maya';
-  final int _childAgeMonths = 14;
+  String get _childName {
+    final session = AuthScope.maybeOf(context);
+    return session?.activeChild?.nickname ?? 'Maya';
+  }
+
+  int get _childAgeMonths {
+    final session = AuthScope.maybeOf(context);
+    final ageBand = session?.activeChild?.ageBand;
+    if (ageBand != null) {
+      final match = RegExp(r'\d+').firstMatch(ageBand);
+      if (match != null) {
+        return int.tryParse(match.group(0)!) ?? 14;
+      }
+    }
+    return 14;
+  }
+
+  String get _childAgeDisplay {
+    final session = AuthScope.maybeOf(context);
+    final activeChild = session?.activeChild;
+    if (activeChild != null) {
+      return activeChild.ageBand.contains('month')
+          ? activeChild.ageBand
+          : '${activeChild.ageBand} months';
+    }
+    return '14 months';
+  }
 
   @override
   void initState() {
@@ -73,58 +100,24 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surfaceCanvas,
-      appBar: AppBar(
-        backgroundColor: AppColors.surfaceCanvas,
-        elevation: 0,
-        title: Row(
-          children: [
-            const Icon(Icons.eco, color: AppColors.forest),
-            const SizedBox(width: AppSpacing.space8),
-            Text(
-              'LittleSteps',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.forest,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          CircleAvatar(
-            backgroundColor: AppColors.softGreen,
-            radius: 16,
-            child: Text(
-              _childName[0],
-              style: const TextStyle(
-                color: AppColors.forest,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.space16),
-        ],
-      ),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space16,
+        vertical: AppSpacing.space16,
+      ),
       children: [
-        // Title & Subtitle
-        Text(
-          'Milestones',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space4),
-        Text(
-          'Every child develops at their own pace.',
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: AppColors.textSecondary),
+        // Title & Subtitle with persistent advisory access
+        ScreenHeader(
+          title: 'Milestones',
+          subtitle: 'Every child develops at their own pace.',
+          onAdvisoryTap: !_showAdvisory
+              ? () => setState(() => _showAdvisory = true)
+              : null,
         ),
         const SizedBox(height: AppSpacing.space12),
 
@@ -142,7 +135,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           child: Row(
             children: [
               Text(
-                'For $_childName · $_childAgeMonths months',
+                'For $_childName · $_childAgeDisplay',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
               const Spacer(),
@@ -161,12 +154,12 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           if (_currentState == MilestonesViewState.offline)
             _buildOfflineBanner(),
 
-          // Empty state card (Shown when 0 observations recorded, matching Figma Screen 3)
+          // Introductory prompt card displayed when no observations have been recorded yet.
           if (_currentState == MilestonesViewState.empty ||
               _observations.isEmpty)
             _buildEmptyStateCard(),
 
-          // Non-diagnostic Advisory Banner (Matching Figma Screen 1)
+          // Educational advisory banner reminding caregivers that children develop at different paces.
           if (_showAdvisory) _buildAdvisoryBanner(),
 
           // Child's Age Selector
@@ -645,7 +638,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                   ),
                   const SizedBox(height: AppSpacing.space8),
 
-                  // Look-for line formatted with dot separator as in Figma
+                  // Everyday observational cues formatted with separator dots.
                   Text(
                     'Look for: ${prompt.lookFor.join(' · ')}',
                     style: Theme.of(context).textTheme.bodySmall

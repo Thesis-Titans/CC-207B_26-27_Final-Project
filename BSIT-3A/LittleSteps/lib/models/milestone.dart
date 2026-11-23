@@ -68,7 +68,8 @@ class MilestonePrompt {
     required this.title,
     required this.lookFor,
     required this.ageBand,
-    this.provenance = 'Source: early learning guide · still being checked',
+    this.provenance =
+        'Source: CDC Developmental Milestones & Early Learning Guidelines',
   });
 
   final String id;
@@ -89,6 +90,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
       'Looks toward a named person',
     ],
     ageBand: '12-23 months',
+    provenance: 'Source: AAP & CDC Early Communication Guidelines',
   ),
   MilestonePrompt(
     id: 'lan-12-02',
@@ -96,6 +98,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
     title: 'Says one or two simple words',
     lookFor: ['Says "mama" or "dada" on purpose', 'Names a favorite toy'],
     ageBand: '12-23 months',
+    provenance: 'Source: AAP & CDC Early Communication Guidelines',
   ),
   MilestonePrompt(
     id: 'soc-12-01',
@@ -106,6 +109,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
       'Smiles or responds when taking turns',
     ],
     ageBand: '12-23 months',
+    provenance: 'Source: Early Childhood Development Framework',
   ),
   MilestonePrompt(
     id: 'cog-12-01',
@@ -116,6 +120,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
       'Uncovers or reaches directly for the hidden toy',
     ],
     ageBand: '12-23 months',
+    provenance: 'Source: CDC Developmental Milestones (12–23m)',
   ),
   MilestonePrompt(
     id: 'mot-12-01',
@@ -123,5 +128,6 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
     title: 'Takes a few steps independently',
     lookFor: ['Walks a few paces without holding onto furniture or hands'],
     ageBand: '12-23 months',
+    provenance: 'Source: CDC Developmental Milestones (12–23m)',
   ),
 ];

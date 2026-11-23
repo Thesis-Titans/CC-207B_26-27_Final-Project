@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/activity.dart';
 import '../../widgets/state_views.dart';
 
-/// Activity detail screen. Skeleton only; the feature is built in issue #4.
+/// Screen displaying full activity instructions, required materials, and learning guidance.
 class ActivityDetailScreen extends StatelessWidget {
   const ActivityDetailScreen({super.key, required this.activity});
 

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:littlesteps/main.dart';
 import 'package:littlesteps/models/child.dart';
 import 'package:littlesteps/screens/account/account_info_screen.dart';
 import 'package:littlesteps/screens/account/settings_screen.dart';
@@ -14,13 +13,17 @@ void main() {
   testWidgets('account menu opens from the header and shows its actions', (
     tester,
   ) async {
-    await tester.pumpWidget(const LittleStepsApp());
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: const ShellScreen(email: 'caregiver@example.com'),
+      ),
+    );
 
     await tester.tap(find.byTooltip('Account'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Account'), findsOneWidget);
-    expect(find.text('Sign in to view child profiles.'), findsOneWidget);
+    expect(find.text('caregiver@example.com'), findsOneWidget);
     expect(find.text('Add a child'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Privacy notice'), findsOneWidget);
@@ -189,6 +192,39 @@ void main() {
     );
     expect(find.text('Delete account'), findsOneWidget);
   });
+
+  testWidgets(
+    'about page lists developmental sources with clinical citations and URLs',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: AccountInfoScreen(page: AccountInfoPage.about)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Where content comes from'), findsOneWidget);
+      expect(
+        find.textContaining('CDC Developmental Milestones'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('American Academy of Pediatrics (AAP)'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('WHO Nurturing Care Framework'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'Philippine Early Learning Standards (ECCD Council)',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('cdc.gov'), findsOneWidget);
+      expect(find.textContaining('healthychildren.org'), findsOneWidget);
+      expect(find.textContaining('eccdcouncil.gov.ph'), findsOneWidget);
+    },
+  );
 }
 
 class _FakeAccountService extends AccountService {

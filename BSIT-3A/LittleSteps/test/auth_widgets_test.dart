@@ -96,39 +96,19 @@ void main() {
       sessionState = AuthSessionState(authService: fakeAuthService);
     });
 
-    testWidgets(
-      'unauthenticated state hides child data and prompts sign in, while catalog works',
-      (tester) async {
-        await tester.pumpWidget(
-          createTestApp(
-            sessionState: sessionState,
-            home: const LittleStepsApp(),
-          ),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('unauthenticated state redirects to sign in screen', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        createTestApp(sessionState: sessionState, home: const LittleStepsApp()),
+      );
+      await tester.pumpAndSettle();
 
-        // Child data is hidden when signed out
-        expect(find.text("Sign in to see today's plan"), findsOneWidget);
-        expect(find.text('Select Child'), findsOneWidget);
-
-        // Explore catalog works without sign-in
-        await tester.tap(find.text('Explore'));
-        await tester.pumpAndSettle();
-        expect(
-          find.text('The age-aware activity catalog appears here.'),
-          findsOneWidget,
-        );
-
-        // Other protected tabs prompt for sign in
-        await tester.tap(find.text('Milestones'));
-        await tester.pumpAndSettle();
-        expect(find.text('Sign in to view milestones'), findsOneWidget);
-
-        await tester.tap(find.text('Journal'));
-        await tester.pumpAndSettle();
-        expect(find.text('Sign in for private journal'), findsOneWidget);
-      },
-    );
+      // Gated directly to SignInScreen to enforce authentication before exploring
+      expect(find.byType(SignInScreen), findsOneWidget);
+      expect(find.text('Sign in to your caregiver account'), findsOneWidget);
+      expect(find.text('Sign in'), findsWidgets);
+    });
 
     testWidgets(
       'signed-in state displays active child profile in shell header',
@@ -215,7 +195,9 @@ void main() {
           'badpassword',
         );
 
-        await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+        final signInButton = find.widgetWithText(FilledButton, 'Sign in');
+        await tester.ensureVisible(signInButton);
+        await tester.tap(signInButton);
         await tester.pumpAndSettle();
 
         expect(

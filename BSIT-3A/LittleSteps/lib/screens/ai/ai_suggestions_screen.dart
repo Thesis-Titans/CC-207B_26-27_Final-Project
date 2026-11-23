@@ -11,6 +11,10 @@ import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
 
+/// Screen that hosts the Idea Helper play activity recommendation flow.
+///
+/// Collects available materials, duration, setting, and language preferences
+/// to generate personalized, non-diagnostic play activity recommendations.
 class AiSuggestionsScreen extends StatefulWidget {
   const AiSuggestionsScreen({
     super.key,
@@ -252,7 +256,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI play ideas')),
+      appBar: AppBar(title: const Text('Idea helper')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.space16),

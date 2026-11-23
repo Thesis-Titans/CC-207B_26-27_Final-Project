@@ -11,6 +11,7 @@ import '../screens/children/add_child_screen.dart';
 import '../screens/children/child_profile_screen.dart';
 import '../screens/explore/activity_detail_screen.dart';
 import '../screens/shell_screen.dart';
+import '../screens/splash/splash_screen.dart';
 import '../widgets/auth_scope.dart';
 
 /// Application route generator and path constants.
@@ -22,7 +23,17 @@ abstract final class AppRouter {
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case '/':
-        return MaterialPageRoute(builder: (_) => const ShellScreen());
+        return MaterialPageRoute(
+          builder: (context) {
+            final auth = AuthScope.maybeOf(context);
+            if (auth == null || !auth.isAuthenticated) {
+              return const SignInScreen();
+            }
+            return const ShellScreen();
+          },
+        );
+      case '/splash':
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
       case '/sign-in':
         final notice = settings.arguments as String?;
         return MaterialPageRoute(builder: (_) => SignInScreen(notice: notice));
@@ -54,7 +65,7 @@ abstract final class AppRouter {
         return MaterialPageRoute(
           builder: (context) {
             final auth = AuthScope.maybeOf(context);
-            if (auth != null && !auth.isAuthenticated) {
+            if (auth == null || !auth.isAuthenticated) {
               return const SignInScreen(
                 notice: 'Please sign in to view and manage child profiles.',
               );
@@ -66,7 +77,7 @@ abstract final class AppRouter {
         return MaterialPageRoute(
           builder: (context) {
             final auth = AuthScope.maybeOf(context);
-            if (auth != null && !auth.isAuthenticated) {
+            if (auth == null || !auth.isAuthenticated) {
               return const SignInScreen(
                 notice: 'Please sign in before adding a child profile.',
               );
