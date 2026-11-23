@@ -222,6 +222,14 @@ class _TodayScreenState extends State<TodayScreen> {
     _advisorySeen = TodayAdvisoryStorage.hasSeen(_advisoryKey);
   }
 
+  // Resolves the ApiClient using planService or context AuthScope.
+  ApiClient _resolveApiClient() {
+    return widget.planService?.apiClient ??
+        (AuthScope.maybeOf(context) != null
+            ? AuthScope.apiClientOf(context)
+            : ApiClient());
+  }
+
   // Resolves the PlanService using widget injection or context-scoped ApiClient.
   PlanService _resolvePlanService() {
     if (widget.planService != null) return widget.planService!;
@@ -295,13 +303,23 @@ class _TodayScreenState extends State<TodayScreen> {
 
       if (!mounted) return;
 
+      final isClientOffline = _resolveApiClient().isOffline;
+
       setState(() {
         _plans = fetchedPlans;
         _weatherHint = fetchedWeather;
+        _isOffline = _isOffline || isClientOffline;
         _viewState = fetchedPlans.isEmpty
             ? TodayViewState.empty
             : TodayViewState.ready;
       });
+    } on NoConnectionApiException {
+      if (!mounted) return;
+      setState(() {
+        _viewState = TodayViewState.offline;
+        _isOffline = true;
+      });
+      _announce('Working offline. Planned activities for today.');
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -328,7 +346,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
   // Marks an activity complete and presents a 10-second undo snackbar.
   Future<void> _markComplete(PlanItem plan, Activity activity) async {
-    if (_isOffline) {
+    if (_isOffline || _resolveApiClient().isOffline) {
       _announce("This activity wasn't marked complete");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

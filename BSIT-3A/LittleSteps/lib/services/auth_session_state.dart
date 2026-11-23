@@ -13,11 +13,14 @@ import 'auth_service.dart';
 /// It provides session and active child coordination without inventing a conflicting
 /// second architecture.
 class AuthSessionState extends ChangeNotifier {
-  /// Creates an [AuthSessionState] with the provided [authService].
-  AuthSessionState({required this.authService});
+  /// Creates an [AuthSessionState] with the provided [authService] and optional [onClearCache].
+  AuthSessionState({required this.authService, this.onClearCache});
 
   /// The underlying authentication service.
   final AuthService authService;
+
+  /// Optional callback invoked on sign-out or session expiry to clear local caches.
+  final VoidCallback? onClearCache;
 
   AuthUser? _currentUser;
   Child? _activeChild;
@@ -105,6 +108,7 @@ class AuthSessionState extends ChangeNotifier {
   void handleSessionExpired() {
     _currentUser = null;
     _activeChild = null;
+    onClearCache?.call();
     notifyListeners();
   }
 
@@ -116,6 +120,7 @@ class AuthSessionState extends ChangeNotifier {
       _currentUser = null;
       _activeChild = null;
       _unsavedDraft = null;
+      onClearCache?.call();
       notifyListeners();
     }
   }

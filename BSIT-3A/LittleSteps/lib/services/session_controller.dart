@@ -26,6 +26,7 @@ class SessionController extends ChangeNotifier {
   /// SIGNS OUT the caregiver and CLEARS the auth token from the API client.
   void signOut() {
     apiClient.setAuthToken(null); // clears the token in the API client
+    apiClient.clearCache(); // clears local cache on sign out
     _isSignedIn = false; // sets _isSignedIn to false
     notifyListeners(); // tells listeners
   }
