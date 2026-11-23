@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/summary.dart';
+import '../../services/api_client.dart';
+import '../../services/summary_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
@@ -18,6 +20,7 @@ class WeeklySummaryScreen extends StatefulWidget {
     this.summaries,
     this.childName,
     this.childAgeBand,
+    this.summaryService,
   });
 
   final WeeklySummaryViewState initialState;
@@ -25,6 +28,7 @@ class WeeklySummaryScreen extends StatefulWidget {
   final Map<String, WeeklySummary>? summaries;
   final String? childName;
   final String? childAgeBand;
+  final SummaryService? summaryService;
 
   @override
   State<WeeklySummaryScreen> createState() => _WeeklySummaryScreenState();
@@ -34,6 +38,23 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
   late WeeklySummaryViewState _currentState;
   late String _selectedWeekId;
   late Map<String, WeeklySummary> _summaries;
+
+  ApiClient _resolveApiClient() {
+    return widget.summaryService?.apiClient ??
+        (AuthScope.maybeOf(context) != null
+            ? AuthScope.apiClientOf(context)
+            : ApiClient());
+  }
+
+  SummaryService _resolveSummaryService() {
+    if (widget.summaryService != null) return widget.summaryService!;
+    return SummaryService(apiClient: _resolveApiClient());
+  }
+
+  String? get _childId {
+    final session = AuthScope.maybeOf(context);
+    return session?.activeChild?.id;
+  }
 
   String get _childName {
     final session = AuthScope.maybeOf(context);
@@ -105,13 +126,52 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     if (widget.summaries != null) {
       _summaries = widget.summaries!;
       _selectedWeekId = widget.initialWeek;
-    } else if (_childName == 'Maya') {
-      _summaries = sampleWeeklySummaries;
-      _selectedWeekId = widget.initialWeek;
-    } else {
-      final emptyCurrent = _createEmptyCurrentWeekSummary();
-      _selectedWeekId = emptyCurrent.id;
-      _summaries = {emptyCurrent.id: emptyCurrent};
+      return;
+    }
+    _loadWeeklySummary(_selectedWeekId);
+  }
+
+  Future<void> _loadWeeklySummary(String weekId) async {
+    final childId = _childId;
+    if (childId == null) {
+      if (_childName == 'Maya') {
+        setState(() {
+          _summaries = sampleWeeklySummaries;
+          _selectedWeekId = widget.initialWeek;
+        });
+      } else {
+        final emptyCurrent = _createEmptyCurrentWeekSummary();
+        setState(() {
+          _selectedWeekId = emptyCurrent.id;
+          _summaries = {emptyCurrent.id: emptyCurrent};
+        });
+      }
+      return;
+    }
+
+    try {
+      final service = _resolveSummaryService();
+      final summary = await service.getWeeklySummary(childId, week: weekId);
+      if (mounted) {
+        setState(() {
+          _summaries[summary.id] = summary;
+          _selectedWeekId = summary.id;
+          _currentState = WeeklySummaryViewState.ready;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          if (_childName == 'Maya') {
+            _summaries = sampleWeeklySummaries;
+            _selectedWeekId = widget.initialWeek;
+          } else if (!_summaries.containsKey(weekId)) {
+            final empty = _createEmptyCurrentWeekSummary();
+            _summaries[empty.id] = empty;
+            _selectedWeekId = empty.id;
+          }
+        });
+      }
     }
   }
 
@@ -172,8 +232,12 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                         ? const Icon(Icons.check, color: AppColors.forest)
                         : null,
                     onTap: () {
-                      setState(() => _selectedWeekId = weekId);
+                      final picked = weekId;
+                      setState(() => _selectedWeekId = picked);
                       Navigator.of(context).pop();
+                      if (widget.summaries == null && _childId != null) {
+                        _loadWeeklySummary(picked);
+                      }
                     },
                   );
                 }),
@@ -200,14 +264,11 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
         vertical: AppSpacing.space16,
       ),
       children: [
-        // Title & Subtitle
         const ScreenHeader(
           title: 'This week',
           subtitle: 'A look back at the moments you wrote down.',
         ),
         const SizedBox(height: AppSpacing.space12),
-
-        // Child Selector Pill
         Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.space12,
@@ -230,8 +291,6 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.space12),
-
-        // Week Selector Box
         InkWell(
           onTap: _showWeekPicker,
           borderRadius: BorderRadius.circular(AppRadius.control),
@@ -275,8 +334,6 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.space16),
-
-        // State-driven Content
         if (_currentState == WeeklySummaryViewState.loading)
           _buildLoadingState()
         else if (_currentState == WeeklySummaryViewState.error)
@@ -284,8 +341,6 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
         else ...[
           if (_currentState == WeeklySummaryViewState.offline)
             _buildOfflineBanner(),
-
-          // Populated vs Empty week views
           if (_currentSummary == null || _currentSummary!.isEmptyWeek)
             _buildEmptyWeekCard()
           else
@@ -299,7 +354,6 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Card 1: "This week with Maya"
         Container(
           padding: const EdgeInsets.all(AppSpacing.space16),
           decoration: BoxDecoration(
@@ -318,8 +372,6 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.space12),
-
-              // Two Stats Cards
               Row(
                 children: [
                   Expanded(
@@ -396,8 +448,6 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.space12),
-
-              // Non-diagnostic Disclaimer
               Text(
                 "Based only on what you wrote down. It's not a test, and it never compares $_childName with other children. Journal notes stay private.",
                 style: Theme.of(context).textTheme.bodySmall
@@ -407,8 +457,6 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.space16),
-
-        // Card 2: "Everyday play areas" (Activities by domain)
         Container(
           padding: const EdgeInsets.all(AppSpacing.space16),
           decoration: BoxDecoration(
@@ -432,8 +480,6 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.space16),
-
-        // Card 3: "Something to try" (Reflection Prompt Card)
         if (summary.reflectionPrompt.isNotEmpty)
           Container(
             padding: const EdgeInsets.all(AppSpacing.space16),

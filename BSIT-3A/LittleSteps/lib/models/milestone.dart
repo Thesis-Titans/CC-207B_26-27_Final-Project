@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// A caregiver's saved observation for one milestone prompt.
-///
-/// The prompt text itself is not stored by the API; [milestoneId] links the
-/// observation to a prompt in the app's prompt list.
 class MilestoneObservation {
   const MilestoneObservation({
     required this.id,
@@ -19,17 +15,11 @@ class MilestoneObservation {
   final String id;
   final String childId;
   final String milestoneId;
-
-  /// One of `observed`, `not_yet_observed` or `not_sure`
   final String status;
-
-  /// Local calendar date in `YYYY-MM-DD` form.
   final String observedDate;
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
-
-  /// Whether the caregiver has seen the child do this.
   bool get isObserved => status == 'observed';
 
   factory MilestoneObservation.fromJson(Map<String, dynamic> json) {
@@ -46,7 +36,6 @@ class MilestoneObservation {
   }
 }
 
-/// The 4 ECCD developmental domains with parent-friendly display labels.
 enum MilestoneDomain {
   cognitive('cognitive', 'Thinking', Icons.psychology_outlined),
   motor('motor', 'Moving', Icons.directions_run_outlined),
@@ -60,7 +49,6 @@ enum MilestoneDomain {
   final IconData icon;
 }
 
-/// A developmental observation prompt shown to the caregiver.
 class MilestonePrompt {
   const MilestonePrompt({
     required this.id,
@@ -81,7 +69,7 @@ class MilestonePrompt {
 }
 
 const List<MilestonePrompt> sampleMilestonePrompts = [
-  // 0-11 months (Babies)
+  // 0-11 months
   MilestonePrompt(
     id: 'lan-00-01',
     domain: MilestoneDomain.language,
@@ -127,7 +115,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
     provenance: 'Source: CDC Early Social-Emotional Milestones',
   ),
 
-  // 12-23 months (Young Toddlers)
+  // 12-23 months
   MilestonePrompt(
     id: 'lan-12-01',
     domain: MilestoneDomain.language,
@@ -178,7 +166,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
     provenance: 'Source: CDC Developmental Milestones (12–23m)',
   ),
 
-  // 24-35 months (Older Toddlers)
+  // 24-35 months
   MilestonePrompt(
     id: 'lan-24-01',
     domain: MilestoneDomain.language,
@@ -224,7 +212,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
     provenance: 'Source: Early Childhood Social-Emotional Guidelines',
   ),
 
-  // 36-47 months (Young Preschoolers)
+  // 36-47 months
   MilestonePrompt(
     id: 'lan-36-01',
     domain: MilestoneDomain.language,
@@ -270,7 +258,7 @@ const List<MilestonePrompt> sampleMilestonePrompts = [
     provenance: 'Source: ECCD Social Competence Standards',
   ),
 
-  // 48-59 months (Older Preschoolers - e.g. Jeorge)
+  // 48-59 months
   MilestonePrompt(
     id: 'lan-48-01',
     domain: MilestoneDomain.language,

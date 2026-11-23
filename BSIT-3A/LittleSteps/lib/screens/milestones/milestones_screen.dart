@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../models/milestone.dart';
+import '../../services/api_client.dart';
+import '../../services/milestones_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
@@ -16,11 +18,13 @@ class MilestonesScreen extends StatefulWidget {
     this.initialState = MilestonesViewState.ready,
     this.prompts = sampleMilestonePrompts,
     this.initialObservations = const {},
+    this.milestonesService,
   });
 
   final MilestonesViewState initialState;
   final List<MilestonePrompt> prompts;
   final Map<String, MilestoneObservation> initialObservations;
+  final MilestonesService? milestonesService;
 
   @override
   State<MilestonesScreen> createState() => _MilestonesScreenState();
@@ -91,18 +95,51 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     super.initState();
     _currentState = widget.initialState;
     _observations = Map.from(widget.initialObservations);
-    _selectedAgeBand = '12-23 months'; // overwritten in didChangeDependencies
+    _selectedAgeBand = '12-23 months';
+  }
+
+  ApiClient _resolveApiClient() {
+    return widget.milestonesService?.apiClient ??
+        (AuthScope.maybeOf(context) != null
+            ? AuthScope.apiClientOf(context)
+            : ApiClient());
+  }
+
+  MilestonesService _resolveMilestonesService() {
+    if (widget.milestonesService != null) return widget.milestonesService!;
+    return MilestonesService(apiClient: _resolveApiClient());
+  }
+
+  String? get _childId {
+    final session = AuthScope.maybeOf(context);
+    return session?.activeChild?.id;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Seed once so the picker defaults to the active child's band.
-    // Guard prevents resetting the picker when the widget tree rebuilds.
     if (!_ageBandSeeded) {
       _selectedAgeBand = _childAgeBand;
       _ageBandSeeded = true;
     }
+    _loadObservations();
+  }
+
+  Future<void> _loadObservations() async {
+    final childId = _childId;
+    if (childId == null || widget.initialObservations.isNotEmpty) return;
+
+    try {
+      final service = _resolveMilestonesService();
+      final fetched = await service.getObservations(childId);
+      if (mounted) {
+        setState(() {
+          for (final obs in fetched) {
+            _observations[obs.milestoneId] = obs;
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   void _showAgeBandPicker() {
@@ -169,10 +206,42 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     );
   }
 
-  void _saveObservation(MilestoneObservation observation) {
+  Future<void> _saveObservation(MilestoneObservation observation) async {
     setState(() {
       _observations[observation.milestoneId] = observation;
     });
+
+    final childId = _childId;
+    if (childId == null) return;
+
+    try {
+      final service = _resolveMilestonesService();
+      final existing = _observations[observation.milestoneId];
+      if (existing != null &&
+          existing.id.isNotEmpty &&
+          !existing.id.startsWith('obs-local')) {
+        await service.updateObservation(
+          childId: childId,
+          observationId: existing.id,
+          status: observation.status,
+          observedDate: observation.observedDate,
+          notes: observation.notes,
+        );
+      } else {
+        final created = await service.createObservation(
+          childId: childId,
+          milestoneId: observation.milestoneId,
+          status: observation.status,
+          observedDate: observation.observedDate,
+          notes: observation.notes,
+        );
+        if (mounted) {
+          setState(() {
+            _observations[observation.milestoneId] = created;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   void _openObservationSheet(MilestonePrompt prompt) {
@@ -213,7 +282,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
         vertical: AppSpacing.space16,
       ),
       children: [
-        // Title & Subtitle with persistent advisory access
         ScreenHeader(
           title: 'Milestones',
           subtitle: 'Every child develops at their own pace.',
@@ -222,8 +290,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
               : null,
         ),
         const SizedBox(height: AppSpacing.space12),
-
-        // Child Selector Dropdown Pill
         Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.space12,
@@ -246,8 +312,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.space12),
-
-        // State-driven Content
         if (_currentState == MilestonesViewState.loading)
           _buildLoadingState()
         else if (_currentState == MilestonesViewState.error)
@@ -255,16 +319,10 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
         else ...[
           if (_currentState == MilestonesViewState.offline)
             _buildOfflineBanner(),
-
-          // Introductory prompt card displayed when no observations have been recorded yet.
           if (_currentState == MilestonesViewState.empty ||
               _observations.isEmpty)
             _buildEmptyStateCard(),
-
-          // Educational advisory banner reminding caregivers that children develop at different paces.
           if (_showAdvisory) _buildAdvisoryBanner(),
-
-          // Child's Age Selector — tapping opens the age-band picker
           InkWell(
             onTap: _showAgeBandPicker,
             borderRadius: BorderRadius.circular(AppRadius.control),
@@ -310,12 +368,8 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.space12),
-
-          // Domain Filter Chips
           _buildDomainChips(),
           const SizedBox(height: AppSpacing.space16),
-
-          // Prompts list
           ..._buildGroupedPrompts(),
         ],
       ],
@@ -628,7 +682,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   }
 
   List<Widget> _buildGroupedPrompts() {
-    // First filter by the selected age band, then optionally by domain chip.
     final ageBandPrompts = widget.prompts
         .where((p) => p.ageBand == _selectedAgeBand)
         .toList();
@@ -649,7 +702,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       final domainPrompts = grouped[domain];
       if (domainPrompts == null || domainPrompts.isEmpty) continue;
 
-      // Section header per domain (e.g. "Talking")
       widgets.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
@@ -698,7 +750,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                         ),
                       ),
                       const SizedBox(width: AppSpacing.space8),
-                      // Action Button (Add or Update)
                       SizedBox(
                         height: 36,
                         child: isObserved
@@ -749,16 +800,12 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                   ),
                   const SizedBox(height: AppSpacing.space8),
 
-                  // Everyday observational cues formatted with separator dots.
                   Text(
                     'Look for: ${prompt.lookFor.join(' · ')}',
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: AppColors.textSecondary),
                   ),
-
                   const SizedBox(height: AppSpacing.space8),
-
-                  // Status line: "Not seen yet" or saved notes box
                   if (isObserved) ...[
                     if (obs?.notes != null && obs!.notes!.isNotEmpty)
                       Container(
