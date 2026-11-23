@@ -38,7 +38,10 @@ class _LittleStepsAppState extends State<LittleStepsApp> {
     super.initState();
     _sessionState =
         widget.sessionState ??
-        AuthSessionState(authService: FirebaseAuthRestService());
+        AuthSessionState(
+          authService: FirebaseAuthRestService(),
+          onClearCache: () => _apiClient.clearCache(),
+        );
 
     _apiClient =
         widget.apiClient ??
