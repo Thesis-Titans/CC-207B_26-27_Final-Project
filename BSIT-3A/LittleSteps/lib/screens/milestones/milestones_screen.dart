@@ -184,14 +184,14 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                       border: Border.all(color: AppColors.borderSubtle),
                       borderRadius: BorderRadius.circular(AppRadius.control),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
                         Text(
-                          '12-23 months',
-                          style: TextStyle(fontWeight: FontWeight.w500),
+                          _childAgeDisplay,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
-                        SizedBox(width: AppSpacing.space8),
-                        Icon(
+                        const SizedBox(width: AppSpacing.space8),
+                        const Icon(
                           Icons.arrow_drop_down,
                           size: 18,
                           color: AppColors.textSecondary,

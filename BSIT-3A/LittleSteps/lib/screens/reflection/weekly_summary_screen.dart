@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../models/summary.dart';
 import '../../theme/app_tokens.dart';
@@ -50,12 +51,68 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     return widget.childAgeBand ?? '14 months';
   }
 
+  static WeeklySummary _createEmptyCurrentWeekSummary() {
+    final now = DateTime.now();
+    final monday = DateTime.utc(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
+
+    final thursday = monday.add(const Duration(days: 3));
+    final jan4 = DateTime.utc(thursday.year, 1, 4);
+    final weekNumber = 1 + ((thursday.difference(jan4).inDays) / 7).floor();
+    final weekStr = weekNumber.toString().padLeft(2, '0');
+    final weekId = '${thursday.year}-W$weekStr';
+
+    return WeeklySummary(
+      id: weekId,
+      weekStartDate: DateFormat('yyyy-MM-dd').format(monday),
+      weekEndDate: DateFormat('yyyy-MM-dd').format(sunday),
+      completedActivityCount: 0,
+      observedMilestoneCount: 0,
+      totalPlannedActivities: 0,
+      domainDistribution: const {
+        'cognitive': 0,
+        'motor': 0,
+        'language': 0,
+        'socioEmotional': 0,
+      },
+      topActivityIds: const [],
+      reflectionPrompt: '',
+      generatedAt: now,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _currentState = widget.initialState;
-    _selectedWeekId = widget.initialWeek;
-    _summaries = widget.summaries ?? sampleWeeklySummaries;
+    if (widget.summaries != null) {
+      _selectedWeekId = widget.initialWeek;
+      _summaries = widget.summaries!;
+    } else {
+      final emptyCurrent = _createEmptyCurrentWeekSummary();
+      _selectedWeekId = emptyCurrent.id;
+      _summaries = {emptyCurrent.id: emptyCurrent};
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.summaries != null) {
+      _summaries = widget.summaries!;
+      _selectedWeekId = widget.initialWeek;
+    } else if (_childName == 'Maya') {
+      _summaries = sampleWeeklySummaries;
+      _selectedWeekId = widget.initialWeek;
+    } else {
+      final emptyCurrent = _createEmptyCurrentWeekSummary();
+      _selectedWeekId = emptyCurrent.id;
+      _summaries = {emptyCurrent.id: emptyCurrent};
+    }
   }
 
   WeeklySummary? get _currentSummary => _summaries[_selectedWeekId];
