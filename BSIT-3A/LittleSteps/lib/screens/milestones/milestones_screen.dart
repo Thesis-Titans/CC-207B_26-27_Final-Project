@@ -1,17 +1,726 @@
 import 'package:flutter/material.dart';
 
-import '../../widgets/state_views.dart';
+import '../../models/milestone.dart';
+import '../../theme/app_tokens.dart';
+import 'observation_form_sheet.dart';
 
-/// Milestones tab. Skeleton only; the feature is built in issue #6.
-class MilestonesScreen extends StatelessWidget {
-  const MilestonesScreen({super.key});
+/// Interaction states matching the project 5-state spec.
+enum MilestonesViewState { ready, loading, empty, error, offline }
+
+/// Milestones tab displaying developmental observation prompts grouped by ECCD domain.
+class MilestonesScreen extends StatefulWidget {
+  const MilestonesScreen({
+    super.key,
+    this.initialState = MilestonesViewState.ready,
+    this.prompts = sampleMilestonePrompts,
+    this.initialObservations = const {},
+  });
+
+  final MilestonesViewState initialState;
+  final List<MilestonePrompt> prompts;
+  final Map<String, MilestoneObservation> initialObservations;
+
+  @override
+  State<MilestonesScreen> createState() => _MilestonesScreenState();
+}
+
+class _MilestonesScreenState extends State<MilestonesScreen> {
+  late MilestonesViewState _currentState;
+  late Map<String, MilestoneObservation> _observations;
+  MilestoneDomain? _selectedDomainFilter;
+  bool _showAdvisory = true;
+
+  final String _childName = 'Maya';
+  final int _childAgeMonths = 14;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentState = widget.initialState;
+    _observations = Map.from(widget.initialObservations);
+  }
+
+  void _saveObservation(MilestoneObservation observation) {
+    setState(() {
+      _observations[observation.milestoneId] = observation;
+    });
+  }
+
+  void _openObservationSheet(MilestonePrompt prompt) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return ObservationFormSheet(
+          prompt: prompt,
+          childName: _childName,
+          childAgeMonths: _childAgeMonths,
+          initialObservation: _observations[prompt.id],
+          isOffline: _currentState == MilestonesViewState.offline,
+          onRetryOffline: () =>
+              setState(() => _currentState = MilestonesViewState.ready),
+          onSave: _saveObservation,
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const EmptyStateView(
-      title: 'Milestones',
-      message: 'Observation prompts appear here.',
-      icon: Icons.flag_outlined,
+    return Scaffold(
+      backgroundColor: AppColors.surfaceCanvas,
+      appBar: AppBar(
+        backgroundColor: AppColors.surfaceCanvas,
+        elevation: 0,
+        title: Row(
+          children: [
+            const Icon(Icons.eco, color: AppColors.forest),
+            const SizedBox(width: AppSpacing.space8),
+            Text(
+              'LittleSteps',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.forest,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          CircleAvatar(
+            backgroundColor: AppColors.softGreen,
+            radius: 16,
+            child: Text(
+              _childName[0],
+              style: const TextStyle(
+                color: AppColors.forest,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.space16),
+        ],
+      ),
+      body: _buildBody(),
     );
+  }
+
+  Widget _buildBody() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+      children: [
+        // Title & Subtitle
+        Text(
+          'Milestones',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space4),
+        Text(
+          'Every child develops at their own pace.',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+
+        // Child Selector Dropdown Pill
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space12,
+            vertical: AppSpacing.space8,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AppColors.borderSubtle),
+            borderRadius: BorderRadius.circular(AppRadius.control),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'For $_childName · $_childAgeMonths months',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const Spacer(),
+              const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+
+        // State-driven Content
+        if (_currentState == MilestonesViewState.loading)
+          _buildLoadingState()
+        else if (_currentState == MilestonesViewState.error)
+          _buildErrorState()
+        else ...[
+          if (_currentState == MilestonesViewState.offline)
+            _buildOfflineBanner(),
+
+          // Empty state card (Shown when 0 observations recorded, matching Figma Screen 3)
+          if (_currentState == MilestonesViewState.empty ||
+              _observations.isEmpty)
+            _buildEmptyStateCard(),
+
+          // Non-diagnostic Advisory Banner (Matching Figma Screen 1)
+          if (_showAdvisory) _buildAdvisoryBanner(),
+
+          // Child's Age Selector
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Child's age",
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space12,
+                      vertical: AppSpacing.space8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: AppColors.borderSubtle),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                    ),
+                    child: const Row(
+                      children: [
+                        Text(
+                          '12-23 months',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        SizedBox(width: AppSpacing.space8),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          size: 18,
+                          color: AppColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space12),
+
+          // Domain Filter Chips
+          _buildDomainChips(),
+          const SizedBox(height: AppSpacing.space16),
+
+          // Prompts list
+          ..._buildGroupedPrompts(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Loading milestones...',
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.space16),
+        for (int i = 0; i < 3; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+            child: Container(
+              height: 72,
+              padding: const EdgeInsets.all(AppSpacing.space16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: AppColors.borderSubtle,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.space8),
+                        Container(
+                          width: 140,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: AppColors.borderSubtle.withValues(
+                              alpha: 0.6,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space16),
+                  Container(
+                    width: 48,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.borderSubtle,
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.space16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceError,
+        border: Border.all(color: AppColors.borderError),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.textError, size: 20),
+              SizedBox(width: AppSpacing.space8),
+              Text(
+                "We couldn't load this right now",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textError,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space4),
+          const Text(
+            'Try again in a moment.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.space16),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.borderInput),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.control),
+              ),
+            ),
+            onPressed: () =>
+                setState(() => _currentState = MilestonesViewState.ready),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+      padding: const EdgeInsets.all(AppSpacing.space16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceOffline,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.wifi_off, color: AppColors.textOffline, size: 20),
+              SizedBox(width: AppSpacing.space8),
+              Text(
+                "You're offline",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textOffline,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space4),
+          const Text(
+            "Your note wasn't saved. Keep this screen open and tap Retry when you're back online.",
+            style: TextStyle(color: AppColors.textOffline, fontSize: 13),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.control),
+              ),
+            ),
+            onPressed: () =>
+                setState(() => _currentState = MilestonesViewState.ready),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyStateCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+      padding: const EdgeInsets.all(AppSpacing.space20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Center(
+        child: Column(
+          children: [
+            CircleAvatar(
+              backgroundColor: AppColors.softGreen,
+              radius: 24,
+              child: const Icon(
+                Icons.eco_outlined,
+                color: AppColors.forest,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.space12),
+            const Text(
+              'Nothing noted yet',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: AppSpacing.space4),
+            const Text(
+              'Look for small moments during play.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdvisoryBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+      padding: const EdgeInsets.all(AppSpacing.space12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAdvisory,
+        border: Border.all(color: AppColors.borderAdvisory),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline,
+            size: 20,
+            color: AppColors.textPrimary,
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'LittleSteps is not a diagnostic tool',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                Text(
+                  "LittleSteps shares play ideas and things to look for. It's not a test. Children develop at different rates. Talk to a health professional, like your pediatrician or barangay health worker, if you have concerns.",
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textPrimary, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: () => setState(() => _showAdvisory = false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDomainChips() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          ChoiceChip(
+            showCheckmark: false,
+            label: const Text('All'),
+            selected: _selectedDomainFilter == null,
+            selectedColor: AppColors.forest,
+            backgroundColor: Colors.white,
+            labelStyle: TextStyle(
+              color: _selectedDomainFilter == null
+                  ? Colors.white
+                  : AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.chip),
+              side: BorderSide(
+                color: _selectedDomainFilter == null
+                    ? AppColors.forest
+                    : AppColors.borderSubtle,
+              ),
+            ),
+            onSelected: (_) => setState(() => _selectedDomainFilter = null),
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          ...MilestoneDomain.values.map((domain) {
+            final isSelected = _selectedDomainFilter == domain;
+            return Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.space8),
+              child: ChoiceChip(
+                showCheckmark: false,
+                label: Text(domain.label),
+                selected: isSelected,
+                selectedColor: AppColors.forest,
+                backgroundColor: Colors.white,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                  side: BorderSide(
+                    color: isSelected
+                        ? AppColors.forest
+                        : AppColors.borderSubtle,
+                  ),
+                ),
+                onSelected: (_) =>
+                    setState(() => _selectedDomainFilter = domain),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildGroupedPrompts() {
+    final filteredPrompts = _selectedDomainFilter == null
+        ? widget.prompts
+        : widget.prompts
+              .where((p) => p.domain == _selectedDomainFilter)
+              .toList();
+
+    final Map<MilestoneDomain, List<MilestonePrompt>> grouped = {};
+    for (final p in filteredPrompts) {
+      grouped.putIfAbsent(p.domain, () => []).add(p);
+    }
+
+    final List<Widget> widgets = [];
+    for (final domain in MilestoneDomain.values) {
+      final domainPrompts = grouped[domain];
+      if (domainPrompts == null || domainPrompts.isEmpty) continue;
+
+      // Section header per domain (e.g. "Talking")
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
+          child: Text(
+            domain.label,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      );
+
+      for (final prompt in domainPrompts) {
+        final obs = _observations[prompt.id];
+        final isObserved = obs?.isObserved ?? false;
+
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.space12),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.space16),
+              decoration: BoxDecoration(
+                color: isObserved ? AppColors.softGreen : AppColors.surfaceCard,
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                border: Border.all(
+                  color: isObserved
+                      ? AppColors.forest.withValues(alpha: 0.3)
+                      : AppColors.borderSubtle,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          prompt.title,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space8),
+                      // Action Button (Add or Update)
+                      SizedBox(
+                        height: 36,
+                        child: isObserved
+                            ? OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.space16,
+                                  ),
+                                  side: const BorderSide(
+                                    color: AppColors.forest,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.control,
+                                    ),
+                                  ),
+                                ),
+                                onPressed: () => _openObservationSheet(prompt),
+                                child: const Text(
+                                  'Update',
+                                  style: TextStyle(
+                                    color: AppColors.forest,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
+                            : FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.forest,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.space16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.control,
+                                    ),
+                                  ),
+                                ),
+                                onPressed: () => _openObservationSheet(prompt),
+                                child: const Text(
+                                  'Add',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space8),
+
+                  // Look-for line formatted with dot separator as in Figma
+                  Text(
+                    'Look for: ${prompt.lookFor.join(' · ')}',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: AppColors.textSecondary),
+                  ),
+
+                  const SizedBox(height: AppSpacing.space8),
+
+                  // Status line: "Not seen yet" or saved notes box
+                  if (isObserved) ...[
+                    if (obs?.notes != null && obs!.notes!.isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.all(AppSpacing.space8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(
+                            AppRadius.control,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.note_outlined,
+                              size: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: AppSpacing.space4),
+                            Expanded(
+                              child: Text(
+                                obs.notes!,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(fontStyle: FontStyle.italic),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ] else ...[
+                    Text(
+                      'Not seen yet',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+
+                  // Provenance source indicator with blue info icon
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 14,
+                        color: Color(0xFF2B6CB0),
+                      ),
+                      const SizedBox(width: AppSpacing.space4),
+                      Expanded(
+                        child: Text(
+                          prompt.provenance,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: AppColors.textTertiary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    }
+    return widgets;
   }
 }
