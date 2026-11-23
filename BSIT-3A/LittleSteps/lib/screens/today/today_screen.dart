@@ -229,6 +229,7 @@ class _TodayScreenState extends State<TodayScreen> {
             ? AuthScope.apiClientOf(context)
             : ApiClient());
   }
+
   // Resolves the PlanService using widget injection or context-scoped ApiClient.
   PlanService _resolvePlanService() {
     if (widget.planService != null) return widget.planService!;
