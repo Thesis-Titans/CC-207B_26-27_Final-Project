@@ -86,7 +86,12 @@ abstract final class AppRouter {
           },
         );
       case '/ai-suggest':
-        return MaterialPageRoute(builder: (_) => const AiSuggestionsScreen());
+        return MaterialPageRoute(
+          builder: (context) {
+            final auth = AuthScope.maybeOf(context);
+            return AiSuggestionsScreen(initialChild: auth?.activeChild);
+          },
+        );
       case '/explore/activity':
         final activity = settings.arguments as Activity?;
         if (activity == null) {

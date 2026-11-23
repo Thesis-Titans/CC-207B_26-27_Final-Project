@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/brand_logo.dart';
@@ -67,9 +68,17 @@ class _SignInScreenState extends State<SignInScreen> {
     });
 
     final sessionState = AuthScope.of(context);
+    final apiClient = AuthScope.apiClientOf(context);
 
     try {
       await sessionState.signIn(email: email, password: password);
+      try {
+        final childrenService = ChildrenService(apiClient: apiClient);
+        final children = await childrenService.getChildren();
+        if (children.isNotEmpty && sessionState.activeChild == null) {
+          sessionState.setActiveChild(children.first);
+        }
+      } catch (_) {}
       if (!mounted) return;
       _announce('Signed in successfully');
       Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);

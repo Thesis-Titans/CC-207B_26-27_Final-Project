@@ -33,6 +33,7 @@ class ChildProfileScreen extends StatefulWidget {
 
 class _ChildProfileScreenState extends State<ChildProfileScreen> {
   late List<Child> _children;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -41,13 +42,59 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadChildrenIfNeeded();
+  }
+
+  ChildrenService? _resolveChildrenService() {
+    if (widget.childrenService != null) return widget.childrenService;
+    final auth = AuthScope.maybeOf(context);
+    if (auth != null) {
+      return ChildrenService(apiClient: AuthScope.apiClientOf(context));
+    }
+    return null;
+  }
+
+  Future<void> _loadChildrenIfNeeded() async {
+    if (widget.children != null && widget.children!.isNotEmpty) return;
+    final sessionState = AuthScope.maybeOf(context);
+    if (sessionState == null || !sessionState.isAuthenticated) return;
+    if (_isLoading) return;
+
+    _isLoading = true;
+    try {
+      final service = _resolveChildrenService();
+      if (service == null) {
+        _isLoading = false;
+        return;
+      }
+      final fetched = await service.getChildren();
+      if (!mounted) return;
+      setState(() {
+        _children = fetched;
+        _isLoading = false;
+      });
+      if (sessionState.activeChild == null && fetched.isNotEmpty) {
+        sessionState.setActiveChild(fetched.first);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final sessionState = AuthScope.maybeOf(context);
     final effectiveChildren =
         widget.children ??
-        (sessionState?.activeChild != null
-            ? <Child>[sessionState!.activeChild!]
-            : _children);
+        (_children.isNotEmpty
+            ? _children
+            : (sessionState?.activeChild != null
+                  ? <Child>[sessionState!.activeChild!]
+                  : <Child>[]));
     final activeChild =
         sessionState?.activeChild ??
         (effectiveChildren.isNotEmpty ? effectiveChildren.first : null);
@@ -261,7 +308,9 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
 
   void _navigateToAddChild(BuildContext context) {
     Navigator.pushNamed(context, '/children/add').then((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        _loadChildrenIfNeeded();
+      }
     });
   }
 }

@@ -59,7 +59,25 @@ class _AddChildScreenState extends State<AddChildScreen> {
     // Format ageBand to clean string (e.g., '12-23m')
     final cleanAgeBand = _selectedAgeBand.split(' ').first;
 
-    final newChild = Child(
+    Child? newChild;
+    final service =
+        widget.childrenService ??
+        (sessionState != null && AuthScope.maybeOf(context) != null
+            ? ChildrenService(apiClient: AuthScope.apiClientOf(context))
+            : null);
+
+    if (service != null && sessionState?.isAuthenticated == true) {
+      try {
+        newChild = await service.createChild(
+          nickname: nickname,
+          ageBand: cleanAgeBand,
+        );
+      } catch (_) {
+        // Fallback for offline or local preview
+      }
+    }
+
+    newChild ??= Child(
       id: 'child-${DateTime.now().millisecondsSinceEpoch}',
       nickname: nickname,
       ageBand: cleanAgeBand,

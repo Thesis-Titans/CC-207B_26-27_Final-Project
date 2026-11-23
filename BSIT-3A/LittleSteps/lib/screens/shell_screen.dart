@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/child.dart';
 import '../services/account_service.dart';
+import '../services/api_client.dart';
 import '../services/auth_session_state.dart';
 import '../services/children_service.dart';
 import '../theme/app_tokens.dart';
@@ -66,6 +67,58 @@ class ShellScreen extends StatefulWidget {
 
 class _ShellScreenState extends State<ShellScreen> {
   int _currentIndex = 0;
+  List<Child> _children = [];
+  bool _isLoadingChildren = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _children = List.of(widget.children);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadChildrenIfNeeded();
+  }
+
+  ChildrenService _resolveChildrenService() {
+    if (widget.childrenService != null) return widget.childrenService!;
+    final apiClient = AuthScope.maybeOf(context) != null
+        ? AuthScope.apiClientOf(context)
+        : ApiClient();
+    return ChildrenService(apiClient: apiClient);
+  }
+
+  Future<void> _loadChildrenIfNeeded() async {
+    final sessionState = AuthScope.maybeOf(context);
+    if (sessionState == null || !sessionState.isAuthenticated) return;
+    if (_children.isNotEmpty && sessionState.activeChild != null) return;
+    if (_isLoadingChildren) return;
+
+    _isLoadingChildren = true;
+
+    try {
+      final service = _resolveChildrenService();
+      final fetched = await service.getChildren();
+      if (!mounted) return;
+
+      setState(() {
+        _children = fetched;
+        _isLoadingChildren = false;
+      });
+
+      if (sessionState.activeChild == null && fetched.isNotEmpty) {
+        sessionState.setActiveChild(fetched.first);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingChildren = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -224,9 +277,11 @@ class _ShellScreenState extends State<ShellScreen> {
 
   Future<void> _showAccountMenu(AuthSessionState? sessionState) async {
     final effectiveEmail = sessionState?.currentUser?.email ?? widget.email;
-    final effectiveChildren = sessionState?.activeChild != null
-        ? <Child>[sessionState!.activeChild!]
-        : widget.children;
+    final effectiveChildren = _children.isNotEmpty
+        ? _children
+        : (sessionState?.activeChild != null
+              ? <Child>[sessionState!.activeChild!]
+              : widget.children);
 
     await showModalBottomSheet<void>(
       context: context,
