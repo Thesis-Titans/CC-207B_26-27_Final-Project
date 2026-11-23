@@ -64,7 +64,6 @@ class ShellScreen extends StatefulWidget {
 class _ShellScreenState extends State<ShellScreen> {
   int _currentIndex = 0;
 
-
   @override
   Widget build(BuildContext context) {
     final sessionState = AuthScope.maybeOf(context);
@@ -180,8 +179,6 @@ class _ShellScreenState extends State<ShellScreen> {
       ),
     );
   }
-
-
 
   Future<void> _showAccountMenu() async {
     await showModalBottomSheet<void>(
