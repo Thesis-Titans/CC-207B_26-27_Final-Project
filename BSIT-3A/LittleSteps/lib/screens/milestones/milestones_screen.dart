@@ -32,6 +32,10 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   MilestoneDomain? _selectedDomainFilter;
   bool _showAdvisory = true;
 
+  /// The age band whose prompts are currently displayed.
+  /// Defaults to the active child's age band; caregiver can browse other bands.
+  late String _selectedAgeBand;
+
   String get _childName {
     final session = AuthScope.maybeOf(context);
     return session?.activeChild?.nickname ?? 'Maya';
@@ -60,11 +64,104 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     return '14 months';
   }
 
+  /// The age band that best matches the active child's age in months,
+  /// used to seed [_selectedAgeBand] on first load.
+  String get _childAgeBand {
+    final months = _childAgeMonths;
+    if (months < 12) return '0-11 months';
+    if (months < 24) return '12-23 months';
+    if (months < 36) return '24-35 months';
+    if (months < 48) return '36-47 months';
+    return '48-59 months';
+  }
+
+  static const List<String> _ageBands = [
+    '0-11 months',
+    '12-23 months',
+    '24-35 months',
+    '36-47 months',
+    '48-59 months',
+  ];
+
   @override
   void initState() {
     super.initState();
     _currentState = widget.initialState;
     _observations = Map.from(widget.initialObservations);
+    _selectedAgeBand = '12-23 months'; // seeded in didChangeDependencies
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Seed the age-band picker to match the active child on first load.
+    // After that the caregiver may browse other bands without it resetting.
+    _selectedAgeBand = _childAgeBand;
+  }
+
+  void _showAgeBandPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.space16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  "Child's age range",
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                Text(
+                  'You can browse any age range.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space12),
+                ..._ageBands.map((band) {
+                  final isSelected = band == _selectedAgeBand;
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space8,
+                      vertical: AppSpacing.space4,
+                    ),
+                    title: Text(
+                      band,
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? AppColors.forest
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check, color: AppColors.forest)
+                        : null,
+                    onTap: () {
+                      setState(() => _selectedAgeBand = band);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _saveObservation(MilestoneObservation observation) {
@@ -162,46 +259,50 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           // Educational advisory banner reminding caregivers that children develop at different paces.
           if (_showAdvisory) _buildAdvisoryBanner(),
 
-          // Child's Age Selector
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Child's age",
-                    style: Theme.of(context).textTheme.labelSmall
-                        ?.copyWith(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space12,
-                      vertical: AppSpacing.space8,
+          // Child's Age Selector — tapping opens the age-band picker
+          InkWell(
+            onTap: _showAgeBandPicker,
+            borderRadius: BorderRadius.circular(AppRadius.control),
+            child: Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Child's age",
+                      style: Theme.of(context).textTheme.labelSmall
+                          ?.copyWith(color: AppColors.textSecondary),
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: AppColors.borderSubtle),
-                      borderRadius: BorderRadius.circular(AppRadius.control),
+                    const SizedBox(height: AppSpacing.space4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space12,
+                        vertical: AppSpacing.space8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: AppColors.borderSubtle),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            _selectedAgeBand,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(width: AppSpacing.space8),
+                          const Icon(
+                            Icons.arrow_drop_down,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Text(
-                          _childAgeDisplay,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(width: AppSpacing.space8),
-                        const Icon(
-                          Icons.arrow_drop_down,
-                          size: 18,
-                          color: AppColors.textSecondary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.space12),
 
@@ -522,9 +623,14 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   }
 
   List<Widget> _buildGroupedPrompts() {
+    // First filter by the selected age band, then optionally by domain chip.
+    final ageBandPrompts = widget.prompts
+        .where((p) => p.ageBand == _selectedAgeBand)
+        .toList();
+
     final filteredPrompts = _selectedDomainFilter == null
-        ? widget.prompts
-        : widget.prompts
+        ? ageBandPrompts
+        : ageBandPrompts
               .where((p) => p.domain == _selectedDomainFilter)
               .toList();
 
