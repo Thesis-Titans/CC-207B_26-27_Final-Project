@@ -11,20 +11,20 @@ void main() {
       expect(validateNickname('Mia'), isNull);
     });
 
-// The API trims spaces, so a nickname with spaces at the start or end is valid.
+    // Spaces are trimmed, so a spaces-only nickname counts as empty.
     test('rejects an empty or spaces-only nickname', () {
       expect(validateNickname(''), 'Enter a nickname');
       expect(validateNickname('   '), 'Enter a nickname');
       expect(validateNickname(null), 'Enter a nickname');
     });
 
-// The API trims spaces, so a nickname with spaces at the start or end is valid.
+    // The API allows at most 50 characters.
     test('accepts 50 characters but rejects 51', () {
       expect(validateNickname('a' * 50), isNull);
       expect(validateNickname('a' * 51), 'Use 50 characters or fewer');
     });
 
-// The API rejects invisible control characters, such as tabs or line breaks.
+    // The API rejects invisible control characters, such as tabs or line breaks.
     test('rejects a nickname with a line break or tab', () {
       expect(
         validateNickname('Mi\na'),
@@ -43,11 +43,12 @@ void main() {
       expect(validateBirthMonthYear(year: 2025, month: 3, now: now), isNull);
     });
 
-// The API supports ages 0-71 months, so the oldest allowed is 71 months.
+    // A child born this month is 0 months old, the youngest allowed.
     test('accepts a child born this month (0 months)', () {
       expect(validateBirthMonthYear(year: 2026, month: 11, now: now), isNull);
     });
-//
+
+    // The API supports ages 0-71 months, so the oldest allowed is 71 months.
     test('accepts exactly 71 months, the oldest allowed', () {
       expect(validateBirthMonthYear(year: 2020, month: 12, now: now), isNull);
     });
