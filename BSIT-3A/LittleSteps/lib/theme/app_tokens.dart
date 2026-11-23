@@ -42,7 +42,7 @@ abstract final class AppColors {
   static const textPrimary = Color(0xFF1A2B29);
 
   /// Secondary text color for captions and metadata.
-  static const textSecondary = Color(0xFF63756E);
+  static const textSecondary = Color(0xFF5A6A64);
 
   /// Muted text color for subtle labels and icons.
   static const textTertiary = Color(0xFF7E8C86);
