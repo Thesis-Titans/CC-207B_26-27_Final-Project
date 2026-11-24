@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../models/milestone.dart';
+import '../../services/api_client.dart';
+import '../../services/milestones_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
@@ -16,11 +18,13 @@ class MilestonesScreen extends StatefulWidget {
     this.initialState = MilestonesViewState.ready,
     this.prompts = sampleMilestonePrompts,
     this.initialObservations = const {},
+    this.milestonesService,
   });
 
   final MilestonesViewState initialState;
   final List<MilestonePrompt> prompts;
   final Map<String, MilestoneObservation> initialObservations;
+  final MilestonesService? milestonesService;
 
   @override
   State<MilestonesScreen> createState() => _MilestonesScreenState();
@@ -31,6 +35,10 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   late Map<String, MilestoneObservation> _observations;
   MilestoneDomain? _selectedDomainFilter;
   bool _showAdvisory = true;
+
+  late String _selectedAgeBand;
+  String? _lastChildId;
+  bool _initialLoadStarted = false;
 
   String get _childName {
     final session = AuthScope.maybeOf(context);
@@ -53,24 +61,211 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     final session = AuthScope.maybeOf(context);
     final activeChild = session?.activeChild;
     if (activeChild != null) {
-      return activeChild.ageBand.contains('month')
-          ? activeChild.ageBand
-          : '${activeChild.ageBand} months';
+      final band = activeChild.ageBand;
+      if (band.contains('month')) return band;
+      if (band.endsWith('m')) {
+        return '${band.substring(0, band.length - 1)} months';
+      }
+      return '$band months';
     }
     return '14 months';
   }
+
+  // Maps the active child's age in months to the nearest milestone prompt band.
+  String get _childAgeBand {
+    final months = _childAgeMonths;
+    if (months < 12) return '0-11 months';
+    if (months < 24) return '12-23 months';
+    if (months < 36) return '24-35 months';
+    if (months < 48) return '36-47 months';
+    return '48-59 months';
+  }
+
+  static const List<String> _ageBands = [
+    '0-11 months',
+    '12-23 months',
+    '24-35 months',
+    '36-47 months',
+    '48-59 months',
+  ];
 
   @override
   void initState() {
     super.initState();
     _currentState = widget.initialState;
     _observations = Map.from(widget.initialObservations);
+    _selectedAgeBand = '12-23 months';
   }
 
-  void _saveObservation(MilestoneObservation observation) {
+  ApiClient _resolveApiClient() {
+    return widget.milestonesService?.apiClient ??
+        (AuthScope.maybeOf(context) != null
+            ? AuthScope.apiClientOf(context)
+            : ApiClient());
+  }
+
+  MilestonesService _resolveMilestonesService() {
+    if (widget.milestonesService != null) return widget.milestonesService!;
+    return MilestonesService(apiClient: _resolveApiClient());
+  }
+
+  String? get _childId {
+    final session = AuthScope.maybeOf(context);
+    return session?.activeChild?.id;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final childId = _childId;
+    final childChanged = childId != _lastChildId;
+    if (!_initialLoadStarted || childChanged) {
+      _initialLoadStarted = true;
+      _lastChildId = childId;
+      _selectedAgeBand = _childAgeBand;
+      if (childChanged && widget.initialObservations.isEmpty) {
+        _observations = {};
+      }
+      _loadObservations(childId);
+    }
+  }
+
+  Future<void> _loadObservations(String? childId) async {
+    if (childId == null || widget.initialObservations.isNotEmpty) return;
+
+    try {
+      final service = _resolveMilestonesService();
+      final fetched = await service.getObservations(childId);
+      if (!mounted || childId != _lastChildId) return;
+      setState(() {
+        _observations = {for (final obs in fetched) obs.milestoneId: obs};
+      });
+    } on NoConnectionApiException {
+      if (!mounted || childId != _lastChildId) return;
+      setState(() => _currentState = MilestonesViewState.offline);
+    } on TimeoutApiException {
+      if (!mounted || childId != _lastChildId) return;
+      setState(() => _currentState = MilestonesViewState.offline);
+    } catch (_) {
+      // Keep prompts browsable even if saved observations fail to load.
+    }
+  }
+
+  void _showAgeBandPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.space16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  "Child's age range",
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                Text(
+                  'You can browse any age range.',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: AppSpacing.space12),
+                ..._ageBands.map((band) {
+                  final isSelected = band == _selectedAgeBand;
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space8,
+                      vertical: AppSpacing.space4,
+                    ),
+                    title: Text(
+                      band,
+                      style: TextStyle(
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: isSelected
+                            ? AppColors.forest
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check, color: AppColors.forest)
+                        : null,
+                    onTap: () {
+                      setState(() => _selectedAgeBand = band);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _saveObservation(MilestoneObservation observation) async {
+    final previous = _observations[observation.milestoneId];
     setState(() {
       _observations[observation.milestoneId] = observation;
     });
+
+    final childId = _childId;
+    if (childId == null) return;
+
+    try {
+      final service = _resolveMilestonesService();
+      if (previous != null &&
+          previous.id.isNotEmpty &&
+          !previous.id.startsWith('obs-local')) {
+        await service.updateObservation(
+          childId: childId,
+          observationId: previous.id,
+          status: observation.status,
+          observedDate: observation.observedDate,
+          notes: observation.notes,
+        );
+      } else {
+        final created = await service.createObservation(
+          childId: childId,
+          milestoneId: observation.milestoneId,
+          status: observation.status,
+          observedDate: observation.observedDate,
+          notes: observation.notes,
+        );
+        if (mounted && childId == _lastChildId) {
+          setState(() {
+            _observations[observation.milestoneId] = created;
+          });
+        }
+      }
+    } catch (_) {
+      if (!mounted) return;
+      // Restore the prior local state when persistence fails.
+      setState(() {
+        if (previous != null) {
+          _observations[observation.milestoneId] = previous;
+        } else {
+          _observations.remove(observation.milestoneId);
+        }
+      });
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('Could not save observation. Please try again.'),
+        ),
+      );
+    }
   }
 
   void _openObservationSheet(MilestonePrompt prompt) {
@@ -111,7 +306,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
         vertical: AppSpacing.space16,
       ),
       children: [
-        // Title & Subtitle with persistent advisory access
         ScreenHeader(
           title: 'Milestones',
           subtitle: 'Every child develops at their own pace.',
@@ -120,8 +314,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
               : null,
         ),
         const SizedBox(height: AppSpacing.space12),
-
-        // Child Selector Dropdown Pill
         Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.space12,
@@ -144,8 +336,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.space12),
-
-        // State-driven Content
         if (_currentState == MilestonesViewState.loading)
           _buildLoadingState()
         else if (_currentState == MilestonesViewState.error)
@@ -153,63 +343,57 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
         else ...[
           if (_currentState == MilestonesViewState.offline)
             _buildOfflineBanner(),
-
-          // Introductory prompt card displayed when no observations have been recorded yet.
           if (_currentState == MilestonesViewState.empty ||
               _observations.isEmpty)
             _buildEmptyStateCard(),
-
-          // Educational advisory banner reminding caregivers that children develop at different paces.
           if (_showAdvisory) _buildAdvisoryBanner(),
-
-          // Child's Age Selector
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Child's age",
-                    style: Theme.of(context).textTheme.labelSmall
-                        ?.copyWith(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space12,
-                      vertical: AppSpacing.space8,
+          InkWell(
+            onTap: _showAgeBandPicker,
+            borderRadius: BorderRadius.circular(AppRadius.control),
+            child: Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Child's age",
+                      style: Theme.of(context).textTheme.labelSmall
+                          ?.copyWith(color: AppColors.textSecondary),
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: AppColors.borderSubtle),
-                      borderRadius: BorderRadius.circular(AppRadius.control),
+                    const SizedBox(height: AppSpacing.space4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space12,
+                        vertical: AppSpacing.space8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: AppColors.borderSubtle),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            _selectedAgeBand,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(width: AppSpacing.space8),
+                          const Icon(
+                            Icons.arrow_drop_down,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
                     ),
-                    child: const Row(
-                      children: [
-                        Text(
-                          '12-23 months',
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        SizedBox(width: AppSpacing.space8),
-                        Icon(
-                          Icons.arrow_drop_down,
-                          size: 18,
-                          color: AppColors.textSecondary,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: AppSpacing.space12),
-
-          // Domain Filter Chips
           _buildDomainChips(),
           const SizedBox(height: AppSpacing.space16),
-
-          // Prompts list
           ..._buildGroupedPrompts(),
         ],
       ],
@@ -522,9 +706,13 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   }
 
   List<Widget> _buildGroupedPrompts() {
+    final ageBandPrompts = widget.prompts
+        .where((p) => p.ageBand == _selectedAgeBand)
+        .toList();
+
     final filteredPrompts = _selectedDomainFilter == null
-        ? widget.prompts
-        : widget.prompts
+        ? ageBandPrompts
+        : ageBandPrompts
               .where((p) => p.domain == _selectedDomainFilter)
               .toList();
 
@@ -538,7 +726,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       final domainPrompts = grouped[domain];
       if (domainPrompts == null || domainPrompts.isEmpty) continue;
 
-      // Section header per domain (e.g. "Talking")
       widgets.add(
         Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
@@ -587,7 +774,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                         ),
                       ),
                       const SizedBox(width: AppSpacing.space8),
-                      // Action Button (Add or Update)
                       SizedBox(
                         height: 36,
                         child: isObserved
@@ -638,16 +824,12 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                   ),
                   const SizedBox(height: AppSpacing.space8),
 
-                  // Everyday observational cues formatted with separator dots.
                   Text(
                     'Look for: ${prompt.lookFor.join(' · ')}',
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: AppColors.textSecondary),
                   ),
-
                   const SizedBox(height: AppSpacing.space8),
-
-                  // Status line: "Not seen yet" or saved notes box
                   if (isObserved) ...[
                     if (obs?.notes != null && obs!.notes!.isNotEmpty)
                       Container(

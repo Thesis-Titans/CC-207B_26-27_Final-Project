@@ -15,32 +15,19 @@ class WeeklySummary {
     required this.generatedAt,
   });
 
-  /// ISO week, for example `2026-W47`.
   final String id;
-
-  /// Monday of the week, `YYYY-MM-DD`.
   final String weekStartDate;
-
-  /// Sunday of the week, `YYYY-MM-DD`.
   final String weekEndDate;
   final int completedActivityCount;
   final int observedMilestoneCount;
   final int totalPlannedActivities;
-
-  /// Completed activities per domain: `cognitive`, `motor`, `language`,
-  /// `socioEmotional`.
   final Map<String, int> domainDistribution;
-
-  /// Up to three most-completed activity ids.
   final List<String> topActivityIds;
   final String reflectionPrompt;
   final DateTime generatedAt;
-
-  /// Whether this week has zero completed activities and zero milestones.
   bool get isEmptyWeek =>
       completedActivityCount == 0 && observedMilestoneCount == 0;
 
-  /// Formatted week range, for example `Oct 19 – 25, 2026`.
   String get formattedRange {
     final start = DateTime.tryParse(weekStartDate);
     final end = DateTime.tryParse(weekEndDate);
@@ -77,7 +64,6 @@ class WeeklySummary {
 
 /// Sample weekly summary dataset used for local development, previews, and testing.
 final Map<String, WeeklySummary> sampleWeeklySummaries = {
-  // Populated week record with activity counts and milestone observations.
   '2026-W43': WeeklySummary(
     id: '2026-W43',
     weekStartDate: '2026-10-19',
@@ -95,8 +81,6 @@ final Map<String, WeeklySummary> sampleWeeklySummaries = {
     reflectionPrompt: 'Maya enjoyed talking games this week. Next time you read together, pause on a page and let her point first.',
     generatedAt: DateTime(2026, 10, 25),
   ),
-
-  // Partial week (Oct 12 - 18, 2026)
   '2026-W42': WeeklySummary(
     id: '2026-W42',
     weekStartDate: '2026-10-12',
@@ -114,8 +98,6 @@ final Map<String, WeeklySummary> sampleWeeklySummaries = {
     reflectionPrompt: 'You and Maya shared quiet moments of connection during everyday routines.',
     generatedAt: DateTime(2026, 10, 18),
   ),
-
-  // Zero-activity week demonstrating the clean empty state.
   '2026-W41': WeeklySummary(
     id: '2026-W41',
     weekStartDate: '2026-10-05',
