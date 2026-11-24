@@ -104,6 +104,14 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   void _select(Child child) {
     AuthScope.maybeOf(context)?.setActiveChild(child);
     widget.onChildSelected?.call(child);
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Switched to ${child.nickname}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   // Derives a capitalized greeting name from the signed-in caregiver email.
@@ -238,79 +246,87 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     final theme = Theme.of(context);
     final bandLabel = ageBandForCode(child.ageBand)?.label ?? child.ageBand;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        side: BorderSide(
-          color: isCurrent ? AppColors.forest : AppColors.borderSubtle,
-          width: isCurrent ? 1.5 : 1.0,
+    return Semantics(
+      selected: isCurrent,
+      hint: isCurrent
+          ? 'Current active child'
+          : 'Switches active child to ${child.nickname}',
+      child: Card(
+        margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(
+            color: isCurrent ? AppColors.forest : AppColors.borderSubtle,
+            width: isCurrent ? 1.5 : 1.0,
+          ),
         ),
-      ),
-      child: InkWell(
-        onTap: isCurrent ? null : () => _select(child),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: AppColors.softGreen,
-                    child: Text(
-                      child.nickname.isNotEmpty
-                          ? child.nickname[0].toUpperCase()
-                          : 'C',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.forest,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.space12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          child.nickname,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          bandLabel,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    tooltip: 'Edit ${child.nickname}',
-                    onPressed: () => _openEditChild(child),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: isCurrent
-                    ? _currentChildBadge(theme)
-                    : Text(
-                        'Tap card to switch',
-                        style: theme.textTheme.labelMedium?.copyWith(
+        child: InkWell(
+          onTap: isCurrent ? null : () => _select(child),
+          hoverColor: AppColors.softGreen.withValues(alpha: 0.35),
+          splashColor: AppColors.softGreen.withValues(alpha: 0.6),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.space16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: AppColors.softGreen,
+                      child: Text(
+                        child.nickname.isNotEmpty
+                            ? child.nickname[0].toUpperCase()
+                            : 'C',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
                           color: AppColors.forest,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
-              ),
-            ],
+                    ),
+                    const SizedBox(width: AppSpacing.space12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            child.nickname,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            bandLabel,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      tooltip: 'Edit ${child.nickname}',
+                      onPressed: () => _openEditChild(child),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.space12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: isCurrent
+                      ? _currentChildBadge(theme)
+                      : Text(
+                          'Tap to switch',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: AppColors.forest,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

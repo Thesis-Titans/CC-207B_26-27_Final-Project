@@ -1185,30 +1185,58 @@ class _ReviewBadge extends StatelessWidget {
 
   void _showSourceDetails(BuildContext context) {
     String? sourceUrl;
-    String portalName = 'Official Source';
-    if (source.contains('ECCD')) {
+    String? buttonLabel;
+    String? domainCaption;
+    String frameworkTitle = 'Published early childhood guide';
+
+    if (source.contains('NELF')) {
+      frameworkTitle = 'Philippine National Early Learning Framework (NELF)';
       sourceUrl = 'https://eccdcouncil.gov.ph';
-      portalName = 'ECCD Council Portal (eccdcouncil.gov.ph)';
+      buttonLabel = 'Visit ECCD Council website';
+      domainCaption = 'eccdcouncil.gov.ph';
+    } else if (source.contains('NELC')) {
+      frameworkTitle = 'Philippine National Early Learning Curriculum (NELC)';
+      sourceUrl = 'https://eccdcouncil.gov.ph';
+      buttonLabel = 'Visit ECCD Council website';
+      domainCaption = 'eccdcouncil.gov.ph';
+    } else if (source.contains('ECCD')) {
+      frameworkTitle = 'Early Childhood Care and Development (ECCD) Council';
+      sourceUrl = 'https://eccdcouncil.gov.ph';
+      buttonLabel = 'Visit ECCD Council website';
+      domainCaption = 'eccdcouncil.gov.ph';
     } else if (source.contains('CDC')) {
+      frameworkTitle = 'CDC Developmental Milestones';
       sourceUrl = 'https://www.cdc.gov/ncbddd/actearly/milestones/';
-      portalName = 'CDC Milestones Portal (cdc.gov)';
+      buttonLabel = 'Visit CDC website';
+      domainCaption = 'cdc.gov';
     } else if (source.contains('WHO')) {
+      frameworkTitle = 'WHO Nurturing Care Framework';
       sourceUrl = 'https://nurturing-care.org';
-      portalName = 'WHO Nurturing Care Portal (nurturing-care.org)';
+      buttonLabel = 'Visit WHO website';
+      domainCaption = 'nurturing-care.org';
     } else if (source.contains('AAP')) {
+      frameworkTitle = 'American Academy of Pediatrics (AAP)';
       sourceUrl = 'https://www.healthychildren.org';
-      portalName = 'HealthyChildren.org (AAP)';
+      buttonLabel = 'Visit AAP website';
+      domainCaption = 'healthychildren.org';
     }
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
+      useSafeArea: true,
+      showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppRadius.card),
         ),
       ),
       builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.space24),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space24,
+          AppSpacing.space8,
+          AppSpacing.space24,
+          AppSpacing.space24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1216,45 +1244,66 @@ class _ReviewBadge extends StatelessWidget {
             Row(
               children: [
                 const Icon(
-                  Icons.verified_outlined,
+                  Icons.menu_book_outlined,
                   color: AppColors.forest,
                   size: 22,
                 ),
                 const SizedBox(width: AppSpacing.space8),
-                Text(
-                  'Educational Play Citation',
-                  style: Theme.of(sheetContext).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Where this activity comes from',
+                    style: Theme.of(sheetContext).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.space12),
             Text(
-              source,
+              frameworkTitle,
               style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: AppSpacing.space8),
+            if (source.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.space4),
+              Text(
+                source,
+                style: Theme.of(sheetContext).textTheme.bodySmall
+                    ?.copyWith(color: AppColors.textSecondary),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.space12),
             Text(
-              'This activity is adapted from published early learning guidelines and clinical developmental standards.',
+              'Adapted from published early childhood play and learning guidelines.',
               style: Theme.of(sheetContext).textTheme.bodySmall
                   ?.copyWith(color: AppColors.textSecondary),
             ),
-            if (sourceUrl != null) ...[
+            if (sourceUrl != null && buttonLabel != null) ...[
               const SizedBox(height: AppSpacing.space16),
               SizedBox(
                 width: double.infinity,
+                height: AppSizes.touchTarget,
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.pop(sheetContext);
                     openExternalUrl(context, sourceUrl!);
                   },
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: Text(portalName),
+                  label: Text(buttonLabel),
                 ),
               ),
+              if (domainCaption != null) ...[
+                const SizedBox(height: AppSpacing.space8),
+                Center(
+                  child: Text(
+                    domainCaption,
+                    style: Theme.of(sheetContext).textTheme.labelSmall
+                        ?.copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: AppSpacing.space8),
           ],

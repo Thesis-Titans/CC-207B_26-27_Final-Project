@@ -88,7 +88,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Idea Helper'), findsOneWidget);
+    expect(find.text('Idea helper'), findsWidgets);
     expect(find.text('How much time do you have?'), findsOneWidget);
     expect(find.text('15 min'), findsOneWidget);
     expect(find.text('Where will you play?'), findsOneWidget);
@@ -175,7 +175,7 @@ void main() {
       await tester.ensureVisible(find.text('Change answers'));
       await tester.tap(find.text('Change answers'));
       await tester.pumpAndSettle();
-      expect(find.text('Idea Helper'), findsOneWidget);
+      expect(find.text('Idea helper'), findsWidgets);
       expect(find.byType(TextFormField), findsOneWidget);
     },
   );

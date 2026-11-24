@@ -28,7 +28,7 @@ class ChildChip extends StatelessWidget {
     final child = activeChild;
     final label = child != null
         ? '${child.nickname} (${child.ageBand})'
-        : 'Select Child';
+        : 'Select child';
     final visibleLabel = compact && child != null ? child.nickname : label;
 
     return InkWell(

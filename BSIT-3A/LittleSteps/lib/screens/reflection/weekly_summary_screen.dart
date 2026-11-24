@@ -10,7 +10,9 @@ import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 
+/// View states for the weekly summary screen.
 enum WeeklySummaryViewState {
+  /// Weekly summary metrics and reflection card are displayed.
   ready,
 
   /// Weekly summary data is loading from the backend.
@@ -436,7 +438,7 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                       _currentSummary?.formattedRange ??
                           (_selectedWeekId.isNotEmpty
                               ? _selectedWeekId
-                              : 'Current Week'),
+                              : 'Current week'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
