@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_tokens.dart';
+import '../../utils/url_helper.dart';
 
 /// Describes the account information page to display.
 enum AccountInfoPage {
@@ -164,15 +165,35 @@ class _InfoSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final lines = section.body.split('\n');
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(section.title, style: Theme.of(context).textTheme.titleMedium),
+            Text(section.title, style: theme.textTheme.titleMedium),
             const SizedBox(height: AppSpacing.space8),
-            Text(section.body, style: Theme.of(context).textTheme.bodyMedium),
+            for (final line in lines)
+              if (line.trim().startsWith('https://'))
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: InkWell(
+                    onTap: () => openExternalUrl(context, line.trim()),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    child: Text(
+                      line,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.forest,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Text(line, style: theme.textTheme.bodyMedium),
           ],
         ),
       ),

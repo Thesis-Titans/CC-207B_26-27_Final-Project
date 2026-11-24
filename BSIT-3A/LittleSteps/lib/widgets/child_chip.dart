@@ -51,8 +51,6 @@ class ChildChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.child_care, size: 18, color: AppColors.forest),
-              const SizedBox(width: AppSpacing.space8),
               Flexible(
                 child: Text(
                   visibleLabel,

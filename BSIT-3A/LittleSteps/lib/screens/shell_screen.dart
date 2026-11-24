@@ -170,9 +170,17 @@ class _ShellScreenState extends State<ShellScreen> {
       onAddChild: () => Navigator.pushNamed(context, '/children/add'),
     );
 
+    void onDestinationSelected(int index) {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+
     final screens = <Widget>[
       isAuthenticated
-          ? (activeChild != null ? const TodayScreen() : noChildView)
+          ? (activeChild != null
+                ? TodayScreen(onNavigateTab: onDestinationSelected)
+                : noChildView)
           : EmptyStateView(
               title: "Sign in to see today's plan",
               message: 'Sign in with your caregiver account to view and plan play activities.',
@@ -202,7 +210,11 @@ class _ShellScreenState extends State<ShellScreen> {
               onAction: () => Navigator.pushNamed(context, '/sign-in'),
             ),
       isAuthenticated
-          ? (activeChild != null ? const WeeklySummaryScreen() : noChildView)
+          ? (activeChild != null
+                ? WeeklySummaryScreen(
+                    onFindIdea: () => onDestinationSelected(1),
+                  )
+                : noChildView)
           : EmptyStateView(
               title: 'Sign in for weekly summary',
               message: 'Weekly play progress is available when signed in.',
@@ -211,12 +223,6 @@ class _ShellScreenState extends State<ShellScreen> {
               onAction: () => Navigator.pushNamed(context, '/sign-in'),
             ),
     ];
-
-    void onDestinationSelected(int index) {
-      setState(() {
-        _currentIndex = index;
-      });
-    }
 
     void onChildChipTap() {
       if (!isAuthenticated) {
@@ -230,8 +236,9 @@ class _ShellScreenState extends State<ShellScreen> {
       }
     }
 
-    final avatarInitial = activeChild != null && activeChild.nickname.isNotEmpty
-        ? activeChild.nickname[0].toUpperCase()
+    final avatarInitial =
+        formattedCaregiver != null && formattedCaregiver.isNotEmpty
+        ? formattedCaregiver[0].toUpperCase()
         : (rawEmail != null && rawEmail.isNotEmpty
               ? rawEmail[0].toUpperCase()
               : 'C');
@@ -250,11 +257,21 @@ class _ShellScreenState extends State<ShellScreen> {
     );
 
     // IndexedStack keeps all five tab subtrees mounted so scroll position and
-    // filter inputs persist when switching tabs; ConstrainedBox centers each tab.
-    final centeredContent = Center(
+    // filter inputs persist when switching tabs.
+    final tabStack = IndexedStack(index: _currentIndex, children: screens);
+    final compactContent = Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
-        child: IndexedStack(index: _currentIndex, children: screens),
+        child: tabStack,
+      ),
+    );
+    final wideContent = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppSizes.wideContentMaxWidth,
+        ),
+        child: tabStack,
       ),
     );
 
@@ -439,7 +456,11 @@ class _ShellScreenState extends State<ShellScreen> {
                                           vertical: AppSpacing.space8,
                                         ),
                                       ),
-                                      icon: buildAvatar(),
+                                      icon: const Icon(
+                                        Icons.person_outline,
+                                        size: 20,
+                                        color: AppColors.forest,
+                                      ),
                                       label: Text(
                                         formattedCaregiver ?? 'Account',
                                         overflow: TextOverflow.ellipsis,
@@ -450,7 +471,11 @@ class _ShellScreenState extends State<ShellScreen> {
                                       ),
                                     )
                                   : IconButton(
-                                      icon: buildAvatar(),
+                                      icon: const Icon(
+                                        Icons.person_outline,
+                                        size: 20,
+                                        color: AppColors.forest,
+                                      ),
                                       tooltip: 'Account',
                                       onPressed: () =>
                                           _showAccountMenu(sessionState),
@@ -471,12 +496,12 @@ class _ShellScreenState extends State<ShellScreen> {
                           horizontal: AppSpacing.space32,
                           vertical: AppSpacing.space16,
                         ),
-                        child: centeredContent,
+                        child: wideContent,
                       ),
                     ),
                   ],
                 )
-              : centeredContent,
+              : compactContent,
           bottomNavigationBar: isWide
               ? null
               : NavigationBar(

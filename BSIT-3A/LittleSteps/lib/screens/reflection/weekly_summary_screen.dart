@@ -34,6 +34,7 @@ class WeeklySummaryScreen extends StatefulWidget {
     this.childName,
     this.childAgeBand,
     this.summaryService,
+    this.onFindIdea,
   });
 
   /// Initial view state override for widget tests.
@@ -53,6 +54,9 @@ class WeeklySummaryScreen extends StatefulWidget {
 
   /// Optional service override for fetching weekly summaries.
   final SummaryService? summaryService;
+
+  /// Optional callback invoked when the caregiver taps "Find a 10-minute idea".
+  final VoidCallback? onFindIdea;
 
   @override
   State<WeeklySummaryScreen> createState() => _WeeklySummaryScreenState();
@@ -302,32 +306,33 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           subtitle: 'A look back at the moments you wrote down.',
         ),
         const SizedBox(height: AppSpacing.space12),
-        InkWell(
-          onTap: () => Navigator.pushNamed(context, '/children'),
-          borderRadius: BorderRadius.circular(AppRadius.control),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space12,
-              vertical: AppSpacing.space8,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.borderSubtle),
-              borderRadius: BorderRadius.circular(AppRadius.control),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  'For $_childName · $_childAgeDisplay',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space12,
+            vertical: AppSpacing.space8,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.softGreen,
+            borderRadius: BorderRadius.circular(AppRadius.control),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.child_care_outlined,
+                size: 16,
+                color: AppColors.forest,
+              ),
+              const SizedBox(width: AppSpacing.space8),
+              Text(
+                'For $_childName · $_childAgeDisplay',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.forest,
                 ),
-                const Spacer(),
-                const Icon(
-                  Icons.arrow_drop_down,
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.space12),
@@ -391,137 +396,134 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
   }
 
   Widget _buildPopulatedWeekView(WeeklySummary summary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
+    final summaryCard = Container(
+      padding: const EdgeInsets.all(AppSpacing.space16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'This week with $_childName',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: AppSpacing.space12),
+          Row(
             children: [
-              Text(
-                'This week with $_childName',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.space12,
+                    horizontal: AppSpacing.space12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.softGreen,
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${summary.completedActivityCount}',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.forest,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'activities\ncompleted',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.space12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.space12,
-                        horizontal: AppSpacing.space12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.softGreen,
-                        borderRadius: BorderRadius.circular(AppRadius.control),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${summary.completedActivityCount}',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.forest,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'activities\ncompleted',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                              height: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.space12,
+                    horizontal: AppSpacing.space12,
                   ),
-                  const SizedBox(width: AppSpacing.space12),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.space12,
-                        horizontal: AppSpacing.space12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.softGreen,
-                        borderRadius: BorderRadius.circular(AppRadius.control),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${summary.observedMilestoneCount}',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.forest,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            summary.observedMilestoneCount == 1
-                                ? 'milestone\nnoticed'
-                                : 'milestones\nnoticed',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                              height: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  decoration: BoxDecoration(
+                    color: AppColors.softGreen,
+                    borderRadius: BorderRadius.circular(AppRadius.control),
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              Text(
-                "Based only on what you wrote down. It's not a test, and it never compares $_childName with other children. Journal notes stay private.",
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: AppColors.textSecondary, height: 1.35),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${summary.observedMilestoneCount}',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.forest,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        summary.observedMilestoneCount == 1
+                            ? 'milestone\nnoticed'
+                            : 'milestones\nnoticed',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: AppSpacing.space16),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
+          const SizedBox(height: AppSpacing.space12),
+          Text(
+            "Based only on what you wrote down. It's not a test, and it never compares $_childName with other children. Journal notes stay private.",
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.textSecondary, height: 1.35),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Everyday play areas',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              ..._buildDomainRows(summary.domainDistribution),
-            ],
+        ],
+      ),
+    );
+
+    final domainsCard = Container(
+      padding: const EdgeInsets.all(AppSpacing.space16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Everyday play areas',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.space16),
-        if (summary.reflectionPrompt.isNotEmpty)
-          Container(
+          const SizedBox(height: AppSpacing.space12),
+          ..._buildDomainRows(summary.domainDistribution),
+        ],
+      ),
+    );
+
+    final promptCard = summary.reflectionPrompt.isNotEmpty
+        ? Container(
             padding: const EdgeInsets.all(AppSpacing.space16),
             decoration: BoxDecoration(
               color: AppColors.cream,
@@ -554,9 +556,48 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 ),
               ],
             ),
-          ),
-        const SizedBox(height: AppSpacing.space24),
-      ],
+          )
+        : null;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 860 && promptCard != null) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.space24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      summaryCard,
+                      const SizedBox(height: AppSpacing.space16),
+                      domainsCard,
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.space24),
+                SizedBox(width: 340, child: promptCard),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            summaryCard,
+            const SizedBox(height: AppSpacing.space16),
+            domainsCard,
+            if (promptCard != null) ...[
+              const SizedBox(height: AppSpacing.space16),
+              promptCard,
+            ],
+            const SizedBox(height: AppSpacing.space24),
+          ],
+        );
+      },
     );
   }
 
@@ -651,8 +692,11 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 ),
               ),
               onPressed: () {
-                // Navigate to Explore tab or initial route
-                Navigator.of(context).maybePop();
+                if (widget.onFindIdea != null) {
+                  widget.onFindIdea!();
+                } else {
+                  Navigator.pushNamed(context, '/ai-suggest');
+                }
               },
               child: const Text(
                 'Find a 10-minute idea',

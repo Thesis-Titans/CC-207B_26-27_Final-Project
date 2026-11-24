@@ -80,20 +80,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     return 14;
   }
 
-  String get _childAgeDisplay {
-    final session = AuthScope.maybeOf(context);
-    final activeChild = session?.activeChild;
-    if (activeChild != null) {
-      final band = activeChild.ageBand;
-      if (band.contains('month')) return band;
-      if (band.endsWith('m')) {
-        return '${band.substring(0, band.length - 1)} months';
-      }
-      return '$band months';
-    }
-    return '14 months';
-  }
-
   // Maps the active child's age in months to the nearest milestone prompt band.
   String get _childAgeBand {
     final months = _childAgeMonths;
@@ -335,35 +321,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           onAdvisoryTap: !_showAdvisory
               ? () => setState(() => _showAdvisory = true)
               : null,
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        InkWell(
-          onTap: () => Navigator.pushNamed(context, '/children'),
-          borderRadius: BorderRadius.circular(AppRadius.control),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space12,
-              vertical: AppSpacing.space8,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.borderSubtle),
-              borderRadius: BorderRadius.circular(AppRadius.control),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  'For $_childName · $_childAgeDisplay',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.arrow_drop_down,
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ),
-          ),
         ),
         const SizedBox(height: AppSpacing.space12),
         if (_currentState == MilestonesViewState.loading)
