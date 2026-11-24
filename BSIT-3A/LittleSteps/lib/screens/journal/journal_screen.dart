@@ -36,6 +36,56 @@ class _JournalScreenState extends State<JournalScreen> {
   /// The child whose notes are loaded, so switching child reloads them.
   String? _loadedChildId;
 
+  /// Words typed in the search box.
+  final _searchController = TextEditingController();
+
+  /// The day picked in the date filter, or null to show every day.
+  DateTime? _filterDate;
+
+  /// Disposes the search controller when the tab is removed from the tree.
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// The notes that contain the search words and, if a day is picked,
+  /// were written on that day.
+  ///
+  /// Filtering happens on the device, so search words are never sent to
+  /// the server.
+  List<JournalEntry> _filtered(List<JournalEntry> entries) {
+    final query = _searchController.text.trim().toLowerCase();
+    final filterDate = _filterDate;
+    final day = filterDate == null
+        ? null
+        : DateFormat('yyyy-MM-dd').format(filterDate);
+
+    return entries.where((entry) {
+      final matchesQuery =
+          query.isEmpty || entry.content.toLowerCase().contains(query);
+      final matchesDay = day == null || entry.entryDate == day;
+      return matchesQuery && matchesDay;
+    }).toList();
+  }
+
+  /// Opens a date picker and filters the notes to the picked day.
+  Future<void> _pickFilterDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _filterDate ?? now,
+      firstDate: DateTime(now.year - 6),
+      lastDate: now,
+      helpText: 'Show notes from',
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _filterDate = picked;
+      });
+    }
+  }
+
   /// Loads the notes the first time, and again whenever the active child
   /// changes. `AuthScope` notifies this screen when the child changes.
   @override
@@ -98,6 +148,8 @@ class _JournalScreenState extends State<JournalScreen> {
                 : 'Your private notes about $childName.',
           ),
           const SizedBox(height: AppSpacing.space16),
+          _buildFilters(),
+          const SizedBox(height: AppSpacing.space16),
           FutureBuilder<List<JournalEntry>>(
             future: _entriesFuture,
             builder: (context, snapshot) {
@@ -117,15 +169,75 @@ class _JournalScreenState extends State<JournalScreen> {
                   icon: Icons.edit_note,
                 );
               }
+              final shown = _filtered(entries);
+              if (shown.isEmpty) {
+                return const EmptyStateView(
+                  title: 'No notes match your search',
+                  message:
+                      'Try a different word or date, '
+                      'or clear the filters to see all notes.',
+                  icon: Icons.search_off,
+                );
+              }
               return Column(
                 children: [
-                  for (final entry in entries) _JournalEntryCard(entry: entry),
+                  for (final entry in shown) _JournalEntryCard(entry: entry),
                 ],
               );
             },
           ),
         ],
       ),
+    );
+  }
+
+  /// The search box, the date filter button and, when a day is picked, a
+  /// button to clear it.
+  Widget _buildFilters() {
+    final filterDate = _filterDate;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _searchController,
+          textInputAction: TextInputAction.search,
+          decoration: const InputDecoration(
+            labelText: 'Search notes',
+            prefixIcon: Icon(Icons.search),
+          ),
+          // Rebuild on every change so the list filters while typing.
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        Wrap(
+          spacing: AppSpacing.space8,
+          runSpacing: AppSpacing.space8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _pickFilterDate,
+              icon: const Icon(Icons.calendar_today, size: 18),
+              label: Text(
+                filterDate == null
+                    ? 'Filter by date'
+                    : DateFormat.yMMMd().format(filterDate),
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, AppSizes.touchTarget),
+              ),
+            ),
+            if (filterDate != null)
+              TextButton(
+                onPressed: () => setState(() => _filterDate = null),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, AppSizes.touchTarget),
+                ),
+                child: const Text('Clear date'),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
