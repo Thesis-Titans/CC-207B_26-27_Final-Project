@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import '../models/auth_user.dart';
 
 /// Thrown when an authentication operation fails.
@@ -44,15 +44,15 @@ abstract class AuthService {
 
 /// Implementation of [AuthService] using the Firebase Authentication REST API.
 ///
-/// Communicates with the local Firebase Auth emulator (port 9099) by default.
-/// The emulator host is configurable to support Android emulators (`10.0.2.2`),
-/// web/desktop environments (`localhost`), or custom hosts.
+/// Targets the local Firebase Auth emulator when [useEmulator] is `true`, or
+/// live HTTPS Firebase Identity Toolkit endpoints when [useEmulator] is `false`.
 class FirebaseAuthRestService implements AuthService {
   /// Creates a [FirebaseAuthRestService].
   FirebaseAuthRestService({
     String? emulatorHost,
     this.emulatorPort = 9099,
-    this.apiKey = 'fake-api-key',
+    this.apiKey = AppConfig.firebaseApiKey,
+    this.useEmulator = AppConfig.useFirebaseEmulator,
     http.Client? httpClient,
   }) : httpClient = httpClient ?? http.Client(),
        emulatorHost = emulatorHost ?? defaultEmulatorHost;
@@ -60,31 +60,30 @@ class FirebaseAuthRestService implements AuthService {
   /// HTTP client used for auth requests.
   final http.Client httpClient;
 
-  /// Firebase API key for the emulator project.
+  /// Firebase API key for the active project or emulator.
   final String apiKey;
+
+  /// Whether requests target the local Firebase Auth emulator.
+  final bool useEmulator;
 
   /// Firebase Auth emulator port (defaults to 9099).
   final int emulatorPort;
 
-  /// Host address for emulator (defaults to 10.0.2.2 on Android, localhost elsewhere).
+  /// Host address for the emulator (defaults to [AppConfig.emulatorHost]).
   final String emulatorHost;
 
-  /// Returns the default emulator host based on the runtime platform.
-  static String get defaultEmulatorHost {
-    if (kIsWeb) return 'localhost';
-    try {
-      if (Platform.isAndroid) return '10.0.2.2';
-    } catch (_) {}
-    return 'localhost';
-  }
+  /// Returns the default emulator host based on [AppConfig] or platform.
+  static String get defaultEmulatorHost => AppConfig.emulatorHost;
 
   /// Base URL for Identity Toolkit endpoints.
-  String get _identityBaseUrl =>
-      'http://$emulatorHost:$emulatorPort/identitytoolkit.googleapis.com/v1';
+  String get _identityBaseUrl => useEmulator
+      ? 'http://$emulatorHost:$emulatorPort/identitytoolkit.googleapis.com/v1'
+      : 'https://identitytoolkit.googleapis.com/v1';
 
   /// Base URL for secure token endpoints.
-  String get _secureTokenBaseUrl =>
-      'http://$emulatorHost:$emulatorPort/securetoken.googleapis.com/v1';
+  String get _secureTokenBaseUrl => useEmulator
+      ? 'http://$emulatorHost:$emulatorPort/securetoken.googleapis.com/v1'
+      : 'https://securetoken.googleapis.com/v1';
 
   @override
   Future<AuthUser> signInWithEmailAndPassword({

@@ -18,6 +18,8 @@ android/gradle/wrapper/gradle-wrapper.jar
 *.keystore
 *.key
 key.properties
+config/production.json
+config/*.local.json
 .env*
 !.env.example
 
