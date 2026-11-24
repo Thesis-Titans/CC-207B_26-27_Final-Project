@@ -1,65 +1,462 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
+import '../../models/journal_entry.dart';
+import '../../services/api_client.dart';
+import '../../services/journal_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
+import 'journal_note_screen.dart';
 
-/// Journal navigation tab displaying private caregiver observations and reflections.
-class JournalScreen extends StatelessWidget {
-  /// Creates a [JournalScreen].
-  const JournalScreen({super.key});
+/// Journal tab: the caregiver's private notes about the active child,
+/// newest first (issue #7).
+///
+/// Shows loading, empty, error, offline and access denied states. The
+/// shell only shows this tab when a caregiver is signed in and a child is
+/// active. Note text is never logged.
+class JournalScreen extends StatefulWidget {
+  /// Creates the journal tab. Pass [journalService] in tests; the app
+  /// leaves it null and uses the signed-in API client.
+  const JournalScreen({super.key, this.journalService});
+
+  /// The service used to load notes, or null to use the signed-in client.
+  final JournalService? journalService;
+
+  @override
+  State<JournalScreen> createState() => _JournalScreenState();
+}
+
+/// State for [JournalScreen].
+class _JournalScreenState extends State<JournalScreen> {
+  /// The request for the active child's notes, or null before the first
+  /// load.
+  Future<List<JournalEntry>>? _entriesFuture;
+
+  /// The child whose notes are loaded, so switching child reloads them.
+  String? _loadedChildId;
+
+  /// Words typed in the search box.
+  final _searchController = TextEditingController();
+
+  /// The day picked in the date filter, or null to show every day.
+  DateTime? _filterDate;
+
+  /// Disposes the search controller when the tab is removed from the tree.
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// The notes that contain the search words and, if a day is picked,
+  /// were written on that day.
+  ///
+  /// Filtering happens on the device, so search words are never sent to
+  /// the server.
+  List<JournalEntry> _filtered(List<JournalEntry> entries) {
+    final query = _searchController.text.trim().toLowerCase();
+    final filterDate = _filterDate;
+    final day = filterDate == null
+        ? null
+        : DateFormat('yyyy-MM-dd').format(filterDate);
+
+    return entries.where((entry) {
+      final matchesQuery =
+          query.isEmpty || entry.content.toLowerCase().contains(query);
+      final matchesDay = day == null || entry.entryDate == day;
+      return matchesQuery && matchesDay;
+    }).toList();
+  }
+
+  /// Opens a date picker and filters the notes to the picked day.
+  Future<void> _pickFilterDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _filterDate ?? now,
+      firstDate: DateTime(now.year - 6),
+      lastDate: now,
+      helpText: 'Show notes from',
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _filterDate = picked;
+      });
+    }
+  }
+
+  /// Loads the notes the first time, and again whenever the active child
+  /// changes. `AuthScope` notifies this screen when the child changes.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final childId = AuthScope.of(context).activeChild?.id;
+    if (childId != null && childId != _loadedChildId) {
+      _load(childId);
+    }
+  }
+
+  /// Loads the notes for [childId], sorted newest first.
+  void _load(String childId) {
+    final service =
+        widget.journalService ??
+        JournalService(apiClient: AuthScope.apiClientOf(context));
+    setState(() {
+      _loadedChildId = childId;
+      _entriesFuture = service.getJournalEntries(childId).then(_newestFirst);
+    });
+  }
+
+  /// Loads the notes again for the same child (Retry and Try again).
+  void _reload() {
+    final childId = _loadedChildId;
+    if (childId != null) {
+      _load(childId);
+    }
+  }
+
+  /// Sorts notes by entry date, then by creation time, newest first.
+  ///
+  /// Entry dates are 'YYYY-MM-DD' text, which sorts in date order.
+  List<JournalEntry> _newestFirst(List<JournalEntry> entries) {
+    final sortedEntries = List<JournalEntry>.from(entries);
+    sortedEntries.sort((a, b) {
+      final dateComparison = b.entryDate.compareTo(a.entryDate);
+      if (dateComparison != 0) {
+        return dateComparison;
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return sortedEntries;
+  }
+
+  /// Builds the header and whichever state the notes are in.
+  @override
+  Widget build(BuildContext context) {
+    final childName = AuthScope.of(context).activeChild?.nickname;
+
+    return Scaffold(
+      backgroundColor: AppColors.surfaceCanvas,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openNewNote,
+        icon: const Icon(Icons.add),
+        label: const Text('New note'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        children: [
+          ScreenHeader(
+            title: 'Journal',
+            subtitle: childName == null
+                ? 'Your private notes.'
+                : 'Your private notes about $childName.',
+          ),
+          const SizedBox(height: AppSpacing.space16),
+          _buildFilters(),
+          const SizedBox(height: AppSpacing.space16),
+          FutureBuilder<List<JournalEntry>>(
+            future: _entriesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const LoadingView(message: 'Loading notes...');
+              }
+              if (snapshot.hasError) {
+                return _buildError(snapshot.error);
+              }
+              final entries = snapshot.data ?? const <JournalEntry>[];
+              if (entries.isEmpty) {
+                return const EmptyStateView(
+                  title: 'No notes yet',
+                  message:
+                      'Write down a moment you noticed. '
+                      'Only you can see your notes.',
+                  icon: Icons.edit_note,
+                );
+              }
+              final shown = _filtered(entries);
+              if (shown.isEmpty) {
+                return const EmptyStateView(
+                  title: 'No notes match your search',
+                  message:
+                      'Try a different word or date, '
+                      'or clear the filters to see all notes.',
+                  icon: Icons.search_off,
+                );
+              }
+              return Column(
+                children: [
+                  for (final entry in shown)
+                    _JournalEntryCard(
+                      entry: entry,
+                      onTap: () => _openNote(entry),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Opens the new note form, then reloads the list if a note was saved.
+  Future<void> _openNewNote() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            JournalNoteScreen(journalService: widget.journalService),
+      ),
+    );
+    if (saved == true && mounted) {
+      _reload();
+    }
+  }
+
+  /// Opens [entry] to edit or delete, then reloads the list if it changed.
+  Future<void> _openNote(JournalEntry entry) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => JournalNoteScreen(
+          entry: entry,
+          journalService: widget.journalService,
+        ),
+      ),
+    );
+    if (changed == true && mounted) {
+      _reload();
+    }
+  }
+
+  /// The search box, the date filter button and, when a day is picked, a
+  /// button to clear it.
+  Widget _buildFilters() {
+    final filterDate = _filterDate;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _searchController,
+          textInputAction: TextInputAction.search,
+          decoration: const InputDecoration(
+            labelText: 'Search notes',
+            prefixIcon: Icon(Icons.search),
+          ),
+          // Rebuild on every change so the list filters while typing.
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        Wrap(
+          spacing: AppSpacing.space8,
+          runSpacing: AppSpacing.space8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _pickFilterDate,
+              icon: const Icon(Icons.calendar_today, size: 18),
+              label: Text(
+                filterDate == null
+                    ? 'Filter by date'
+                    : DateFormat.yMMMd().format(filterDate),
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, AppSizes.touchTarget),
+              ),
+            ),
+            if (filterDate != null)
+              TextButton(
+                onPressed: () => setState(() => _filterDate = null),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, AppSizes.touchTarget),
+                ),
+                child: const Text('Clear date'),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// The view for a failed load. It never shows the error's own text,
+  /// so nothing about the note or child is revealed.
+  Widget _buildError(Object? error) {
+    if (error is NoConnectionApiException) {
+      return _OfflineView(onRetry: _reload);
+    }
+    // 404 (missing, or not this caregiver's) and 403 look the same, so
+    // the caregiver learns nothing about whether the profile exists (J4).
+    final denied =
+        error is NotFoundApiException ||
+        (error is ApiException && error.statusCode == 403);
+    if (denied) {
+      return const EmptyStateView(
+        title: "This journal isn't available",
+        message: 'It may have been removed, or it belongs to another account.',
+        icon: Icons.lock_outline,
+      );
+    }
+    return ErrorView(
+      message: "Couldn't load your notes. Please try again.",
+      onRetry: _reload,
+    );
+  }
+}
+
+/// One note in the list: its date, a short preview and a Private badge.
+/// Tapping it opens the note to edit or delete.
+class _JournalEntryCard extends StatelessWidget {
+  const _JournalEntryCard({required this.entry, required this.onTap});
+
+  /// The note to show.
+  final JournalEntry entry;
+
+  /// Called when the caregiver taps the note.
+  final VoidCallback onTap;
+
+  /// Shows 'YYYY-MM-DD' as a readable date, such as 'Nov 24, 2026'.
+  String get _formattedDate {
+    final date = DateTime.tryParse(entry.entryDate);
+    return date == null ? entry.entryDate : DateFormat.yMMMd().format(date);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final activeChild = AuthScope.maybeOf(context)?.activeChild;
-    final subtitle = activeChild != null
-        ? 'Everyday moments and notes about ${activeChild.nickname}.'
-        : 'Everyday moments and notes you choose to remember.';
-    final emptyTitle = activeChild != null
-        ? 'No notes for ${activeChild.nickname} yet'
-        : 'No notes yet';
-    final emptyMessage = activeChild != null
-        ? 'Jot down small wins, funny moments, or things ${activeChild.nickname} is trying.'
-        : 'Jot down small wins, funny moments, or things your child is trying.';
+    final theme = Theme.of(context);
 
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      children: [
-        ScreenHeader(title: 'Journal', subtitle: subtitle),
-        const SizedBox(height: AppSpacing.space16),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space16,
-            vertical: AppSpacing.space12,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.softGreen,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
-          ),
-          child: Row(
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        side: const BorderSide(color: AppColors.borderSubtle),
+      ),
+      // Clip so the tap ripple stays inside the rounded corners.
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.lock_outline, size: 18, color: AppColors.forest),
-              const SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  'Only you can see your notes. They are never shared or sent to AI.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textPrimary),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _formattedDate,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  const _PrivateBadge(),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space8),
+              Text(
+                entry.content,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.space24),
-        EmptyStateView(
-          title: emptyTitle,
-          message: emptyMessage,
-          icon: Icons.book_outlined,
-        ),
-      ],
+      ),
+    );
+  }
+}
+
+/// A small lock badge that marks a note as private.
+class _PrivateBadge extends StatelessWidget {
+  const _PrivateBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space8,
+        vertical: AppSpacing.space4,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.softGreen,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.lock_outline, size: 14, color: AppColors.forest),
+          const SizedBox(width: AppSpacing.space4),
+          Text(
+            'Private',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.forest,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tells the caregiver they are offline, with a "Try again" button.
+///
+/// Styled like the offline banner on the Milestones screen.
+class _OfflineView extends StatelessWidget {
+  const _OfflineView({required this.onRetry});
+
+  /// Called when the caregiver taps "Try again".
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.space16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceOffline,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.wifi_off, color: AppColors.textOffline, size: 20),
+              SizedBox(width: AppSpacing.space8),
+              Expanded(
+                child: Text(
+                  "You're offline",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textOffline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space4),
+          const Text(
+            'Your notes will show when you reconnect.',
+            style: TextStyle(color: AppColors.textOffline),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          SizedBox(
+            height: AppSizes.touchTarget,
+            child: OutlinedButton(
+              onPressed: onRetry,
+              child: const Text('Try again'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

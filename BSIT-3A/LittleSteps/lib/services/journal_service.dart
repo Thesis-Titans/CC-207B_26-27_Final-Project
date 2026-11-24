@@ -34,13 +34,16 @@ class JournalService {
     return JournalEntry.fromJson(data);
   }
 
-  /// Updates the content of an existing journal entry.
+  /// Updates the content of an existing journal entry, and its date when
+  /// [entryDate] ('YYYY-MM-DD') is given.
   Future<JournalEntry> updateJournalEntry({
     required String childId,
     required String entryId,
     required String content,
+    String? entryDate,
   }) async {
-    final body = {'content': content};
+    final body = <String, dynamic>{'content': content};
+    if (entryDate != null) body['entryDate'] = entryDate;
     final data = await apiClient.patch(
       '/api/v1/children/$childId/journal/$entryId',
       body: body,
