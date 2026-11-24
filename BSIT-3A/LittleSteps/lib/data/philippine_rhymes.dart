@@ -1,7 +1,8 @@
 import '../models/activity.dart';
 
-/// A Philippine rhyme with a shared-play activity.
+/// A traditional Philippine children's rhyme paired with a play prompt.
 class PhilippineRhyme {
+  /// Creates a [PhilippineRhyme].
   const PhilippineRhyme({
     required this.id,
     required this.title,
@@ -15,17 +16,37 @@ class PhilippineRhyme {
     this.durationMinutes = 5,
   });
 
+  /// Unique identifier for this rhyme.
   final String id;
+
+  /// Display title of the rhyme.
   final String title;
+
+  /// Short subtitle describing the play focus.
   final String subtitle;
+
+  /// Developmental domain key matching the catalog schema.
   final String domain;
+
+  /// Caregiver-facing label for [domain].
   final String domainLabel;
+
+  /// ISO language code of the rhyme lyrics.
   final String language;
+
+  /// Lines of lyrics sung with the child.
   final List<String> lyrics;
+
+  /// Movement or interaction cue performed while singing.
   final String actionPrompt;
+
+  /// Optional household items used during the rhyme.
   final List<String> materials;
+
+  /// Estimated duration in minutes.
   final int durationMinutes;
 
+  /// Converts this rhyme into an [Activity] that can be scheduled in a plan.
   Activity toActivity({String? childNickname}) {
     final name = childNickname ?? 'your child';
     return Activity(

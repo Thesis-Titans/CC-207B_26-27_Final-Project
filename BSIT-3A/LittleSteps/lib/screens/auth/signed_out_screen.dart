@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 
-/// Screen displayed when a session has expired, matching "MOBILE WEB 00a · J1 Signed out".
+/// Screen displayed when a caregiver session expires.
 ///
-/// Prominently displays "Please sign in again to continue", preserves any unsaved
-/// draft entered by the caregiver, and provides an immediate sign-in action.
+/// Displays [message], preserves any unsaved draft stored in [AuthScope], and
+/// provides a direct action to sign in again.
 class SignedOutScreen extends StatelessWidget {
   /// Creates a [SignedOutScreen] with optional [message].
   const SignedOutScreen({

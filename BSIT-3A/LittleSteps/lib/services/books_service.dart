@@ -2,8 +2,9 @@ import '../models/book.dart';
 import '../data/fallback_books.dart';
 import 'api_client.dart';
 
-/// Loads catalog books and manages a child's saved books.
+/// Loads catalog books and manages a child's saved bookshelf.
 class BooksService {
+  /// Creates a [BooksService].
   BooksService({required this.apiClient});
 
   static const List<String> _subjects = [
@@ -13,8 +14,10 @@ class BooksService {
     'colors',
   ];
 
+  /// Client used for catalog and bookshelf API requests.
   final ApiClient apiClient;
 
+  /// Fetches catalog books for [subject], or merges all subjects when `null`.
   Future<List<BookItem>> fetchBooks({
     String? subject = 'picture_books',
     int limit = 12,
@@ -50,6 +53,7 @@ class BooksService {
         .toList();
   }
 
+  /// Searches the Open Library proxy catalog for books matching [query].
   Future<List<BookItem>> searchBooks(String query, {int limit = 12}) async {
     final queryParams = {'q': query, 'limit': limit.toString()};
 
@@ -64,6 +68,7 @@ class BooksService {
         .toList();
   }
 
+  /// Fetches books saved to the bookshelf for [childId].
   Future<List<SavedBook>> fetchSavedBooks(String childId) async {
     final data = await apiClient.get(
       '/api/v1/children/$childId/books',
@@ -75,6 +80,7 @@ class BooksService {
         .toList();
   }
 
+  /// Saves [book] to the bookshelf for [childId].
   Future<SavedBook> saveBookToShelf(String childId, BookItem book) async {
     final body = {
       'id': book.id,
@@ -92,10 +98,12 @@ class BooksService {
     return SavedBook.fromJson(data);
   }
 
+  /// Removes [bookId] from the bookshelf for [childId].
   Future<void> removeBookFromShelf(String childId, String bookId) async {
     await apiClient.delete('/api/v1/children/$childId/books/$bookId');
   }
 
+  /// Filters local fallback books by [subject] or [query] when offline.
   static List<BookItem> filterFallbackBooks([
     String? subject = 'picture_books',
     String? query,

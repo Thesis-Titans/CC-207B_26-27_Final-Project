@@ -40,14 +40,31 @@ class ShellScreen extends StatefulWidget {
     this.childrenService,
   });
 
+  /// Optional caregiver email override used in tests.
   final String? email;
+
+  /// Initial list of child profiles shown before fetching from the API.
   final List<Child> children;
+
+  /// Optional active child ID override used in tests.
   final String? activeChildId;
+
+  /// Callback invoked when the caregiver selects a different child profile.
   final ValueChanged<Child>? onChildSelected;
+
+  /// Callback invoked with the child ID after a profile is deleted.
   final ValueChanged<String>? onChildDeleted;
+
+  /// Callback invoked after the caregiver signs out.
   final VoidCallback? onSignOut;
+
+  /// Callback invoked after the caregiver deletes their account.
   final VoidCallback? onAccountDeleted;
+
+  /// Optional account service override passed to [SettingsScreen].
   final AccountService? accountService;
+
+  /// Optional children service override used to load and delete profiles.
   final ChildrenService? childrenService;
 
   @override

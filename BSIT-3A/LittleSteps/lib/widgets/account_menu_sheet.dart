@@ -16,11 +16,22 @@ class AccountMenuSheet extends StatelessWidget {
     this.onOpenSettings,
   });
 
+  /// Signed-in caregiver email address shown at the top of the sheet.
   final String? email;
+
+  /// Child profiles available for quick switching.
   final List<Child> children;
+
+  /// Identifier of the currently active child profile.
   final String? activeChildId;
+
+  /// Callback invoked when the caregiver selects a child from the list.
   final ValueChanged<Child>? onChildSelected;
+
+  /// Callback invoked when the caregiver chooses to sign out.
   final VoidCallback? onSignOut;
+
+  /// Callback invoked when the caregiver opens the Settings screen.
   final VoidCallback? onOpenSettings;
 
   @override

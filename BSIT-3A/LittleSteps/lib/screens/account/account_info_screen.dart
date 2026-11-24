@@ -20,6 +20,7 @@ class AccountInfoScreen extends StatelessWidget {
   /// Creates an [AccountInfoScreen] for [page].
   const AccountInfoScreen({super.key, required this.page});
 
+  /// The informational page variant to render.
   final AccountInfoPage page;
 
   String get _title => switch (page) {
