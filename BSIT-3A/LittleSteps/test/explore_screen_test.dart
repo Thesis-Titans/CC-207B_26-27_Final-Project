@@ -118,15 +118,37 @@ void main() {
     expect(find.text('Cup tower'), findsOneWidget);
     expect(find.text('Try again'), findsNothing);
   });
+
+  testWidgets('opens the more filters sheet without motion when reduced', (
+    tester,
+  ) async {
+    final observer = _RecordingNavigatorObserver();
+    await _pumpExplore(
+      tester,
+      _FakeCatalogService([]),
+      disableAnimations: true,
+      observer: observer,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('more-filters')));
+
+    expect(observer.lastPushed?.transitionDuration, Duration.zero);
+    expect(observer.lastPushed?.reverseTransitionDuration, Duration.zero);
+    await tester.pumpAndSettle();
+    expect(find.text('More filters'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpExplore(
   WidgetTester tester,
-  _FakeCatalogService catalog,
-) async {
+  _FakeCatalogService catalog, {
+  bool disableAnimations = false,
+  _RecordingNavigatorObserver? observer,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.light(),
+      navigatorObservers: [?observer],
       home: Builder(
         builder: (context) {
           final screen = Scaffold(
@@ -137,7 +159,11 @@ Future<void> _pumpExplore(
               ),
             ),
           );
-          return screen;
+          if (!disableAnimations) return screen;
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: screen,
+          );
         },
       ),
     ),
@@ -195,5 +221,15 @@ class _FakeCatalogService extends CatalogService {
         .where((activity) => domain == null || activity.domain == domain)
         .where((activity) => language == null || activity.language == language)
         .toList();
+  }
+}
+
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  ModalRoute<dynamic>? lastPushed;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    lastPushed = route is ModalRoute<dynamic> ? route : null;
+    super.didPush(route, previousRoute);
   }
 }

@@ -37,6 +37,7 @@ class EmptyStateView extends StatelessWidget {
     this.icon = Icons.inbox_outlined,
     this.actionLabel,
     this.onAction,
+    this.announce = false,
   });
 
   /// Headline text for the empty state.
@@ -54,6 +55,9 @@ class EmptyStateView extends StatelessWidget {
   /// Callback executed when the action button is pressed.
   final VoidCallback? onAction;
 
+  /// Announces the empty-state copy when it appears or changes.
+  final bool announce;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -66,18 +70,30 @@ class EmptyStateView extends StatelessWidget {
           children: [
             Icon(icon, size: 64, color: AppColors.textTertiary),
             const SizedBox(height: AppSpacing.space16),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
+            Semantics(
+              container: true,
+              liveRegion: announce,
+              label: announce ? '$title. $message' : null,
+              child: ExcludeSemantics(
+                excluding: announce,
+                child: Column(
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    Text(
+                      message,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: AppSpacing.space24),

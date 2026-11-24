@@ -461,7 +461,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           : 'Try another activity or material search.',
                       icon: Icons.search_off_outlined,
                       actionLabel: 'Clear filters',
-
+                      announce: true,
                       onAction: () {
                         setState(() {
                           _ageBand = _catalogAgeBand(activeChild?.ageBand);
