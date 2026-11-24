@@ -14,8 +14,14 @@ class JournalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeChild = AuthScope.maybeOf(context)?.activeChild;
     final subtitle = activeChild != null
-        ? 'Private notes about ${activeChild.nickname}.'
-        : 'Private notes and everyday moments you choose to remember.';
+        ? 'Everyday moments and notes about ${activeChild.nickname}.'
+        : 'Everyday moments and notes you choose to remember.';
+    final emptyTitle = activeChild != null
+        ? 'No notes for ${activeChild.nickname} yet'
+        : 'No notes yet';
+    final emptyMessage = activeChild != null
+        ? 'Jot down small wins, funny moments, or things ${activeChild.nickname} is trying.'
+        : 'Jot down small wins, funny moments, or things your child is trying.';
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.space16),
@@ -39,7 +45,7 @@ class JournalScreen extends StatelessWidget {
               const SizedBox(width: AppSpacing.space8),
               Expanded(
                 child: Text(
-                  'Private by design. Only you can see these notes. They are never sent to external AI or shared.',
+                  'Only you can see your notes. They are never shared or sent to AI.',
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: AppColors.textPrimary),
                 ),
@@ -48,9 +54,9 @@ class JournalScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.space24),
-        const EmptyStateView(
-          title: 'No journal notes yet',
-          message: 'Private observation notes appear here.',
+        EmptyStateView(
+          title: emptyTitle,
+          message: emptyMessage,
           icon: Icons.book_outlined,
         ),
       ],
