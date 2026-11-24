@@ -10,7 +10,12 @@ import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../widgets/auth_scope.dart';
 
+/// Screen that hosts the Idea Helper play activity recommendation flow.
+///
+/// Collects available materials, duration, setting, and language preferences
+/// to generate personalized, non-diagnostic play activity recommendations.
 class AiSuggestionsScreen extends StatefulWidget {
   const AiSuggestionsScreen({
     super.key,
@@ -32,11 +37,6 @@ class AiSuggestionsScreen extends StatefulWidget {
 }
 
 class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
-  late final ApiClient _apiClient;
-  late final AiService _aiService;
-  late final CatalogService _catalogService;
-  late final PlanService _planService;
-
   final TextEditingController _materialsController = TextEditingController();
 
   int _timeMinutes = 15;
@@ -50,6 +50,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   String? _rateLimitMessage;
   String? _fallbackNotice;
   WeatherHint? _weatherHint;
+  bool _weatherFetched = false;
 
   static const List<int> _timeOptions = [10, 15, 30, 45];
   static const List<Map<String, String>> _settingOptions = [
@@ -72,20 +73,48 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     {'value': '60-71m', 'label': '5-6 years'},
   ];
 
+  Child? get _effectiveChild =>
+      widget.initialChild ?? AuthScope.maybeOf(context)?.activeChild;
+
+  ApiClient _resolveApiClient() {
+    return widget.apiClient ??
+        (AuthScope.maybeOf(context) != null
+            ? AuthScope.apiClientOf(context)
+            : ApiClient());
+  }
+
+  AiService _resolveAiService() {
+    return widget.aiService ?? AiService(apiClient: _resolveApiClient());
+  }
+
+  CatalogService _resolveCatalogService() {
+    return widget.catalogService ??
+        CatalogService(apiClient: _resolveApiClient());
+  }
+
+  PlanService _resolvePlanService() {
+    return widget.planService ?? PlanService(apiClient: _resolveApiClient());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final activeChild = _effectiveChild;
+    if (activeChild != null && widget.initialChild == null) {
+      _ageBand = activeChild.ageBand;
+    }
+    if (!_weatherFetched) {
+      _weatherFetched = true;
+      _fetchWeatherGuidance();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _apiClient = widget.apiClient ?? ApiClient();
-    _aiService = widget.aiService ?? AiService(apiClient: _apiClient);
-    _catalogService =
-        widget.catalogService ?? CatalogService(apiClient: _apiClient);
-    _planService = widget.planService ?? PlanService(apiClient: _apiClient);
-
     if (widget.initialChild != null) {
       _ageBand = widget.initialChild!.ageBand;
     }
-
-    _fetchWeatherGuidance();
   }
 
   @override
@@ -96,7 +125,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
 
   Future<void> _fetchWeatherGuidance() async {
     try {
-      final hint = await _catalogService.getWeather();
+      final hint = await _resolveCatalogService().getWeather();
       if (!mounted) return;
       setState(() {
         _weatherHint = hint;
@@ -126,7 +155,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     final materials = _parseMaterials();
 
     try {
-      final result = await _aiService
+      final result = await _resolveAiService()
           .getRecommendations(
             ageBand: _ageBand,
             setting: _setting,
@@ -194,7 +223,9 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   /// catalog cannot be reached, so no card can point to an unknown activity.
   Future<List<Recommendation>> _catalogPicks() async {
     try {
-      final activities = await _catalogService.getActivities(ageBand: _ageBand);
+      final activities = await _resolveCatalogService().getActivities(
+        ageBand: _ageBand,
+      );
       return activities
           .take(3)
           .map(
@@ -212,11 +243,12 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   }
 
   Future<void> _addToPlan(Recommendation item) async {
-    final childId = widget.initialChild!.id;
+    final childId = _effectiveChild?.id ?? widget.initialChild?.id;
+    if (childId == null) return;
     final today = DateTime.now().toIso8601String().substring(0, 10);
 
     try {
-      await _planService.addActivityToPlan(
+      await _resolvePlanService().addActivityToPlan(
         childId: childId,
         activityId: item.activityId,
         scheduledDate: today,
@@ -252,7 +284,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI play ideas')),
+      appBar: AppBar(title: const Text('Idea helper')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.space16),
@@ -831,7 +863,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
               ],
             ],
 
-            if (widget.initialChild == null)
+            if (_effectiveChild == null)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.space8),
                 child: Text(
@@ -843,7 +875,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
-                onPressed: widget.initialChild == null
+                onPressed: _effectiveChild == null
                     ? null
                     : () => _addToPlan(suggestion),
                 icon: const Icon(Icons.add, size: 18),

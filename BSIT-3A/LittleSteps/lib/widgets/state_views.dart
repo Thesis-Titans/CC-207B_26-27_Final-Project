@@ -37,6 +37,7 @@ class EmptyStateView extends StatelessWidget {
     this.icon = Icons.inbox_outlined,
     this.actionLabel,
     this.onAction,
+    this.announce = false,
   });
 
   /// Headline text for the empty state.
@@ -54,6 +55,9 @@ class EmptyStateView extends StatelessWidget {
   /// Callback executed when the action button is pressed.
   final VoidCallback? onAction;
 
+  /// Announces the empty-state copy when it appears or changes.
+  final bool announce;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -66,18 +70,30 @@ class EmptyStateView extends StatelessWidget {
           children: [
             Icon(icon, size: 64, color: AppColors.textTertiary),
             const SizedBox(height: AppSpacing.space16),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
+            Semantics(
+              container: true,
+              liveRegion: announce,
+              label: announce ? '$title. $message' : null,
+              child: ExcludeSemantics(
+                excluding: announce,
+                child: Column(
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    Text(
+                      message,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: AppSpacing.space24),
@@ -138,28 +154,41 @@ class ErrorView extends StatelessWidget {
 
 /// A banner indicating that the device is currently offline.
 class OfflineBanner extends StatelessWidget {
-  const OfflineBanner({super.key});
+  const OfflineBanner({
+    super.key,
+    this.message = 'Working offline. Changes will sync when reconnected.',
+  });
+
+  /// The message displayed in the offline banner.
+  final String message;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      color: AppColors.statusOffline,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space8,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.cloud_off, size: 16, color: AppColors.textOffline),
-          const SizedBox(width: AppSpacing.space8),
-          Text(
-            'Working offline. Changes will sync when reconnected.',
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppColors.textOffline),
-          ),
-        ],
+    return Semantics(
+      liveRegion: true,
+      label: message,
+      child: Container(
+        width: double.infinity,
+        color: AppColors.statusOffline,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space16,
+          vertical: AppSpacing.space8,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off, size: 16, color: AppColors.textOffline),
+            const SizedBox(width: AppSpacing.space8),
+            Flexible(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: AppColors.textOffline),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

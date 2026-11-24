@@ -6,19 +6,35 @@ import '../../services/api_client.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
+import '../../widgets/no_children_view.dart';
 import '../../widgets/state_views.dart';
 import 'add_child_screen.dart';
 import 'offline_notice.dart';
 
-/// Lists the caregiver's child profiles and lets them pick the active
-/// child (issue #3).
+/// Lists the caregiver's child profiles and lets them switch the active
+/// child or edit a profile (issue #3).
 ///
-/// Shows a loading view while the list loads, an error view with Retry if
-/// it fails, and an empty view with an "Add a child" action when there are
-/// no profiles yet.
+/// Shows a loading view while the list loads, an offline notice or an
+/// error view with Retry if it fails, and the onboarding view when there
+/// are no profiles yet.
 class ChildProfileScreen extends StatefulWidget {
   /// Creates the children screen.
-  const ChildProfileScreen({super.key});
+  const ChildProfileScreen({
+    super.key,
+    this.children,
+    this.childrenService,
+    this.onChildSelected,
+  });
+
+  /// Children to show instead of loading them, for tests and previews.
+  final List<Child>? children;
+
+  /// The service used to load profiles. Tests pass a fake one; the app
+  /// leaves it null and uses the signed-in API client.
+  final ChildrenService? childrenService;
+
+  /// Called after the caregiver switches to another child.
+  final ValueChanged<Child>? onChildSelected;
 
   @override
   State<ChildProfileScreen> createState() => _ChildProfileScreenState();
@@ -39,16 +55,34 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     }
   }
 
-  /// Loads the caregiver's children from the API.
+  /// Loads the caregiver's children.
   ///
-  /// Calling it again (Retry, or after adding a child) starts a new
-  /// request, and the list shows the loading view until it finishes.
+  /// Calling it again (Retry, or after adding or editing a child) starts a
+  /// new request, and the screen shows the loading view until it finishes.
   void _load() {
     setState(() {
-      _childrenFuture = ChildrenService(
-        apiClient: AuthScope.apiClientOf(context),
-      ).getChildren();
+      _childrenFuture = _fetchChildren();
     });
+  }
+
+  /// Gets the children from [ChildProfileScreen.children] or the API, and
+  /// makes the first one active if no child is active yet.
+  Future<List<Child>> _fetchChildren() async {
+    final given = widget.children;
+    if (given != null) {
+      return given;
+    }
+    // Read everything that needs `context` before the first `await`.
+    final session = AuthScope.maybeOf(context);
+    final service =
+        widget.childrenService ??
+        ChildrenService(apiClient: AuthScope.apiClientOf(context));
+
+    final children = await service.getChildren();
+    if (session != null && session.activeChild == null && children.isNotEmpty) {
+      session.setActiveChild(children.first);
+    }
+    return children;
   }
 
   /// Opens the add child form, then reloads the list so a new child shows.
@@ -73,24 +107,33 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     _load();
   }
 
-  /// Makes [child] the active child and goes back.
+  /// Makes [child] the active child. The header chip and the "Current
+  /// child" badge update because [AuthScope] notifies its listeners.
   void _select(Child child) {
-    AuthScope.of(context).setActiveChild(child);
-    Navigator.pop(context);
+    AuthScope.maybeOf(context)?.setActiveChild(child);
+    widget.onChildSelected?.call(child);
+  }
+
+  /// The part of the caregiver's email before the @, capitalized, used to
+  /// greet them on the onboarding view.
+  String? _caregiverName() {
+    final email = AuthScope.maybeOf(context)?.currentUser?.email;
+    if (email == null || !email.contains('@')) {
+      return null;
+    }
+    final name = email.split('@').first;
+    if (name.isEmpty) {
+      return null;
+    }
+    return '${name[0].toUpperCase()}${name.substring(1)}';
   }
 
   /// Builds the screen for whichever state the children list is in.
   @override
   Widget build(BuildContext context) {
-    final activeChildId = AuthScope.of(context).activeChild?.id;
-
     return Scaffold(
+      backgroundColor: AppColors.surfaceCanvas,
       appBar: AppBar(title: const Text('Children')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddChild,
-        icon: const Icon(Icons.add),
-        label: const Text('Add a child'),
-      ),
       body: FutureBuilder<List<Child>>(
         future: _childrenFuture,
         builder: (context, snapshot) {
@@ -98,10 +141,12 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             return const LoadingView(message: 'Loading children...');
           }
           if (snapshot.hasError) {
-            // ApiClient turns every server reply into an ApiException, so
-            // any other error means the server was never reached: offline.
-            // The list, and with it Add and Edit, waits for a connection.
-            if (snapshot.error is! ApiException) {
+            // ApiClient reports a lost connection as NoConnectionApiException.
+            // Any error that is not an ApiException also means the server
+            // was never reached. The list, and with it Add and Edit, waits
+            // for a connection.
+            final error = snapshot.error;
+            if (error is NoConnectionApiException || error is! ApiException) {
               return Center(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(AppSpacing.space16),
@@ -110,57 +155,198 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               );
             }
             return ErrorView(
-              message: "Couldn't load children. Check your connection.",
+              message: "Couldn't load children. Please try again.",
               onRetry: _load,
             );
           }
 
           final children = snapshot.data ?? const <Child>[];
           if (children.isEmpty) {
-            return EmptyStateView(
-              title: 'No children added yet',
-              message: 'Add a child to start planning play.',
-              icon: Icons.people_outline,
-              actionLabel: 'Add a child',
-              onAction: _openAddChild,
+            return NoChildrenView(
+              caregiverName: _caregiverName(),
+              onAddChild: _openAddChild,
             );
           }
+          return _buildChildrenList(context, children);
+        },
+      ),
+    );
+  }
 
-          return ListView.separated(
-            // Extra bottom padding keeps the last child clear of the
-            // floating "Add a child" button.
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space16,
-              AppSpacing.space16,
-              AppSpacing.space16,
-              AppSpacing.space32 * 3,
-            ),
-            itemCount: children.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final child = children[index];
-              final isActive = child.id == activeChildId;
-              return ListTile(
-                minTileHeight: AppSizes.touchTarget,
-                // The active child shows a check instead of the child icon.
-                leading: isActive
-                    ? const Icon(Icons.check_circle, semanticLabel: 'Active')
-                    : const Icon(Icons.child_care_outlined),
-                title: Text(child.nickname),
-                subtitle: Text(
-                  ageBandForCode(child.ageBand)?.label ?? child.ageBand,
+  /// The list of child cards, the add button and the privacy note.
+  Widget _buildChildrenList(BuildContext context, List<Child> children) {
+    final theme = Theme.of(context);
+    final activeChildId = AuthScope.maybeOf(context)?.activeChild?.id;
+    final profileWord = children.length == 1 ? 'profile' : 'profiles';
+
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.space16),
+      children: [
+        Text(
+          'Manage your private family space.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space16),
+        Text(
+          'Your children (${children.length} $profileWord)',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space12),
+        for (final child in children)
+          _buildChildCard(context, child, isCurrent: child.id == activeChildId),
+        const SizedBox(height: AppSpacing.space12),
+        OutlinedButton.icon(
+          onPressed: _openAddChild,
+          icon: const Icon(Icons.add),
+          label: const Text('Add a child'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(AppSizes.touchTarget),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space24),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Just enough to make ideas relevant',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
                 ),
-                trailing: IconButton(
+              ),
+              const SizedBox(height: AppSpacing.space4),
+              Text(
+                'We only keep a nickname and an age range or birth month. '
+                'No full birthdays, surnames or photos are required.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// One child's card: initial, nickname, age band, the "Current child"
+  /// badge or a switch button, and an edit button.
+  Widget _buildChildCard(
+    BuildContext context,
+    Child child, {
+    required bool isCurrent,
+  }) {
+    final theme = Theme.of(context);
+    final bandLabel = ageBandForCode(child.ageBand)?.label ?? child.ageBand;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        side: BorderSide(
+          color: isCurrent ? AppColors.forest : AppColors.borderSubtle,
+          width: isCurrent ? 1.5 : 1.0,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppColors.softGreen,
+                  child: Text(
+                    child.nickname.isNotEmpty
+                        ? child.nickname[0].toUpperCase()
+                        : 'C',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.forest,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        child.nickname,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        bandLabel,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: 'Edit ${child.nickname}',
                   onPressed: () => _openEditChild(child),
                 ),
-                selected: isActive,
-                onTap: () => _select(child),
-              );
-            },
-          );
-        },
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: isCurrent
+                  ? _currentChildBadge(theme)
+                  : TextButton(
+                      onPressed: () => _select(child),
+                      child: const Text('Switch to this child'),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The "Current child" badge shown on the active child's card.
+  Widget _currentChildBadge(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space8,
+        vertical: AppSpacing.space4,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.softGreen,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check, size: 14, color: AppColors.forest),
+          const SizedBox(width: AppSpacing.space4),
+          Text(
+            'Current child',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: AppColors.forest,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

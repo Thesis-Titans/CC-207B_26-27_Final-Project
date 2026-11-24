@@ -22,10 +22,14 @@ import 'offline_notice.dart';
 class AddChildScreen extends StatefulWidget {
   /// Creates the form. Pass [child] to edit that profile instead of adding
   /// a new one.
-  const AddChildScreen({super.key, this.child});
+  const AddChildScreen({super.key, this.child, this.childrenService});
 
   /// The profile to edit, or null to add a new child.
   final Child? child;
+
+  /// The service used to save the profile. Tests pass a fake one; the app
+  /// leaves it null and uses the signed-in API client.
+  final ChildrenService? childrenService;
 
   @override
   State<AddChildScreen> createState() => _AddChildScreenState();
@@ -151,9 +155,17 @@ class _AddChildScreenState extends State<AddChildScreen> {
     // Read everything that needs `context` before the first `await`.
     final session = AuthScope.of(context);
     final navigator = Navigator.of(context);
-    final childrenService = ChildrenService(
-      apiClient: AuthScope.apiClientOf(context),
-    );
+    final childrenService =
+        widget.childrenService ??
+        ChildrenService(apiClient: AuthScope.apiClientOf(context));
+
+    // ApiClient refuses every save while it is marked offline, until some
+    // later request succeeds. Tapping Save is the caregiver asking to try
+    // again, so let this save really try the connection.
+    final apiClient = childrenService.apiClient;
+    if (apiClient.isOffline) {
+      apiClient.isOffline = false;
+    }
 
     setState(() {
       _saving = true;
@@ -197,15 +209,23 @@ class _AddChildScreenState extends State<AddChildScreen> {
       } else {
         navigator.pushReplacementNamed(AppRouter.initialRoute);
       }
+    } on NoConnectionApiException {
+      // ApiClient reports a lost connection (and a save tried while it
+      // knows it is offline) as NoConnectionApiException. The form keeps
+      // what was typed, so Save can simply be tapped again.
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _offline = true;
+      });
     } on ApiException catch (error) {
       if (!mounted) {
         return;
       }
       _showServerErrors(error);
     } catch (_) {
-      // ApiClient turns every server reply into an ApiException, so any
-      // other error means the request never reached the server: offline.
-      // The form keeps what was typed, so Save can simply be tapped again.
+      // Any other error also means the request never reached the server.
       if (!mounted) {
         return;
       }

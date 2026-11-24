@@ -4,20 +4,19 @@ import '../models/auth_user.dart';
 import '../models/child.dart';
 import 'auth_service.dart';
 
-/// Minimal shared session state matching Issue #13 requirements.
+/// Manages the in-memory authentication session and active child profile.
 ///
-/// Holds the currently authenticated caregiver session and active child profile
-/// in memory. Does not persist secrets in plain storage or log sensitive tokens.
-///
-/// NOTE: This is the minimal interface coded against Issue #13 (not yet merged).
-/// It provides session and active child coordination without inventing a conflicting
-/// second architecture.
+/// Coordinates user authentication status and the currently selected child profile
+/// across the application without persisting credentials in plaintext storage.
 class AuthSessionState extends ChangeNotifier {
-  /// Creates an [AuthSessionState] with the provided [authService].
-  AuthSessionState({required this.authService});
+  /// Creates an [AuthSessionState] with the provided [authService] and optional [onClearCache].
+  AuthSessionState({required this.authService, this.onClearCache});
 
   /// The underlying authentication service.
   final AuthService authService;
+
+  /// Optional callback invoked on sign-out or session expiry to clear local caches.
+  final VoidCallback? onClearCache;
 
   AuthUser? _currentUser;
   Child? _activeChild;
@@ -105,6 +104,7 @@ class AuthSessionState extends ChangeNotifier {
   void handleSessionExpired() {
     _currentUser = null;
     _activeChild = null;
+    onClearCache?.call();
     notifyListeners();
   }
 
@@ -116,6 +116,7 @@ class AuthSessionState extends ChangeNotifier {
       _currentUser = null;
       _activeChild = null;
       _unsavedDraft = null;
+      onClearCache?.call();
       notifyListeners();
     }
   }

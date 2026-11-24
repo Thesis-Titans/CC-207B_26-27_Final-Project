@@ -5,7 +5,9 @@ import '../../models/milestone.dart';
 import '../../theme/app_tokens.dart';
 
 /// Modal bottom sheet for recording an observation for a prompt.
-/// Matches Screen 2 & 4 in Figma ("Note what you saw").
+///
+/// Allows caregivers to mark whether a milestone was observed and optionally save
+/// private notes and the observation date.
 class ObservationFormSheet extends StatefulWidget {
   const ObservationFormSheet({
     super.key,
@@ -130,7 +132,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
             ),
             const SizedBox(height: AppSpacing.space12),
 
-            // Offline banner card if offline (Screen 4 in Figma)
+            // Offline warning banner alerting caregiver that observation syncing is paused.
             if (widget.isOffline) ...[
               Container(
                 padding: const EdgeInsets.all(AppSpacing.space16),
@@ -255,7 +257,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
             ),
             const SizedBox(height: AppSpacing.space8),
 
-            // Pill toggle buttons matching Figma
+            // Observation status choice buttons ("I saw it" vs "Not seen yet").
             Row(
               children: [
                 Expanded(
