@@ -54,7 +54,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final Set<String> _deletingChildren = {};
   bool _isDeletingAccount = false;
   late final List<Child> _children = List.of(widget.children);
+  bool _loadedRemoteChildren = false;
   WeatherLocation? _localWeatherLocation = WeatherLocation.iloiloCity;
+
+  String? get _effectiveEmail =>
+      widget.email ?? AuthScope.maybeOf(context)?.currentUser?.email;
+
+  AccountService? get _effectiveAccountService {
+    if (widget.accountService != null) return widget.accountService;
+    final session = AuthScope.maybeOf(context);
+    if (session != null && session.isAuthenticated) {
+      return AccountService(apiClient: AuthScope.apiClientOf(context));
+    }
+    return null;
+  }
+
+  ChildrenService? get _effectiveChildrenService {
+    if (widget.childrenService != null) return widget.childrenService;
+    final session = AuthScope.maybeOf(context);
+    if (session != null && session.isAuthenticated) {
+      return ChildrenService(apiClient: AuthScope.apiClientOf(context));
+    }
+    return null;
+  }
+
+  VoidCallback? get _effectiveSignOut {
+    if (widget.onSignOut != null) return widget.onSignOut;
+    final session = AuthScope.maybeOf(context);
+    if (session != null && session.isAuthenticated) {
+      return () async {
+        await session.signOut();
+        if (mounted) {
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/sign-in', (_) => false);
+        }
+      };
+    }
+    return null;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loadedRemoteChildren && _children.isEmpty) {
+      final service = _effectiveChildrenService;
+      if (service != null) {
+        _loadedRemoteChildren = true;
+        _loadChildren(service);
+      }
+    }
+  }
+
+  Future<void> _loadChildren(ChildrenService service) async {
+    try {
+      final fetched = await service.getChildren();
+      if (!mounted) return;
+      setState(() {
+        _children
+          ..clear()
+          ..addAll(fetched);
+      });
+    } catch (_) {
+      // Keep the current list when offline or unavailable.
+    }
+  }
 
   WeatherLocation? _currentWeatherLocation(BuildContext context) {
     final session = AuthScope.maybeOf(context);
@@ -74,6 +137,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final email = _effectiveEmail;
+    final accountService = _effectiveAccountService;
+    final childrenService = _effectiveChildrenService;
+    final signOutAction = _effectiveSignOut;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: Center(
@@ -87,9 +155,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.email_outlined),
-                    title: Text(widget.email ?? 'Account details'),
+                    title: Text(email ?? 'Account details'),
                     subtitle: Text(
-                      widget.email == null
+                      email == null
                           ? 'Sign in to view caregiver details.'
                           : 'Signed-in caregiver',
                     ),
@@ -98,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: Icons.logout,
                     title: 'Sign out',
                     subtitle: 'Sign out when you are done on a shared phone.',
-                    onTap: widget.onSignOut ?? _showSignInUnavailable,
+                    onTap: signOutAction ?? _showSignInUnavailable,
                   ),
                 ],
               ),
@@ -110,7 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ListTile(
                       leading: const Icon(Icons.child_care_outlined),
                       title: Text(
-                        widget.email == null
+                        email == null
                             ? 'Sign in to view child profiles'
                             : 'No children added yet',
                       ),
@@ -123,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         subtitle: 'Remove this child and their saved records.',
                         isLoading: _deletingChildren.contains(child.id),
                         isDestructive: true,
-                        onTap: widget.childrenService == null
+                        onTap: childrenService == null
                             ? _showSignInUnavailable
                             : () => _confirmDeleteChild(child),
                       ),
@@ -152,7 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'Permanently remove your account and its records.',
                     isLoading: _isDeletingAccount,
                     isDestructive: true,
-                    onTap: widget.accountService == null
+                    onTap: accountService == null
                         ? _showSignInUnavailable
                         : _confirmDeleteAccount,
                   ),
@@ -202,8 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-              if (widget.accountService == null ||
-                  widget.childrenService == null)
+              if (accountService == null || childrenService == null)
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.space12),
                   child: Text(
@@ -220,7 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _downloadData() async {
-    final service = widget.accountService;
+    final service = _effectiveAccountService;
     if (service == null) {
       _showSignInUnavailable();
       return;
@@ -261,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (!confirmed || !mounted) return;
 
-    final service = widget.childrenService;
+    final service = _effectiveChildrenService;
     if (service == null) {
       _showSignInUnavailable();
       return;
@@ -272,6 +339,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await service.deleteChild(child.id);
       if (mounted) {
         setState(() => _children.removeWhere((item) => item.id == child.id));
+        final session = AuthScope.maybeOf(context);
+        if (session != null && session.activeChild?.id == child.id) {
+          session.setActiveChild(_children.isNotEmpty ? _children.first : null);
+        }
       }
       widget.onChildDeleted?.call(child.id);
       _showMessage('${child.nickname}’s records were deleted.');
@@ -292,7 +363,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (!confirmed || !mounted) return;
 
-    final service = widget.accountService;
+    final service = _effectiveAccountService;
     if (service == null) {
       _showSignInUnavailable();
       return;
@@ -304,7 +375,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (widget.onAccountDeleted != null) {
         widget.onAccountDeleted!();
       } else if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/sign-in', (_) => false);
+        final session = AuthScope.maybeOf(context);
+        if (session != null) {
+          await session.signOut();
+        }
+        if (mounted) {
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/sign-in', (_) => false);
+        }
       }
     } catch (_) {
       _showMessage('We could not delete your account. Try again.');

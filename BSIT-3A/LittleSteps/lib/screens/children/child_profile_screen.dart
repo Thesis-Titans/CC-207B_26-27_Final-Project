@@ -240,6 +240,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.card),
         side: BorderSide(
@@ -247,64 +248,70 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
           width: isCurrent ? 1.5 : 1.0,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.softGreen,
-                  child: Text(
-                    child.nickname.isNotEmpty
-                        ? child.nickname[0].toUpperCase()
-                        : 'C',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.forest,
+      child: InkWell(
+        onTap: isCurrent ? null : () => _select(child),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.softGreen,
+                    child: Text(
+                      child.nickname.isNotEmpty
+                          ? child.nickname[0].toUpperCase()
+                          : 'C',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.forest,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        child.nickname,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: AppSpacing.space12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          child.nickname,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      Text(
-                        bandLabel,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
+                        Text(
+                          bandLabel,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  tooltip: 'Edit ${child.nickname}',
-                  onPressed: () => _openEditChild(child),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: isCurrent
-                  ? _currentChildBadge(theme)
-                  : TextButton(
-                      onPressed: () => _select(child),
-                      child: const Text('Switch to this child'),
+                      ],
                     ),
-            ),
-          ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Edit ${child.nickname}',
+                    onPressed: () => _openEditChild(child),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.space12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: isCurrent
+                    ? _currentChildBadge(theme)
+                    : Text(
+                        'Tap card to switch',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: AppColors.forest,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

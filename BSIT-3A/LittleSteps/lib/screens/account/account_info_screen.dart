@@ -81,15 +81,30 @@ class AccountInfoScreen extends StatelessWidget {
       _InfoSection(
         'Where content comes from',
         'Activities and milestone prompts are grounded in published pediatric '
-            'and early childhood frameworks:\n\n'
-            '• CDC Developmental Milestones (Learn the Signs. Act Early.)\n'
-            '  https://www.cdc.gov/ncbddd/actearly/milestones/\n\n'
-            '• American Academy of Pediatrics (AAP)\n'
-            '  https://www.healthychildren.org\n\n'
-            '• WHO Nurturing Care Framework for Early Childhood Development\n'
-            '  https://nurturing-care.org\n\n'
-            '• Philippine Early Learning Standards (ECCD Council)\n'
-            '  https://eccdcouncil.gov.ph',
+            'and early childhood frameworks:',
+        links: [
+          _ExternalResourceLink(
+            title: 'CDC Developmental Milestones (Learn the Signs. Act Early.)',
+            domainLabel: 'cdc.gov',
+            url: 'https://www.cdc.gov/ncbddd/actearly/milestones/',
+          ),
+          _ExternalResourceLink(
+            title: 'American Academy of Pediatrics (AAP)',
+            domainLabel: 'healthychildren.org',
+            url: 'https://www.healthychildren.org',
+          ),
+          _ExternalResourceLink(
+            title:
+                'WHO Nurturing Care Framework for Early Childhood Development',
+            domainLabel: 'nurturing-care.org',
+            url: 'https://nurturing-care.org',
+          ),
+          _ExternalResourceLink(
+            title: 'Philippine Early Learning Standards (ECCD Council)',
+            domainLabel: 'eccdcouncil.gov.ph',
+            url: 'https://eccdcouncil.gov.ph',
+          ),
+        ],
       ),
       _InfoSection(
         'Who made LittleSteps',
@@ -125,7 +140,14 @@ class AccountInfoScreen extends StatelessWidget {
       _InfoSection(
         'Contact us',
         'For help or feedback with LittleSteps, reach the Thesis Titans team '
-            'at https://github.com/Thesis-Titans.',
+            'on GitHub:',
+        links: [
+          _ExternalResourceLink(
+            title: 'Thesis Titans on GitHub',
+            domainLabel: 'github.com/Thesis-Titans',
+            url: 'https://github.com/Thesis-Titans',
+          ),
+        ],
       ),
     ],
   };
@@ -151,11 +173,24 @@ class AccountInfoScreen extends StatelessWidget {
   }
 }
 
+class _ExternalResourceLink {
+  const _ExternalResourceLink({
+    required this.title,
+    required this.domainLabel,
+    required this.url,
+  });
+
+  final String title;
+  final String domainLabel;
+  final String url;
+}
+
 class _InfoSection {
-  const _InfoSection(this.title, this.body);
+  const _InfoSection(this.title, this.body, {this.links = const []});
 
   final String title;
   final String body;
+  final List<_ExternalResourceLink> links;
 }
 
 class _InfoSectionCard extends StatelessWidget {
@@ -166,36 +201,66 @@ class _InfoSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final lines = section.body.split('\n');
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(section.title, style: theme.textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.space8),
-            for (final line in lines)
-              if (line.trim().startsWith('https://'))
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: InkWell(
-                    onTap: () => openExternalUrl(context, line.trim()),
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                    child: Text(
-                      line,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.forest,
-                        decoration: TextDecoration.underline,
-                      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.space16,
+              AppSpacing.space16,
+              AppSpacing.space16,
+              section.links.isEmpty ? AppSpacing.space16 : AppSpacing.space12,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(section.title, style: theme.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.space8),
+                Text(section.body, style: theme.textTheme.bodyMedium),
+              ],
+            ),
+          ),
+          if (section.links.isNotEmpty) ...[
+            const Divider(height: 1),
+            for (var index = 0; index < section.links.length; index++) ...[
+              if (index > 0) const Divider(height: 1),
+              Semantics(
+                link: true,
+                hint: 'Opens external website',
+                child: ListTile(
+                  minTileHeight: AppSizes.touchTarget,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space16,
+                    vertical: AppSpacing.space4,
+                  ),
+                  title: Text(
+                    section.links[index].title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                )
-              else
-                Text(line, style: theme.textTheme.bodyMedium),
+                  subtitle: Text(
+                    section.links[index].domainLabel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.forest,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.open_in_new,
+                    size: 18,
+                    color: AppColors.forest,
+                  ),
+                  onTap: () =>
+                      openExternalUrl(context, section.links[index].url),
+                ),
+              ),
+            ],
           ],
-        ),
+        ],
       ),
     );
   }

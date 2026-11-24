@@ -409,4 +409,137 @@ void main() {
     );
     expect(button.onPressed, isNull);
   });
+
+  testWidgets(
+    'shows Play Block summary and idempotent Add all for 45 min requests',
+    (tester) async {
+      configureViewport(tester);
+
+      final addedIds = <String>[];
+      final twoActivitiesResponse = {
+        'source': 'ai',
+        'tier': 1,
+        'provenance': {
+          'badge': 'Suggested by AI',
+          'disclaimer': 'Observational play suggestion only. Not developmental assessment.',
+        },
+        'suggestions': [
+          {
+            'activityId': 'act-003',
+            'title': 'Cushion Mountain Crawl',
+            'whyPicked': 'Builds balance safely indoors.',
+            'activity': {
+              'id': 'act-003',
+              'title': 'Cushion Mountain Crawl',
+              'type': 'activity',
+              'language': 'en',
+              'domain': 'motor',
+              'ageBand': '12-23m',
+              'durationMinutes': 15,
+              'durationEstimate': '10-15 mins',
+              'setting': 'indoor',
+              'materials': ['cushions'],
+              'instructions': ['Stack pillows.'],
+              'limitations': 'Supervise closely.',
+              'status': 'reviewed_approved',
+              'provenanceSource': 'ECCD Council',
+            },
+          },
+          {
+            'activityId': 'act-008',
+            'title': 'Stack the Plastic Cups',
+            'whyPicked': 'Supports hand-eye coordination.',
+            'activity': {
+              'id': 'act-008',
+              'title': 'Stack the Plastic Cups',
+              'type': 'activity',
+              'language': 'en',
+              'domain': 'cognitive',
+              'ageBand': '12-23m',
+              'durationMinutes': 10,
+              'durationEstimate': '10 mins',
+              'setting': 'indoor',
+              'materials': ['plastic cups'],
+              'instructions': ['Stack cups.'],
+              'limitations': 'Supervise closely.',
+              'status': 'reviewed_approved',
+              'provenanceSource': 'ECCD Council',
+            },
+          },
+        ],
+      };
+
+      final client = MockClient((request) async {
+        if (request.url.path.contains('/api/v1/ai/recommendations')) {
+          return http.Response(jsonEncode(twoActivitiesResponse), 200);
+        }
+        if (request.url.path.contains('/plans') && request.method == 'GET') {
+          // Pretend act-008 is already scheduled today to test idempotency.
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 'plan-existing',
+                'childId': 'c1',
+                'activityId': 'act-008',
+                'scheduledDate': '2026-11-24',
+                'status': 'planned',
+                'createdAt': '2026-11-24T08:00:00.000Z',
+                'updatedAt': '2026-11-24T08:00:00.000Z',
+              },
+            ]),
+            200,
+          );
+        }
+        if (request.url.path.contains('/plans') && request.method == 'POST') {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          addedIds.add(body['activityId'] as String);
+          return http.Response(
+            jsonEncode({
+              'id': 'plan-new',
+              'childId': 'c1',
+              'activityId': body['activityId'],
+              'scheduledDate': body['scheduledDate'],
+              'status': 'planned',
+              'createdAt': '2026-11-24T08:00:00.000Z',
+              'updatedAt': '2026-11-24T08:00:00.000Z',
+            }),
+            201,
+          );
+        }
+        return http.Response(jsonEncode({}), 200);
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AiSuggestionsScreen(
+            apiClient: ApiClient(baseUrl: 'http://test', httpClient: client),
+            initialChild: testChild,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('45 min'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Find play ideas'));
+      await tester.tap(find.text('Find play ideas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Suggested by AI'), findsOneWidget);
+      expect(find.text('Play block for 45 min'), findsOneWidget);
+      expect(
+        find.textContaining('2 short reviewed activities (~25 mins total)'),
+        findsOneWidget,
+      );
+
+      await tester.ensureVisible(find.text("Add all to today's plan"));
+      await tester.tap(find.text("Add all to today's plan"));
+      await tester.pumpAndSettle();
+
+      // Only act-003 should be posted since act-008 was already on today's plan.
+      expect(addedIds, ['act-003']);
+      expect(find.text("All added to today's plan"), findsOneWidget);
+    },
+  );
 }
