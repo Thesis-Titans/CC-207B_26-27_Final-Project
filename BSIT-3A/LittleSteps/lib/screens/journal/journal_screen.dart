@@ -8,6 +8,7 @@ import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
+import 'journal_note_screen.dart';
 
 /// Journal tab: the caregiver's private notes about the active child,
 /// newest first (issue #7).
@@ -138,6 +139,11 @@ class _JournalScreenState extends State<JournalScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surfaceCanvas,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openNewNote,
+        icon: const Icon(Icons.add),
+        label: const Text('New note'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.space16),
         children: [
@@ -181,7 +187,11 @@ class _JournalScreenState extends State<JournalScreen> {
               }
               return Column(
                 children: [
-                  for (final entry in shown) _JournalEntryCard(entry: entry),
+                  for (final entry in shown)
+                    _JournalEntryCard(
+                      entry: entry,
+                      onTap: () => _openNote(entry),
+                    ),
                 ],
               );
             },
@@ -189,6 +199,36 @@ class _JournalScreenState extends State<JournalScreen> {
         ],
       ),
     );
+  }
+
+  /// Opens the new note form, then reloads the list if a note was saved.
+  Future<void> _openNewNote() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            JournalNoteScreen(journalService: widget.journalService),
+      ),
+    );
+    if (saved == true && mounted) {
+      _reload();
+    }
+  }
+
+  /// Opens [entry] to edit or delete, then reloads the list if it changed.
+  Future<void> _openNote(JournalEntry entry) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => JournalNoteScreen(
+          entry: entry,
+          journalService: widget.journalService,
+        ),
+      ),
+    );
+    if (changed == true && mounted) {
+      _reload();
+    }
   }
 
   /// The search box, the date filter button and, when a day is picked, a
@@ -267,11 +307,15 @@ class _JournalScreenState extends State<JournalScreen> {
 }
 
 /// One note in the list: its date, a short preview and a Private badge.
+/// Tapping it opens the note to edit or delete.
 class _JournalEntryCard extends StatelessWidget {
-  const _JournalEntryCard({required this.entry});
+  const _JournalEntryCard({required this.entry, required this.onTap});
 
   /// The note to show.
   final JournalEntry entry;
+
+  /// Called when the caregiver taps the note.
+  final VoidCallback onTap;
 
   /// Shows 'YYYY-MM-DD' as a readable date, such as 'Nov 24, 2026'.
   String get _formattedDate {
@@ -289,35 +333,40 @@ class _JournalEntryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
         side: const BorderSide(color: AppColors.borderSubtle),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _formattedDate,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+      // Clip so the tap ripple stays inside the rounded corners.
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _formattedDate,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
-                ),
-                const _PrivateBadge(),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            Text(
-              entry.content,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
+                  const _PrivateBadge(),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: AppSpacing.space8),
+              Text(
+                entry.content,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
