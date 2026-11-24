@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/activity.dart';
 import '../models/child.dart';
 import '../services/account_service.dart';
 import '../services/api_client.dart';
@@ -19,7 +20,7 @@ import 'milestones/milestones_screen.dart';
 import 'journal/journal_screen.dart';
 import 'reflection/weekly_summary_screen.dart';
 
-/// Main navigation shell hosting the bottom navigation bar and shared header.
+/// Main navigation shell hosting bottom navigation and shared header.
 class ShellScreen extends StatefulWidget {
   const ShellScreen({
     super.key,
@@ -34,31 +35,14 @@ class ShellScreen extends StatefulWidget {
     this.childrenService,
   });
 
-  /// Email address from the shared signed-in session.
   final String? email;
-
-  /// Child profiles from shared app state.
   final List<Child> children;
-
-  /// Selected child identifier from shared app state.
   final String? activeChildId;
-
-  /// Called when a caregiver selects a child in the account menu.
   final ValueChanged<Child>? onChildSelected;
-
-  /// Called after a child profile and its saved records are deleted.
   final ValueChanged<String>? onChildDeleted;
-
-  /// Called when the caregiver signs out.
   final VoidCallback? onSignOut;
-
-  /// Called after the caregiver's account is deleted.
   final VoidCallback? onAccountDeleted;
-
-  /// Authenticated account requests shared with the rest of the app.
   final AccountService? accountService;
-
-  /// Authenticated child requests shared with the rest of the app.
   final ChildrenService? childrenService;
 
   @override
@@ -67,7 +51,9 @@ class ShellScreen extends StatefulWidget {
 
 class _ShellScreenState extends State<ShellScreen> {
   int _currentIndex = 0;
+  int _todayPlanRefreshKey = 0;
   List<Child> _children = [];
+  Map<String, Activity> _scheduledActivityDetails = {};
   bool _isLoadingChildren = false;
 
   @override
@@ -126,6 +112,16 @@ class _ShellScreenState extends State<ShellScreen> {
     });
   }
 
+  void _handlePlanAdded(Activity activity) {
+    setState(() {
+      _scheduledActivityDetails = {
+        ..._scheduledActivityDetails,
+        activity.id: activity,
+      };
+      _todayPlanRefreshKey++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final compactHeader = MediaQuery.sizeOf(context).width < 380;
@@ -148,7 +144,12 @@ class _ShellScreenState extends State<ShellScreen> {
 
     final screens = <Widget>[
       isAuthenticated
-          ? (activeChild != null ? const TodayScreen() : noChildView)
+          ? (activeChild != null
+                ? TodayScreen(
+                    planRefreshKey: _todayPlanRefreshKey,
+                    initialActivities: _scheduledActivityDetails,
+                  )
+                : noChildView)
           : EmptyStateView(
               title: "Sign in to see today's plan",
               message: 'Sign in with your caregiver account to view and plan play activities.',
@@ -157,8 +158,10 @@ class _ShellScreenState extends State<ShellScreen> {
               onAction: () => Navigator.pushNamed(context, '/sign-in'),
             ),
       isAuthenticated
-          ? (activeChild != null ? const ExploreScreen() : noChildView)
-          : const ExploreScreen(),
+          ? (activeChild != null
+                ? ExploreScreen(onPlanAdded: _handlePlanAdded)
+                : noChildView)
+          : ExploreScreen(onPlanAdded: _handlePlanAdded),
       isAuthenticated
           ? (activeChild != null ? const MilestonesScreen() : noChildView)
           : EmptyStateView(

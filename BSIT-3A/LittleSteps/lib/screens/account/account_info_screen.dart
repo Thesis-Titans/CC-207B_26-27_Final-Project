@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_tokens.dart';
 
-/// Describes the account information page to display.
 enum AccountInfoPage { privacy, about, help }
 
-/// Plain-language privacy, product and help information pages.
+/// Privacy, about, and help screens.
 class AccountInfoScreen extends StatelessWidget {
   const AccountInfoScreen({super.key, required this.page});
 
-  /// Information page shown by this screen.
   final AccountInfoPage page;
 
   String get _title => switch (page) {
