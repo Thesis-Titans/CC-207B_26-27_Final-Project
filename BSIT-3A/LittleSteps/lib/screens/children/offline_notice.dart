@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_tokens.dart';
 
-/// Tells the caregiver they are offline and that changes to child
-/// profiles need a connection (issue #3).
-///
-/// Styled like the offline banner on the Milestones screen.
+/// Banner indicating that the device is offline and profile changes require a
+/// connection.
 class OfflineNotice extends StatelessWidget {
-  /// Creates the notice. A "Try again" button shows when [onRetry] is given.
+  /// Creates an [OfflineNotice].
+  ///
+  /// Renders a retry button when [onRetry] is provided.
   const OfflineNotice({super.key, this.onRetry});
 
-  /// Called when the caregiver taps "Try again".
+  /// Callback invoked when the caregiver taps "Try again".
   final VoidCallback? onRetry;
 
   @override

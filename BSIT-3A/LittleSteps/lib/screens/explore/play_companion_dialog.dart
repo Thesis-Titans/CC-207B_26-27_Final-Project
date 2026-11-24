@@ -4,8 +4,10 @@ import '../../models/activity.dart';
 import '../../models/book.dart';
 import '../../theme/app_tokens.dart';
 
-/// Shows a storybook play idea and lets the caregiver add it to today's plan.
+/// Dialog presenting a storybook play idea with an option to add it to today's
+/// plan.
 class PlayCompanionDialog extends StatelessWidget {
+  /// Creates a [PlayCompanionDialog].
   const PlayCompanionDialog({
     super.key,
     required this.book,
@@ -18,22 +20,31 @@ class PlayCompanionDialog extends StatelessWidget {
     this.isAdding = false,
   });
 
+  /// Storybook associated with the suggested play companion activity.
   final BookItem book;
 
+  /// Title of the suggested play activity.
   final String ideaTitle;
 
+  /// Developmental domain key for the activity.
   final String domain;
 
+  /// Step-by-step play guidance linked to [book].
   final String instructions;
 
+  /// Supervision or safety reminder displayed with the play idea.
   final String safetyNotice;
 
+  /// Optional provenance badge shown next to the activity title.
   final String? badge;
 
+  /// Callback invoked when the caregiver adds the play idea to today's plan.
   final VoidCallback? onAddToPlan;
 
+  /// Whether the add-to-plan request is currently in progress.
   final bool isAdding;
 
+  /// Maps a backend [domain] key to its caregiver-facing label.
   static String domainLabel(String domain) {
     switch (domain.toLowerCase()) {
       case 'motor':
@@ -50,6 +61,7 @@ class PlayCompanionDialog extends StatelessWidget {
     }
   }
 
+  /// Builds an [Activity] from this play idea so it can be added to a plan.
   Activity toActivity({String? childNickname}) {
     final sanitizedId =
         'story-${book.id.toLowerCase().replaceAll(RegExp(r'[^a-z0-9-]'), '-')}';

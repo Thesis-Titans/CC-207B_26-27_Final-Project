@@ -24,12 +24,25 @@ class SettingsScreen extends StatefulWidget {
     this.onChildDeleted,
   });
 
+  /// Signed-in caregiver email address, or `null` when unavailable.
   final String? email;
+
+  /// Child profiles available for per-child deletion actions.
   final List<Child> children;
+
+  /// Service used to export caregiver data and delete the account.
   final AccountService? accountService;
+
+  /// Service used to delete individual child profiles.
   final ChildrenService? childrenService;
+
+  /// Callback invoked when the caregiver signs out.
   final VoidCallback? onSignOut;
+
+  /// Callback invoked after the caregiver account is deleted.
   final VoidCallback? onAccountDeleted;
+
+  /// Callback invoked with the child ID after a child profile is deleted.
   final ValueChanged<String>? onChildDeleted;
 
   @override

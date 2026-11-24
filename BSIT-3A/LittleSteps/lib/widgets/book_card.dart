@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../models/book.dart';
 import '../theme/app_tokens.dart';
 
-/// Storybook card with save and play actions.
+/// Storybook card displaying cover art, metadata, bookmark toggle, and play
+/// idea action.
 class BookCard extends StatelessWidget {
+  /// Creates a [BookCard].
   const BookCard({
     super.key,
     required this.book,
@@ -14,14 +16,19 @@ class BookCard extends StatelessWidget {
     this.isSaving = false,
   });
 
+  /// Book metadata rendered by this card.
   final BookItem book;
 
+  /// Whether [book] is currently saved to the family bookshelf.
   final bool isSaved;
 
+  /// Callback invoked when the caregiver toggles the bookshelf bookmark.
   final VoidCallback? onToggleSave;
 
+  /// Callback invoked when the caregiver requests a companion play idea.
   final VoidCallback? onGetPlayIdea;
 
+  /// Whether a bookmark save or remove request is currently in progress.
   final bool isSaving;
 
   @override

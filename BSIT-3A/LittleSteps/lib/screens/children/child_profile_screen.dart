@@ -11,14 +11,12 @@ import '../../widgets/state_views.dart';
 import 'add_child_screen.dart';
 import 'offline_notice.dart';
 
-/// Lists the caregiver's child profiles and lets them switch the active
-/// child or edit a profile (issue #3).
+/// Lists the caregiver's child profiles and lets them switch or edit profiles.
 ///
-/// Shows a loading view while the list loads, an offline notice or an
-/// error view with Retry if it fails, and the onboarding view when there
-/// are no profiles yet.
+/// Shows a loading state while fetching profiles, an offline notice or retryable
+/// error view on failure, and [NoChildrenView] when no profiles exist yet.
 class ChildProfileScreen extends StatefulWidget {
-  /// Creates the children screen.
+  /// Creates a [ChildProfileScreen].
   const ChildProfileScreen({
     super.key,
     this.children,
@@ -26,53 +24,49 @@ class ChildProfileScreen extends StatefulWidget {
     this.onChildSelected,
   });
 
-  /// Children to show instead of loading them, for tests and previews.
+  /// Optional list of child profiles to display instead of loading from the API.
   final List<Child>? children;
 
-  /// The service used to load profiles. Tests pass a fake one; the app
-  /// leaves it null and uses the signed-in API client.
+  /// Optional service override used to load profiles.
+  ///
+  /// When `null`, this screen builds a [ChildrenService] from [AuthScope].
   final ChildrenService? childrenService;
 
-  /// Called after the caregiver switches to another child.
+  /// Callback invoked after the caregiver switches the active child.
   final ValueChanged<Child>? onChildSelected;
 
   @override
   State<ChildProfileScreen> createState() => _ChildProfileScreenState();
 }
 
-/// State for [ChildProfileScreen].
 class _ChildProfileScreenState extends State<ChildProfileScreen> {
-  /// The request for the children list, or null before the first load.
+  // Pending request for the children list, or null before the first load.
   Future<List<Child>>? _childrenFuture;
 
-  /// Starts the first load. `AuthScope` cannot be read in `initState`,
-  /// so the load starts here, once.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // AuthScope cannot be read in initState, so the initial fetch starts here once.
     if (_childrenFuture == null) {
       _load();
     }
   }
 
-  /// Loads the caregiver's children.
-  ///
-  /// Calling it again (Retry, or after adding or editing a child) starts a
-  /// new request, and the screen shows the loading view until it finishes.
+  // Starts or restarts the profile list request.
   void _load() {
     setState(() {
       _childrenFuture = _fetchChildren();
     });
   }
 
-  /// Gets the children from [ChildProfileScreen.children] or the API, and
-  /// makes the first one active if no child is active yet.
+  // Loads profiles from widget overrides or the API and selects the first child
+  // when no active child is set yet.
   Future<List<Child>> _fetchChildren() async {
     final given = widget.children;
     if (given != null) {
       return given;
     }
-    // Read everything that needs `context` before the first `await`.
+    // Capture context-dependent references before awaiting network I/O.
     final session = AuthScope.maybeOf(context);
     final service =
         widget.childrenService ??
@@ -85,7 +79,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     return children;
   }
 
-  /// Opens the add child form, then reloads the list so a new child shows.
+  // Opens the add-child form and reloads the list on return.
   Future<void> _openAddChild() async {
     await Navigator.pushNamed(context, '/children/add');
     if (!mounted) {
@@ -94,8 +88,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     _load();
   }
 
-  /// Opens the form to edit [child], then reloads the list so the changes
-  /// show.
+  // Opens the edit-child form for the given profile and reloads on return.
   Future<void> _openEditChild(Child child) async {
     await Navigator.push(
       context,
@@ -107,15 +100,13 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     _load();
   }
 
-  /// Makes [child] the active child. The header chip and the "Current
-  /// child" badge update because [AuthScope] notifies its listeners.
+  // Updates the active child in AuthScope so shell indicators refresh.
   void _select(Child child) {
     AuthScope.maybeOf(context)?.setActiveChild(child);
     widget.onChildSelected?.call(child);
   }
 
-  /// The part of the caregiver's email before the @, capitalized, used to
-  /// greet them on the onboarding view.
+  // Derives a capitalized greeting name from the signed-in caregiver email.
   String? _caregiverName() {
     final email = AuthScope.maybeOf(context)?.currentUser?.email;
     if (email == null || !email.contains('@')) {
@@ -128,7 +119,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     return '${name[0].toUpperCase()}${name.substring(1)}';
   }
 
-  /// Builds the screen for whichever state the children list is in.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,7 +163,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  /// The list of child cards, the add button and the privacy note.
   Widget _buildChildrenList(BuildContext context, List<Child> children) {
     final theme = Theme.of(context);
     final activeChildId = AuthScope.maybeOf(context)?.activeChild?.id;
@@ -241,8 +230,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  /// One child's card: initial, nickname, age band, the "Current child"
-  /// badge or a switch button, and an edit button.
   Widget _buildChildCard(
     BuildContext context,
     Child child, {
@@ -323,7 +310,6 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     );
   }
 
-  /// The "Current child" badge shown on the active child's card.
   Widget _currentChildBadge(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.symmetric(

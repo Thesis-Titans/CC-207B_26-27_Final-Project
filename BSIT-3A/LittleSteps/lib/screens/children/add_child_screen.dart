@@ -11,36 +11,32 @@ import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import 'offline_notice.dart';
 
-/// Form for adding a child profile, or editing one when [child] is given
-/// (issue #3).
+/// Form screen for creating or editing a child profile.
 ///
-/// Caregivers give either a birth month and year (the app shows the age
-/// band it leads to) or, if they prefer, an age band directly.
-///
-/// Fields are checked on the device first, and the server still checks every field
-/// when the profile is saved.
+/// Caregivers provide either a birth month and year (used to derive the age
+/// band) or select an [AgeBand] directly. Client-side validation runs before
+/// submission, and server-side field errors are mapped back to each input.
 class AddChildScreen extends StatefulWidget {
-  /// Creates the form. Pass [child] to edit that profile instead of adding
-  /// a new one.
+  /// Creates an [AddChildScreen].
+  ///
+  /// Pass [child] to edit an existing profile instead of creating a new one.
   const AddChildScreen({super.key, this.child, this.childrenService});
 
-  /// The profile to edit, or null to add a new child.
+  /// The profile to edit, or `null` when adding a new child.
   final Child? child;
 
-  /// The service used to save the profile. Tests pass a fake one; the app
-  /// leaves it null and uses the signed-in API client.
+  /// Optional service override used to save profiles.
+  ///
+  /// When `null`, this screen builds a [ChildrenService] from [AuthScope].
   final ChildrenService? childrenService;
 
   @override
   State<AddChildScreen> createState() => _AddChildScreenState();
 }
 
-/// State for [AddChildScreen].
 class _AddChildScreenState extends State<AddChildScreen> {
-  /// How many birth years the year picker offers, counting this year.
-  ///
-  /// The oldest supported age is 71 months (just under 6 years), so a
-  /// supported child is born at most 6 calendar years ago.
+  // Supported ages cover 0 to 71 months (under 6 years), spanning at most 7
+  // calendar years including the current year.
   static const _yearCount = 7;
 
   final _formKey = GlobalKey<FormState>();
@@ -48,16 +44,11 @@ class _AddChildScreenState extends State<AddChildScreen> {
   int? _birthYear;
   int? _birthMonth;
 
-  /// Whether the caregiver picks an age band instead of a birth date.
   bool _useAgeBand = false;
-
-  /// The age band picked when [_useAgeBand] is true.
   AgeBand? _ageBand;
 
-  /// Whether this form edits an existing profile.
   bool get _isEditing => widget.child != null;
 
-  /// Fills in the form from the child being edited, if any.
   @override
   void initState() {
     super.initState();
@@ -67,7 +58,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
     }
     _nicknameController.text = child.nickname;
 
-    // A birth date is stored as 'YYYY-MM', such as '2025-03'.
+    // Birth dates are stored in YYYY-MM format (for example, '2025-03').
     final parts = child.birthMonthYear?.split('-');
     final year = parts == null ? null : int.tryParse(parts[0]);
     final month = parts == null || parts.length < 2
@@ -77,38 +68,29 @@ class _AddChildScreenState extends State<AddChildScreen> {
       _birthYear = year;
       _birthMonth = month;
     } else {
-      // No birth date was given, so the profile uses an age band.
+      // No birth date was saved, so fall back to the direct age-band selector.
       _useAgeBand = true;
       _ageBand = ageBandForCode(child.ageBand);
     }
   }
 
-  /// Disposes the nickname controller when the screen is removed from the tree.
   @override
   void dispose() {
     _nicknameController.dispose();
     super.dispose();
   }
 
-  /// Whether the profile is being sent to the server.
   bool _saving = false;
-
-  /// The server's error message from the last save, if it failed.
   String? _errorMessage;
-
-  /// Whether the last save failed because the device is offline.
   bool _offline = false;
 
-  /// The server's error for each field from the last save, keyed by the
-  /// API field name: `nickname`, `birthMonthYear` or `ageBand`.
+  // Server field errors keyed by API field name ('nickname', 'birthMonthYear', 'ageBand').
   Map<String, String> _fieldErrors = const {};
 
-  /// The API fields this form has an input for.
   static const _formFields = {'nickname', 'birthMonthYear', 'ageBand'};
 
-  /// Shows the server's errors from [error] under the fields they belong to
-  /// An error for a field the form has no input for (such as the
-  /// limit on children) is shown above the Save button instead.
+  // Maps server validation errors to matching form fields; unmapped errors
+  // (such as profile count limits) are displayed above the Save button.
   void _showServerErrors(ApiException error) {
     final fieldErrors = <String, String>{};
     String? otherError;
@@ -132,7 +114,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
     });
   }
 
-  /// Removes the server's error for [field] once the caregiver changes it.
   void _clearFieldError(String field) {
     if (!_fieldErrors.containsKey(field)) {
       return;
@@ -142,26 +123,22 @@ class _AddChildScreenState extends State<AddChildScreen> {
     });
   }
 
-  /// Checks every field, then saves the profile and makes it the active
-  /// child.
-  ///
-  /// Sends either the age band or the birth month and year, never both,
-  /// because the API accepts exactly one of them.
+  // Validates the form and submits either ageBand or birthMonthYear (never
+  // both, matching the API contract), then updates the active child.
   Future<void> _submit() async {
     if (_saving || !_formKey.currentState!.validate()) {
       return;
     }
 
-    // Read everything that needs `context` before the first `await`.
+    // Capture context-dependent references before awaiting network I/O.
     final session = AuthScope.of(context);
     final navigator = Navigator.of(context);
     final childrenService =
         widget.childrenService ??
         ChildrenService(apiClient: AuthScope.apiClientOf(context));
 
-    // ApiClient refuses every save while it is marked offline, until some
-    // later request succeeds. Tapping Save is the caregiver asking to try
-    // again, so let this save really try the connection.
+    // Reset the offline flag before submitting so the save request retries
+    // the connection instead of short-circuiting immediately.
     final apiClient = childrenService.apiClient;
     if (apiClient.isOffline) {
       apiClient.isOffline = false;
@@ -187,7 +164,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
           ageBand: ageBand,
           birthMonthYear: birthMonthYear,
         );
-        // A newly added child becomes the active child.
+        // Make the newly created profile the active child.
         session.setActiveChild(child);
       } else {
         child = await childrenService.updateChild(
@@ -196,7 +173,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
           ageBand: ageBand,
           birthMonthYear: birthMonthYear,
         );
-        // Keep the header chip up to date if the active child was edited.
+        // Keep the shell header chip synced if the active child was edited.
         if (session.activeChild?.id == child.id) {
           session.setActiveChild(child);
         }
@@ -210,9 +187,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         navigator.pushReplacementNamed(AppRouter.initialRoute);
       }
     } on NoConnectionApiException {
-      // ApiClient reports a lost connection (and a save tried while it
-      // knows it is offline) as NoConnectionApiException. The form keeps
-      // what was typed, so Save can simply be tapped again.
+      // Retain form inputs so the caregiver can retry saving once reconnected.
       if (!mounted) {
         return;
       }
@@ -225,7 +200,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
       }
       _showServerErrors(error);
     } catch (_) {
-      // Any other error also means the request never reached the server.
       if (!mounted) {
         return;
       }
@@ -241,15 +215,13 @@ class _AddChildScreenState extends State<AddChildScreen> {
     }
   }
 
-  /// The picked birth month and year in the API's `YYYY-MM` format,
-  /// such as `2025-03`.
+  // Formats the selected birth year and month into the API's YYYY-MM string.
   String get _birthMonthYear {
     final month = _birthMonth!.toString().padLeft(2, '0');
     return '$_birthYear-$month';
   }
 
-  /// The age band for the picked birth month and year, or null if
-  /// either is missing or the age is outside 0-71 months.
+  // Derives the matching AgeBand for the selected birth year and month.
   AgeBand? get _derivedBand {
     final year = _birthYear;
     final month = _birthMonth;
@@ -264,14 +236,13 @@ class _AddChildScreenState extends State<AddChildScreen> {
     return ageBandForMonths(months);
   }
 
-  /// Checks the picked birth year together with the picked month.
   String? _validateBirthYear(int? year) {
     if (year == null) {
       return 'Choose a year';
     }
     final month = _birthMonth;
     if (month == null) {
-      // The month field shows its own error.
+      // The birth month dropdown renders its own required-field error.
       return null;
     }
     return validateBirthMonthYear(
@@ -281,7 +252,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
     );
   }
 
-  /// Builds the screen with a form for adding a child profile.
   @override
   Widget build(BuildContext context) {
     final currentYear = DateTime.now().year;
