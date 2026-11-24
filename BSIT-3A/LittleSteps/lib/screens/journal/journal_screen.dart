@@ -10,51 +10,36 @@ import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
 import 'journal_note_screen.dart';
 
-/// Journal tab: the caregiver's private notes about the active child,
-/// newest first (issue #7).
+/// Displays private observation notes for the active child, newest first.
 ///
-/// Shows loading, empty, error, offline and access denied states. The
-/// shell only shows this tab when a caregiver is signed in and a child is
-/// active. Note text is never logged.
+/// Handles loading, empty, error, offline, and access-denied states without
+/// logging note content.
 class JournalScreen extends StatefulWidget {
-  /// Creates the journal tab. Pass [journalService] in tests; the app
-  /// leaves it null and uses the signed-in API client.
+  /// Creates a [JournalScreen].
+  ///
+  /// Supply [journalService] in tests to override the signed-in API client.
   const JournalScreen({super.key, this.journalService});
 
-  /// The service used to load notes, or null to use the signed-in client.
+  /// Service used to load notes, or null to use the signed-in client.
   final JournalService? journalService;
 
   @override
   State<JournalScreen> createState() => _JournalScreenState();
 }
 
-/// State for [JournalScreen].
 class _JournalScreenState extends State<JournalScreen> {
-  /// The request for the active child's notes, or null before the first
-  /// load.
   Future<List<JournalEntry>>? _entriesFuture;
-
-  /// The child whose notes are loaded, so switching child reloads them.
   String? _loadedChildId;
-
-  /// Words typed in the search box.
   final _searchController = TextEditingController();
-
-  /// The day picked in the date filter, or null to show every day.
   DateTime? _filterDate;
 
-  /// Disposes the search controller when the tab is removed from the tree.
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  /// The notes that contain the search words and, if a day is picked,
-  /// were written on that day.
-  ///
-  /// Filtering happens on the device, so search words are never sent to
-  /// the server.
+  // Filters notes on-device so search terms are never sent to the server.
   List<JournalEntry> _filtered(List<JournalEntry> entries) {
     final query = _searchController.text.trim().toLowerCase();
     final filterDate = _filterDate;
@@ -70,13 +55,19 @@ class _JournalScreenState extends State<JournalScreen> {
     }).toList();
   }
 
-  /// Opens a date picker and filters the notes to the picked day.
   Future<void> _pickFilterDate() async {
     final now = DateTime.now();
+    final firstDate = DateTime(now.year - 6);
+    var initialDate = _filterDate ?? now;
+    if (initialDate.isBefore(firstDate)) {
+      initialDate = firstDate;
+    } else if (initialDate.isAfter(now)) {
+      initialDate = now;
+    }
     final picked = await showDatePicker(
       context: context,
-      initialDate: _filterDate ?? now,
-      firstDate: DateTime(now.year - 6),
+      initialDate: initialDate,
+      firstDate: firstDate,
       lastDate: now,
       helpText: 'Show notes from',
     );
@@ -87,18 +78,21 @@ class _JournalScreenState extends State<JournalScreen> {
     }
   }
 
-  /// Loads the notes the first time, and again whenever the active child
-  /// changes. `AuthScope` notifies this screen when the child changes.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final childId = AuthScope.of(context).activeChild?.id;
     if (childId != null && childId != _loadedChildId) {
+      // Clear active filters when switching to a different child so previous
+      // criteria do not hide the newly selected child's notes.
+      if (_loadedChildId != null) {
+        _searchController.clear();
+        _filterDate = null;
+      }
       _load(childId);
     }
   }
 
-  /// Loads the notes for [childId], sorted newest first.
   void _load(String childId) {
     final service =
         widget.journalService ??
@@ -109,7 +103,6 @@ class _JournalScreenState extends State<JournalScreen> {
     });
   }
 
-  /// Loads the notes again for the same child (Retry and Try again).
   void _reload() {
     final childId = _loadedChildId;
     if (childId != null) {
@@ -117,9 +110,7 @@ class _JournalScreenState extends State<JournalScreen> {
     }
   }
 
-  /// Sorts notes by entry date, then by creation time, newest first.
-  ///
-  /// Entry dates are 'YYYY-MM-DD' text, which sorts in date order.
+  // Sorts newest first by ISO 'YYYY-MM-DD' entry date, then creation time.
   List<JournalEntry> _newestFirst(List<JournalEntry> entries) {
     final sortedEntries = List<JournalEntry>.from(entries);
     sortedEntries.sort((a, b) {
@@ -132,7 +123,6 @@ class _JournalScreenState extends State<JournalScreen> {
     return sortedEntries;
   }
 
-  /// Builds the header and whichever state the notes are in.
   @override
   Widget build(BuildContext context) {
     final childName = AuthScope.of(context).activeChild?.nickname;
@@ -145,7 +135,13 @@ class _JournalScreenState extends State<JournalScreen> {
         label: const Text('New note'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.space16),
+        // Leave bottom clearance so the extended FAB does not cover the last card.
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space16,
+          AppSpacing.space16,
+          AppSpacing.space16,
+          88,
+        ),
         children: [
           ScreenHeader(
             title: 'Journal',
@@ -201,7 +197,6 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
-  /// Opens the new note form, then reloads the list if a note was saved.
   Future<void> _openNewNote() async {
     final saved = await Navigator.push<bool>(
       context,
@@ -215,7 +210,6 @@ class _JournalScreenState extends State<JournalScreen> {
     }
   }
 
-  /// Opens [entry] to edit or delete, then reloads the list if it changed.
   Future<void> _openNote(JournalEntry entry) async {
     final changed = await Navigator.push<bool>(
       context,
@@ -231,8 +225,6 @@ class _JournalScreenState extends State<JournalScreen> {
     }
   }
 
-  /// The search box, the date filter button and, when a day is picked, a
-  /// button to clear it.
   Widget _buildFilters() {
     final filterDate = _filterDate;
 
@@ -281,14 +273,12 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
-  /// The view for a failed load. It never shows the error's own text,
-  /// so nothing about the note or child is revealed.
+  // Omits raw exception text so note or child details are never revealed.
   Widget _buildError(Object? error) {
     if (error is NoConnectionApiException) {
       return _OfflineView(onRetry: _reload);
     }
-    // 404 (missing, or not this caregiver's) and 403 look the same, so
-    // the caregiver learns nothing about whether the profile exists (J4).
+    // Treat 403 and 404 identically to avoid leaking profile existence.
     final denied =
         error is NotFoundApiException ||
         (error is ApiException && error.statusCode == 403);
@@ -306,18 +296,12 @@ class _JournalScreenState extends State<JournalScreen> {
   }
 }
 
-/// One note in the list: its date, a short preview and a Private badge.
-/// Tapping it opens the note to edit or delete.
 class _JournalEntryCard extends StatelessWidget {
   const _JournalEntryCard({required this.entry, required this.onTap});
 
-  /// The note to show.
   final JournalEntry entry;
-
-  /// Called when the caregiver taps the note.
   final VoidCallback onTap;
 
-  /// Shows 'YYYY-MM-DD' as a readable date, such as 'Nov 24, 2026'.
   String get _formattedDate {
     final date = DateTime.tryParse(entry.entryDate);
     return date == null ? entry.entryDate : DateFormat.yMMMd().format(date);
@@ -373,7 +357,6 @@ class _JournalEntryCard extends StatelessWidget {
   }
 }
 
-/// A small lock badge that marks a note as private.
 class _PrivateBadge extends StatelessWidget {
   const _PrivateBadge();
 
@@ -406,13 +389,9 @@ class _PrivateBadge extends StatelessWidget {
   }
 }
 
-/// Tells the caregiver they are offline, with a "Try again" button.
-///
-/// Styled like the offline banner on the Milestones screen.
 class _OfflineView extends StatelessWidget {
   const _OfflineView({required this.onRetry});
 
-  /// Called when the caregiver taps "Try again".
   final VoidCallback onRetry;
 
   @override

@@ -1,9 +1,8 @@
 /// The longest journal note the API accepts.
 const int maxJournalLength = 2000;
 
-/// Matches characters the API rejects in a note: invisible control
-/// characters other than line breaks and tabs, and invisible format
-/// characters (such as zero-width spaces).
+// Matches invisible control characters (except line breaks and tabs) and
+// invisible Unicode format characters such as zero-width spaces.
 final RegExp _forbiddenCharacters = RegExp(
   r'[^\P{Cc}\r\n\t]|\p{Cf}',
   unicode: true,

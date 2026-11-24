@@ -10,59 +10,43 @@ import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/state_views.dart';
 
-/// Form for writing a private journal note about the active child, or
-/// editing and deleting one when [entry] is given (#7).
+/// Displays a form for creating, editing, or deleting a private journal note.
 ///
-/// States the privacy boundary before the text box, shows a 2,000-character
-/// counter, and checks the note and date before saving. If the device is
-/// offline, the typed note stays in the box so nothing is lost.
+/// Presents the privacy boundary above the note field, enforces the
+/// 2,000-character limit and non-future date check, and preserves the draft
+/// in place if saving fails while offline.
 class JournalNoteScreen extends StatefulWidget {
-  /// Creates the form. Pass [entry] to edit that note instead of writing a
-  /// new one. Pass [journalService] in tests; the app leaves it null and
-  /// uses the signed-in API client.
+  /// Creates a [JournalNoteScreen].
+  ///
+  /// Pass [entry] to edit an existing note, and [journalService] in tests to
+  /// override the signed-in API client.
   const JournalNoteScreen({super.key, this.entry, this.journalService});
 
-  /// The note to edit, or null to write a new note.
+  /// Existing note being edited, or null when creating a new note.
   final JournalEntry? entry;
 
-  /// The service used to save the note, or null to use the signed-in client.
+  /// Service used to save or delete notes, or null to use the signed-in client.
   final JournalService? journalService;
 
   @override
   State<JournalNoteScreen> createState() => _JournalNoteScreenState();
 }
 
-/// State for [JournalNoteScreen].
 class _JournalNoteScreenState extends State<JournalNoteScreen> {
-  /// The API fields this form has an input for.
   static const _formFields = {'content', 'entryDate'};
 
   final _formKey = GlobalKey<FormState>();
   final _contentController = TextEditingController();
 
-  /// The day the note is about. Defaults to today.
   DateTime _date = DateTime.now();
-
-  /// Whether the note is being sent to the server.
   bool _saving = false;
-
-  /// Whether the last save failed because the device is offline.
   bool _offline = false;
-
-  /// An error that does not belong to one field, shown above Save.
   String? _errorMessage;
-
-  /// The server's error for each field from the last save, keyed by the
-  /// API field name: `content` or `entryDate`.
   Map<String, String> _fieldErrors = const {};
-
-  /// Whether the note no longer exists or is not this caregiver's (J4).
   bool _unavailable = false;
 
-  /// Whether this form edits an existing note.
   bool get _isEditing => widget.entry != null;
 
-  /// Fills in the form from the note being edited, if any.
   @override
   void initState() {
     super.initState();
@@ -74,20 +58,25 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
     _date = DateTime.tryParse(entry.entryDate) ?? _date;
   }
 
-  /// Disposes the note controller when the screen is removed from the tree.
   @override
   void dispose() {
     _contentController.dispose();
     super.dispose();
   }
 
-  /// Opens a date picker that cannot pick a future day.
   Future<void> _pickDate() async {
     final now = DateTime.now();
+    final firstDate = DateTime(now.year - 6);
+    var initialDate = _date;
+    if (initialDate.isBefore(firstDate)) {
+      initialDate = firstDate;
+    } else if (initialDate.isAfter(now)) {
+      initialDate = now;
+    }
     final picked = await showDatePicker(
       context: context,
-      initialDate: _date,
-      firstDate: DateTime(now.year - 6),
+      initialDate: initialDate,
+      firstDate: firstDate,
       lastDate: now,
       helpText: 'When did you notice it?',
     );
@@ -99,10 +88,7 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
     }
   }
 
-  /// Checks the note and date, then saves the note and goes back to the
-  /// list with `true` so the list reloads.
-  ///
-  /// The note is sent as typed, not trimmed, so its line breaks are kept.
+  // Validates and saves the note as typed (preserving line breaks).
   Future<void> _submit() async {
     if (_saving || !_formKey.currentState!.validate()) {
       return;
@@ -180,8 +166,6 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
     }
   }
 
-  /// Asks the caregiver to confirm, then deletes the note being edited and
-  /// goes back to the list with `true` so the list reloads.
   Future<void> _delete() async {
     final entry = widget.entry;
     final child = AuthScope.of(context).activeChild;
@@ -250,8 +234,6 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
     }
   }
 
-  /// Shows the server's errors from [error] under the fields they belong
-  /// to, and any other error above the Save button.
   void _showServerErrors(ApiException error) {
     final fieldErrors = <String, String>{};
     String? otherError;
@@ -275,7 +257,6 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
     });
   }
 
-  /// Builds the screen: the form, or the "not available" view (J4).
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -291,8 +272,7 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
             ),
         ],
       ),
-      // J4: reveal nothing about a note that is gone or not this
-      // caregiver's, and drop what was on screen.
+      // Reveal nothing about a missing or unauthorized note and drop form content.
       body: _unavailable
           ? const EmptyStateView(
               title: "This note isn't available",
@@ -304,7 +284,6 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
     );
   }
 
-  /// The privacy card, the date, the note box and the Save button.
   Widget _buildForm(BuildContext context) {
     final theme = Theme.of(context);
     final dateError = _fieldErrors['entryDate'];
@@ -314,7 +293,7 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.space16),
         children: [
-          // The privacy boundary comes before the text box (#7).
+          // Place the privacy boundary notice above the text input.
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -433,8 +412,6 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
   }
 }
 
-/// Tells the caregiver the note was not saved because they are offline,
-/// that the draft is kept, and that the note stays private.
 class _OfflineDraftNotice extends StatelessWidget {
   const _OfflineDraftNotice();
 
