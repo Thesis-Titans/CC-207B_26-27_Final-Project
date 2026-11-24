@@ -14,12 +14,16 @@ class CatalogService {
   Future<List<Activity>> getActivities({
     String? ageBand,
     String? domain,
+    String? language,
     String? setting,
+    int limit = 50,
   }) async {
     final queryParams = <String, String>{};
     if (ageBand != null) queryParams['ageBand'] = ageBand;
     if (domain != null) queryParams['domain'] = domain;
+    if (language != null) queryParams['language'] = language;
     if (setting != null) queryParams['setting'] = setting;
+    queryParams['limit'] = limit.toString();
 
     final data = await apiClient.get(
       '/api/v1/catalog/activities',

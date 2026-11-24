@@ -268,7 +268,7 @@ void main() {
 
         final activities = await catalogService.getActivities();
         expect(activities.length, 1);
-        expect(cache.has('/api/v1/catalog/activities'), isTrue);
+        expect(cache.has('/api/v1/catalog/activities?limit=50'), isTrue);
 
         final plans = await planService.getPlans(
           'child-c1',

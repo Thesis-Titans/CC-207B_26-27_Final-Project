@@ -3,12 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:littlesteps/models/auth_user.dart';
 import 'package:littlesteps/models/child.dart';
 import 'package:littlesteps/screens/shell_screen.dart';
+import 'package:littlesteps/screens/explore/explore_screen.dart';
 import 'package:littlesteps/services/api_client.dart';
 import 'package:littlesteps/services/auth_service.dart';
 import 'package:littlesteps/services/auth_session_state.dart';
+import 'package:littlesteps/theme/app_theme.dart';
 import 'package:littlesteps/widgets/auth_scope.dart';
 import 'package:littlesteps/widgets/child_chip.dart';
-import 'package:littlesteps/widgets/idea_helper_card.dart';
 import 'package:littlesteps/widgets/no_children_view.dart';
 
 class _FakeAuthService implements AuthService {
@@ -56,7 +57,9 @@ void main() {
   testWidgets('shell shows five tabs and switches between them', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: ShellScreen()));
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light(), home: const ShellScreen()),
+    );
 
     final nav = find.byType(NavigationBar);
     for (final label in [
@@ -76,7 +79,7 @@ void main() {
     await tester.tap(find.descendant(of: nav, matching: find.text('Explore')));
     await tester.pumpAndSettle();
     expect(
-      find.text('The age-aware activity catalog appears here.'),
+      find.text('Simple ideas with things you already have.'),
       findsOneWidget,
     );
   });
@@ -159,7 +162,10 @@ void main() {
         AuthScope(
           sessionState: sessionState,
           apiClient: ApiClient(baseUrl: 'http://test'),
-          child: const MaterialApp(home: ShellScreen()),
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const ShellScreen(),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -173,15 +179,20 @@ void main() {
 
       final nav = find.byType(NavigationBar);
 
-      // Explore tab shows IdeaHelperCard and activity catalog for active child
+      // Explore tab shows the shared screen header and catalog filters.
       await tester.tap(
         find.descendant(of: nav, matching: find.text('Explore')),
       );
       await tester.pumpAndSettle();
-      expect(find.byType(IdeaHelperCard), findsOneWidget);
-      expect(find.text('Idea helper'), findsOneWidget);
       expect(
-        find.text('The age-aware activity catalog appears here.'),
+        find.descendant(
+          of: find.byType(ExploreScreen),
+          matching: find.text('Explore'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Simple ideas with things you already have.'),
         findsOneWidget,
       );
 
