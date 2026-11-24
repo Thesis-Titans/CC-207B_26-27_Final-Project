@@ -5,6 +5,7 @@ import '../theme/app_tokens.dart';
 
 /// A header chip displaying the active child profile.
 class ChildChip extends StatelessWidget {
+  /// Creates a [ChildChip].
   const ChildChip({
     super.key,
     required this.activeChild,
@@ -18,18 +19,17 @@ class ChildChip extends StatelessWidget {
   /// Callback invoked when the chip is tapped.
   final VoidCallback? onTap;
 
-  /// Shows only the nickname while retaining the full label for screen readers.
+  /// Whether to render only the nickname while keeping the full semantics label.
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final label = activeChild != null
-        ? '${activeChild!.nickname} (${activeChild!.ageBand})'
+    final child = activeChild;
+    final label = child != null
+        ? '${child.nickname} (${child.ageBand})'
         : 'Select Child';
-    final visibleLabel = compact && activeChild != null
-        ? activeChild!.nickname
-        : label;
+    final visibleLabel = compact && child != null ? child.nickname : label;
 
     return InkWell(
       onTap: onTap,

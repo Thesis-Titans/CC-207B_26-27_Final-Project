@@ -19,8 +19,13 @@ import 'milestones/milestones_screen.dart';
 import 'journal/journal_screen.dart';
 import 'reflection/weekly_summary_screen.dart';
 
-/// Main navigation shell hosting the bottom navigation bar and shared header.
+/// Main navigation shell hosting adaptive navigation and the shared app header.
+///
+/// Uses a bottom [NavigationBar] on compact viewports and switches to a side
+/// [NavigationRail] at or above [AppSizes.wideLayoutBreakpoint] while keeping
+/// tab content centered within [AppSizes.contentMaxWidth].
 class ShellScreen extends StatefulWidget {
+  /// Creates a [ShellScreen].
   const ShellScreen({
     super.key,
     this.email,
@@ -66,6 +71,25 @@ class ShellScreen extends StatefulWidget {
 }
 
 class _ShellScreenState extends State<ShellScreen> {
+  static const double _extendedRailBreakpoint = 1080;
+
+  static const List<({IconData icon, IconData selectedIcon, String label})>
+  _destinations = [
+    (icon: Icons.today_outlined, selectedIcon: Icons.today, label: 'Today'),
+    (
+      icon: Icons.explore_outlined,
+      selectedIcon: Icons.explore,
+      label: 'Explore',
+    ),
+    (icon: Icons.flag_outlined, selectedIcon: Icons.flag, label: 'Milestones'),
+    (icon: Icons.book_outlined, selectedIcon: Icons.book, label: 'Journal'),
+    (
+      icon: Icons.insights_outlined,
+      selectedIcon: Icons.insights,
+      label: 'This week',
+    ),
+  ];
+
   int _currentIndex = 0;
   List<Child> _children = [];
   bool _isLoadingChildren = false;
@@ -188,101 +212,288 @@ class _ShellScreenState extends State<ShellScreen> {
             ),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: compactHeader
-            ? IconButton(
-                tooltip: 'LittleSteps home',
-                onPressed: _goToToday,
-                icon: const GrowthSymbol(size: 26),
-              )
-            : BrandLogo(onTap: _goToToday),
-        actions: [
-          if (activeChild != null)
-            SizedBox(
-              width: compactHeader ? 132 : null,
-              child: ChildChip(
-                activeChild: activeChild,
-                compact: compactHeader,
-                onTap: () {
-                  if (!isAuthenticated) {
-                    Navigator.pushNamed(
-                      context,
-                      '/sign-in',
-                      arguments:
-                          'Please sign in to select or manage child profiles.',
-                    );
-                  } else {
-                    Navigator.pushNamed(context, '/children');
-                  }
-                },
-              ),
-            ),
-          IconButton(
-            icon: CircleAvatar(
-              radius: 14,
-              backgroundColor: AppColors.softGreen,
-              child: Text(
-                activeChild != null && activeChild.nickname.isNotEmpty
-                    ? activeChild.nickname[0].toUpperCase()
-                    : ((sessionState?.currentUser?.email ?? widget.email) !=
-                                  null &&
-                              (sessionState?.currentUser?.email ??
-                                      widget.email)!
-                                  .isNotEmpty
-                          ? (sessionState?.currentUser?.email ??
-                                    widget.email)![0]
-                                .toUpperCase()
-                          : 'C'),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.forest,
+    void onDestinationSelected(int index) {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+
+    void onChildChipTap() {
+      if (!isAuthenticated) {
+        Navigator.pushNamed(
+          context,
+          '/sign-in',
+          arguments: 'Please sign in to select or manage child profiles.',
+        );
+      } else {
+        Navigator.pushNamed(context, '/children');
+      }
+    }
+
+    final avatarInitial = activeChild != null && activeChild.nickname.isNotEmpty
+        ? activeChild.nickname[0].toUpperCase()
+        : (rawEmail != null && rawEmail.isNotEmpty
+              ? rawEmail[0].toUpperCase()
+              : 'C');
+
+    Widget buildAvatar() => CircleAvatar(
+      radius: 14,
+      backgroundColor: AppColors.softGreen,
+      child: Text(
+        avatarInitial,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: AppColors.forest,
+        ),
+      ),
+    );
+
+    // IndexedStack keeps all five tab subtrees mounted so scroll position and
+    // filter inputs persist when switching tabs; ConstrainedBox centers each tab.
+    final centeredContent = Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
+        child: IndexedStack(index: _currentIndex, children: screens),
+      ),
+    );
+
+    // LayoutBuilder inspects available width to switch between compact mobile
+    // bottom navigation (< 840dp) and wide side navigation (>= 840dp).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= AppSizes.wideLayoutBreakpoint;
+        final isExtendedRail = constraints.maxWidth >= _extendedRailBreakpoint;
+
+        return Scaffold(
+          appBar: isWide
+              ? null
+              : AppBar(
+                  title: compactHeader
+                      ? IconButton(
+                          tooltip: 'LittleSteps home',
+                          onPressed: _goToToday,
+                          icon: const GrowthSymbol(size: 26),
+                        )
+                      : BrandLogo(onTap: _goToToday),
+                  actions: [
+                    if (activeChild != null)
+                      SizedBox(
+                        width: compactHeader ? 132 : null,
+                        child: ChildChip(
+                          activeChild: activeChild,
+                          compact: compactHeader,
+                          onTap: onChildChipTap,
+                        ),
+                      ),
+                    IconButton(
+                      icon: buildAvatar(),
+                      tooltip: 'Account',
+                      onPressed: () => _showAccountMenu(sessionState),
+                    ),
+                    const SizedBox(width: AppSpacing.space4),
+                  ],
                 ),
-              ),
-            ),
-            tooltip: 'Account',
-            onPressed: () => _showAccountMenu(sessionState),
-          ),
-          const SizedBox(width: AppSpacing.space4),
-        ],
-      ),
-      body: IndexedStack(index: _currentIndex, children: screens),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.today_outlined),
-            selectedIcon: Icon(Icons.today),
-            label: 'Today',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.explore_outlined),
-            selectedIcon: Icon(Icons.explore),
-            label: 'Explore',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.flag_outlined),
-            selectedIcon: Icon(Icons.flag),
-            label: 'Milestones',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.book_outlined),
-            selectedIcon: Icon(Icons.book),
-            label: 'Journal',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights),
-            label: 'This week',
-          ),
-        ],
-      ),
+          body: isWide
+              ? Row(
+                  children: [
+                    Material(
+                      color: AppColors.surfaceCard,
+                      child: SizedBox(
+                        width: isExtendedRail ? AppSizes.sidebarWidth : 80,
+                        child: Column(
+                          crossAxisAlignment: isExtendedRail
+                              ? CrossAxisAlignment.stretch
+                              : CrossAxisAlignment.center,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                isExtendedRail
+                                    ? AppSpacing.space16
+                                    : AppSpacing.space8,
+                                AppSpacing.space20,
+                                isExtendedRail
+                                    ? AppSpacing.space16
+                                    : AppSpacing.space8,
+                                AppSpacing.space12,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: isExtendedRail
+                                    ? CrossAxisAlignment.start
+                                    : CrossAxisAlignment.center,
+                                children: [
+                                  if (isExtendedRail)
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: BrandLogo(onTap: _goToToday),
+                                    )
+                                  else
+                                    IconButton(
+                                      tooltip: 'LittleSteps home',
+                                      onPressed: _goToToday,
+                                      icon: const GrowthSymbol(size: 28),
+                                    ),
+                                  if (activeChild != null &&
+                                      isExtendedRail) ...[
+                                    const SizedBox(height: AppSpacing.space16),
+                                    ChildChip(
+                                      activeChild: activeChild,
+                                      onTap: onChildChipTap,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, railConstraints) {
+                                  return SingleChildScrollView(
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        minHeight: railConstraints.maxHeight,
+                                      ),
+                                      child: IntrinsicHeight(
+                                        child: NavigationRail(
+                                          selectedIndex: _currentIndex,
+                                          extended: isExtendedRail,
+                                          minExtendedWidth:
+                                              AppSizes.sidebarWidth,
+                                          labelType: isExtendedRail
+                                              ? NavigationRailLabelType.none
+                                              : NavigationRailLabelType.all,
+                                          backgroundColor:
+                                              AppColors.surfaceCard,
+                                          useIndicator: true,
+                                          indicatorColor: AppColors.softGreen,
+                                          indicatorShape:
+                                              RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      AppRadius.control,
+                                                    ),
+                                              ),
+                                          selectedIconTheme:
+                                              const IconThemeData(
+                                                color: AppColors.forest,
+                                                size: 22,
+                                              ),
+                                          unselectedIconTheme:
+                                              const IconThemeData(
+                                                color: AppColors.textSecondary,
+                                                size: 22,
+                                              ),
+                                          selectedLabelTextStyle:
+                                              const TextStyle(
+                                                color: AppColors.forest,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                          unselectedLabelTextStyle:
+                                              const TextStyle(
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 14,
+                                              ),
+                                          onDestinationSelected:
+                                              onDestinationSelected,
+                                          destinations: _destinations
+                                              .map(
+                                                (d) =>
+                                                    NavigationRailDestination(
+                                                      icon: Icon(d.icon),
+                                                      selectedIcon: Icon(
+                                                        d.selectedIcon,
+                                                      ),
+                                                      label: Text(d.label),
+                                                    ),
+                                              )
+                                              .toList(),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: AppColors.borderSubtle,
+                            ),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: isExtendedRail
+                                    ? AppSpacing.space12
+                                    : AppSpacing.space8,
+                                vertical: AppSpacing.space12,
+                              ),
+                              child: isExtendedRail
+                                  ? TextButton.icon(
+                                      onPressed: () =>
+                                          _showAccountMenu(sessionState),
+                                      style: TextButton.styleFrom(
+                                        alignment: Alignment.centerLeft,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.space8,
+                                          vertical: AppSpacing.space8,
+                                        ),
+                                      ),
+                                      icon: buildAvatar(),
+                                      label: Text(
+                                        formattedCaregiver ?? 'Account',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AppColors.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    )
+                                  : IconButton(
+                                      icon: buildAvatar(),
+                                      tooltip: 'Account',
+                                      onPressed: () =>
+                                          _showAccountMenu(sessionState),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: AppColors.borderSubtle,
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space32,
+                          vertical: AppSpacing.space16,
+                        ),
+                        child: centeredContent,
+                      ),
+                    ),
+                  ],
+                )
+              : centeredContent,
+          bottomNavigationBar: isWide
+              ? null
+              : NavigationBar(
+                  selectedIndex: _currentIndex,
+                  onDestinationSelected: onDestinationSelected,
+                  destinations: _destinations
+                      .map(
+                        (d) => NavigationDestination(
+                          icon: Icon(d.icon),
+                          selectedIcon: Icon(d.selectedIcon),
+                          label: d.label,
+                        ),
+                      )
+                      .toList(),
+                ),
+        );
+      },
     );
   }
 
@@ -314,6 +525,7 @@ class _ShellScreenState extends State<ShellScreen> {
           widget.onChildSelected?.call(child);
         },
         onSignOut: () async {
+          // Close the modal bottom sheet before clearing session routes.
           Navigator.pop(sheetContext);
           if (sessionState != null) {
             await sessionState.signOut();
@@ -328,6 +540,7 @@ class _ShellScreenState extends State<ShellScreen> {
           }
         },
         onOpenSettings: () {
+          // Close the modal bottom sheet first so it is not still open on back.
           Navigator.pop(sheetContext);
           Navigator.of(context).push(
             MaterialPageRoute<void>(

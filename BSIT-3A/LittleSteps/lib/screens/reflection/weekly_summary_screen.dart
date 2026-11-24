@@ -9,10 +9,23 @@ import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 
 /// View states for the weekly summary screen.
-enum WeeklySummaryViewState { ready, loading, error, offline }
+enum WeeklySummaryViewState {
+  /// Weekly summary metrics and reflection card are displayed.
+  ready,
+
+  /// Weekly summary data is loading from the backend.
+  loading,
+
+  /// A recoverable request error occurred.
+  error,
+
+  /// Cached weekly summary data is displayed while offline.
+  offline,
+}
 
 /// "This week" reflection tab presenting factual weekly summaries for the active child.
 class WeeklySummaryScreen extends StatefulWidget {
+  /// Creates a [WeeklySummaryScreen].
   const WeeklySummaryScreen({
     super.key,
     this.initialState = WeeklySummaryViewState.ready,
@@ -23,11 +36,22 @@ class WeeklySummaryScreen extends StatefulWidget {
     this.summaryService,
   });
 
+  /// Initial view state override for widget tests.
   final WeeklySummaryViewState initialState;
+
+  /// Initial ISO week identifier selected on load.
   final String initialWeek;
+
+  /// Optional map of preloaded summaries keyed by ISO week.
   final Map<String, WeeklySummary>? summaries;
+
+  /// Optional child nickname override for widget tests.
   final String? childName;
+
+  /// Optional child age-band override for widget tests.
   final String? childAgeBand;
+
+  /// Optional service override for fetching weekly summaries.
   final SummaryService? summaryService;
 
   @override
@@ -278,25 +302,32 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           subtitle: 'A look back at the moments you wrote down.',
         ),
         const SizedBox(height: AppSpacing.space12),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space12,
-            vertical: AppSpacing.space8,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AppColors.borderSubtle),
-            borderRadius: BorderRadius.circular(AppRadius.control),
-          ),
-          child: Row(
-            children: [
-              Text(
-                'For $_childName · $_childAgeDisplay',
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Spacer(),
-              const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
-            ],
+        InkWell(
+          onTap: () => Navigator.pushNamed(context, '/children'),
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space12,
+              vertical: AppSpacing.space8,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: AppColors.borderSubtle),
+              borderRadius: BorderRadius.circular(AppRadius.control),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  'For $_childName · $_childAgeDisplay',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.arrow_drop_down,
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.space12),

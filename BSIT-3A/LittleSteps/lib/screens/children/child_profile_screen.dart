@@ -11,6 +11,7 @@ import '../../widgets/no_children_view.dart';
 /// Displays the empty onboarding view when no profiles exist,
 /// and the family profile management list when children have been added.
 class ChildProfileScreen extends StatefulWidget {
+  /// Creates a [ChildProfileScreen].
   const ChildProfileScreen({
     super.key,
     this.children,
@@ -116,7 +117,18 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               caregiverName: formattedCaregiver,
               onAddChild: () => _navigateToAddChild(context),
             )
-          : _buildChildrenList(context, effectiveChildren, activeChild),
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: AppSizes.contentMaxWidth,
+                ),
+                child: _buildChildrenList(
+                  context,
+                  effectiveChildren,
+                  activeChild,
+                ),
+              ),
+            ),
     );
   }
 

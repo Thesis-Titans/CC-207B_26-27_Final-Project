@@ -17,6 +17,7 @@ import '../../widgets/auth_scope.dart';
 /// Collects available materials, duration, setting, and language preferences
 /// to generate personalized, non-diagnostic play activity recommendations.
 class AiSuggestionsScreen extends StatefulWidget {
+  /// Creates an [AiSuggestionsScreen].
   const AiSuggestionsScreen({
     super.key,
     this.apiClient,
@@ -26,22 +27,51 @@ class AiSuggestionsScreen extends StatefulWidget {
     this.initialChild,
   });
 
+  /// Optional HTTP client override used for tests.
   final ApiClient? apiClient;
+
+  /// Optional AI recommendation service override used for tests.
   final AiService? aiService;
+
+  /// Optional catalog service override for weather hints and fallback picks.
   final CatalogService? catalogService;
+
+  /// Optional plan service override for saving suggestions to today's plan.
   final PlanService? planService;
+
+  /// Optional active child override used when launching outside [AuthScope].
   final Child? initialChild;
 
   @override
   State<AiSuggestionsScreen> createState() => _AiSuggestionsScreenState();
 }
 
+enum _PlaySettingOption {
+  either('either', 'Indoor or outdoor'),
+  indoor('indoor', 'Indoor'),
+  outdoor('outdoor', 'Outdoor');
+
+  const _PlaySettingOption(this.code, this.label);
+  final String code;
+  final String label;
+}
+
+enum _PlayLanguageOption {
+  english('en', 'English'),
+  filipino('fil', 'Filipino'),
+  hiligaynon('hil', 'Hiligaynon');
+
+  const _PlayLanguageOption(this.code, this.label);
+  final String code;
+  final String label;
+}
+
 class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   final TextEditingController _materialsController = TextEditingController();
 
   int _timeMinutes = 15;
-  String _setting = 'either';
-  String _language = 'en';
+  String _setting = _PlaySettingOption.either.code;
+  String _language = _PlayLanguageOption.english.code;
   String _ageBand = '12-23m';
   String? _domain;
 
@@ -50,27 +80,18 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   String? _rateLimitMessage;
   String? _fallbackNotice;
   WeatherHint? _weatherHint;
-  bool _weatherFetched = false;
+  String? _lastWeatherCityKey;
+  String? _lastChildId;
 
   static const List<int> _timeOptions = [10, 15, 30, 45];
-  static const List<Map<String, String>> _settingOptions = [
-    {'value': 'either', 'label': 'Indoor or outdoor'},
-    {'value': 'indoor', 'label': 'Indoor'},
-    {'value': 'outdoor', 'label': 'Outdoor'},
-  ];
-  static const List<Map<String, String>> _languageOptions = [
-    {'value': 'en', 'label': 'English'},
-    {'value': 'fil', 'label': 'Filipino'},
-    {'value': 'hil', 'label': 'Hiligaynon'},
-  ];
-  static const List<Map<String, String>> _ageBandOptions = [
-    {'value': '0-5m', 'label': '0-5 months'},
-    {'value': '6-11m', 'label': '6-11 months'},
-    {'value': '12-23m', 'label': '12-23 months'},
-    {'value': '24-35m', 'label': '24-35 months'},
-    {'value': '36-47m', 'label': '3-4 years'},
-    {'value': '48-59m', 'label': '4-5 years'},
-    {'value': '60-71m', 'label': '5-6 years'},
+  static const List<({String code, String label})> _ageBandOptions = [
+    (code: '0-5m', label: '0-5 months'),
+    (code: '6-11m', label: '6-11 months'),
+    (code: '12-23m', label: '12-23 months'),
+    (code: '24-35m', label: '24-35 months'),
+    (code: '36-47m', label: '3-4 years'),
+    (code: '48-59m', label: '4-5 years'),
+    (code: '60-71m', label: '5-6 years'),
   ];
 
   Child? get _effectiveChild =>
@@ -99,33 +120,52 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Sync the age band only when the active child changes so manual
+    // dropdown selections are not overwritten when the keyboard opens.
     final activeChild = _effectiveChild;
-    if (activeChild != null && widget.initialChild == null) {
-      _ageBand = activeChild.ageBand;
+    if (widget.initialChild == null && activeChild?.id != _lastChildId) {
+      _lastChildId = activeChild?.id;
+      if (activeChild != null) {
+        _ageBand = activeChild.ageBand;
+      }
     }
-    if (!_weatherFetched) {
-      _weatherFetched = true;
-      _fetchWeatherGuidance();
+    final session = AuthScope.maybeOf(context);
+    final weatherLocation = session != null
+        ? session.weatherLocation
+        : WeatherLocation.iloiloCity;
+    final weatherCityKey = weatherLocation?.name ?? '__off__';
+    if (_lastWeatherCityKey != weatherCityKey) {
+      _lastWeatherCityKey = weatherCityKey;
+      if (weatherLocation == null) {
+        _weatherHint = null;
+      } else {
+        _fetchWeatherGuidance(weatherLocation);
+      }
     }
   }
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialChild != null) {
-      _ageBand = widget.initialChild!.ageBand;
+    final initialChild = widget.initialChild;
+    if (initialChild != null) {
+      _ageBand = initialChild.ageBand;
     }
   }
 
   @override
   void dispose() {
+    // Release native text-editing resources when the screen unmounts.
     _materialsController.dispose();
     super.dispose();
   }
 
-  Future<void> _fetchWeatherGuidance() async {
+  Future<void> _fetchWeatherGuidance(WeatherLocation location) async {
     try {
-      final hint = await _resolveCatalogService().getWeather();
+      final hint = await _resolveCatalogService().getWeather(
+        latitude: location.latitude,
+        longitude: location.longitude,
+      );
       if (!mounted) return;
       setState(() {
         _weatherHint = hint;
@@ -136,6 +176,8 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     } catch (_) {}
   }
 
+  // Splits and sanitizes comma-separated household materials (max 10 items)
+  // before sending them to the backend prompt builder.
   List<String> _parseMaterials() {
     return _materialsController.text
         .split(',')
@@ -145,6 +187,9 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
         .toList();
   }
 
+  // Requests AI play suggestions using only non-PII parameters (age band,
+  // setting, duration, materials, and language). Falls back to catalog picks
+  // on timeout, HTTP 429 rate limits, or service errors.
   Future<void> _submitRequest() async {
     setState(() {
       _isLoading = true;
@@ -219,8 +264,8 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     );
   }
 
-  /// Real approved catalog activities for the age band. Empty when the
-  /// catalog cannot be reached, so no card can point to an unknown activity.
+  // Fetches real catalog activities for the selected age band so fallback
+  // cards always reference valid activity IDs when added to today's plan.
   Future<List<Recommendation>> _catalogPicks() async {
     try {
       final activities = await _resolveCatalogService().getActivities(
@@ -288,16 +333,23 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_isLoading)
-                _buildLoadingView()
-              else if (_response != null)
-                _buildResultsView()
-              else
-                _buildFormView(),
-            ],
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppSizes.contentMaxWidth,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_isLoading)
+                    _buildLoadingView()
+                  else if (_response != null)
+                    _buildResultsView()
+                  else
+                    _buildFormView(),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -305,6 +357,9 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   }
 
   Widget _buildFormView() {
+    // Copy nullable field to a local variable for Dart null-safety promotion.
+    final weatherHint = _weatherHint;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -329,7 +384,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             ),
             const SizedBox(height: AppSpacing.space16),
 
-            if (_weatherHint != null && !_weatherHint!.isUnavailable) ...[
+            if (weatherHint != null && !weatherHint.isUnavailable) ...[
               Container(
                 padding: const EdgeInsets.all(AppSpacing.space12),
                 decoration: BoxDecoration(
@@ -337,26 +392,43 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.chip),
                   border: Border.all(color: AppColors.borderAdvisory),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      _weatherHint!.condition == 'rainy'
-                          ? Icons.cloud
-                          : Icons.wb_sunny_outlined,
-                      size: 20,
-                      color: AppColors.textPrimary,
-                    ),
-                    const SizedBox(width: AppSpacing.space8),
-                    Expanded(
-                      child: Text(
-                        _weatherHint!.hint ??
-                            (_weatherHint!.suggestedSetting == 'indoor'
-                                ? 'Rainy weather · Indoor play suggested'
-                                : 'Outdoor play recommended today'),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    Row(
+                      children: [
+                        Icon(
+                          weatherHint.isRainy
+                              ? Icons.cloud_outlined
+                              : Icons.wb_sunny_outlined,
+                          size: 20,
                           color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w500,
                         ),
+                        const SizedBox(width: AppSpacing.space8),
+                        Expanded(
+                          child: Text(
+                            weatherHint.hint ??
+                                (weatherHint.suggestedSetting == 'indoor'
+                                    ? 'Rainy weather · Indoor play suggested'
+                                    : 'Outdoor play recommended today'),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.space4),
+                    Text(
+                      _lastWeatherCityKey != null &&
+                              _lastWeatherCityKey != '__off__'
+                          ? '$_lastWeatherCityKey · ${weatherHint.attribution}'
+                          : weatherHint.attribution,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
                       ),
                     ),
                   ],
@@ -371,6 +443,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: AppSpacing.space8),
+            // Wrap flows chips onto a new row on narrow screens instead of overflowing.
             Wrap(
               spacing: AppSpacing.space8,
               children: _timeOptions.map((mins) {
@@ -396,14 +469,14 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             const SizedBox(height: AppSpacing.space8),
             Wrap(
               spacing: AppSpacing.space8,
-              children: _settingOptions.map((opt) {
-                final isSelected = _setting == opt['value'];
+              children: _PlaySettingOption.values.map((opt) {
+                final isSelected = _setting == opt.code;
                 return ChoiceChip(
-                  label: Text(opt['label']!),
+                  label: Text(opt.label),
                   selected: isSelected,
                   onSelected: (selected) {
                     if (selected) {
-                      setState(() => _setting = opt['value']!);
+                      setState(() => _setting = opt.code);
                     }
                   },
                 );
@@ -429,8 +502,8 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
               ),
               items: _ageBandOptions.map((opt) {
                 return DropdownMenuItem<String>(
-                  value: opt['value'],
-                  child: Text(opt['label']!),
+                  value: opt.code,
+                  child: Text(opt.label),
                 );
               }).toList(),
               onChanged: (val) {
@@ -447,14 +520,14 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             const SizedBox(height: AppSpacing.space8),
             Wrap(
               spacing: AppSpacing.space8,
-              children: _languageOptions.map((opt) {
-                final isSelected = _language == opt['value'];
+              children: _PlayLanguageOption.values.map((opt) {
+                final isSelected = _language == opt.code;
                 return ChoiceChip(
-                  label: Text(opt['label']!),
+                  label: Text(opt.label),
                   selected: isSelected,
                   onSelected: (selected) {
                     if (selected) {
-                      setState(() => _language = opt['value']!);
+                      setState(() => _language = opt.code);
                     }
                   },
                 );
@@ -541,12 +614,15 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   }
 
   Widget _buildResultsView() {
-    final isAi = _response?.isAiGenerated ?? false;
+    final response = _response;
+    final rateLimitMessage = _rateLimitMessage;
+    final fallbackNotice = _fallbackNotice;
+    final isAi = response?.isAiGenerated ?? false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_rateLimitMessage != null) ...[
+        if (rateLimitMessage != null) ...[
           Container(
             padding: const EdgeInsets.all(AppSpacing.space16),
             decoration: BoxDecoration(
@@ -574,7 +650,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                 ),
                 const SizedBox(height: AppSpacing.space8),
                 Text(
-                  _rateLimitMessage!,
+                  rateLimitMessage,
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.space12),
@@ -591,7 +667,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
           const SizedBox(height: AppSpacing.space16),
         ],
 
-        if (_fallbackNotice != null && _rateLimitMessage == null) ...[
+        if (fallbackNotice != null && rateLimitMessage == null) ...[
           Container(
             padding: const EdgeInsets.all(AppSpacing.space16),
             decoration: BoxDecoration(
@@ -619,7 +695,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                       ),
                       const SizedBox(height: AppSpacing.space4),
                       Text(
-                        _fallbackNotice!,
+                        fallbackNotice,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -704,8 +780,8 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
         ),
         const SizedBox(height: AppSpacing.space16),
 
-        if (_response != null)
-          ..._response!.suggestions.map((suggestion) {
+        if (response != null)
+          ...response.suggestions.map((suggestion) {
             return _buildSuggestionCard(suggestion);
           }),
 
@@ -732,6 +808,19 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     );
   }
 
+  String _formatSetting(String setting) {
+    switch (setting) {
+      case 'indoor':
+        return 'Indoor';
+      case 'outdoor':
+        return 'Outdoor';
+      case 'either':
+        return 'Indoor or outdoor';
+      default:
+        return setting;
+    }
+  }
+
   Widget _buildSuggestionCard(Recommendation suggestion) {
     final activity = suggestion.activity;
 
@@ -747,13 +836,13 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: AppSpacing.space8,
-              runSpacing: AppSpacing.space4,
-              children: [
-                if (activity != null)
+            if (activity != null)
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppSpacing.space8,
+                runSpacing: AppSpacing.space4,
+                children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.space8,
@@ -771,15 +860,13 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                       ),
                     ),
                   ),
-                Text(
-                  'Item ID: ${suggestion.activityId}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontFamily: 'monospace',
-                    color: AppColors.textTertiary,
+                  Text(
+                    '${activity.durationEstimate} · ${_formatSetting(activity.setting)}',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: AppColors.textSecondary),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             const SizedBox(height: AppSpacing.space8),
 
             Text(

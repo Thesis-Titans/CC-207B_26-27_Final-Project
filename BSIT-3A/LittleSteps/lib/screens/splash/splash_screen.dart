@@ -11,6 +11,7 @@ import '../../widgets/brand_logo.dart';
 /// Animates the brand logo and checks authentication state before routing to
 /// the appropriate initial screen.
 class SplashScreen extends StatefulWidget {
+  /// Creates a [SplashScreen].
   const SplashScreen({super.key});
 
   @override
@@ -36,10 +37,11 @@ class _SplashScreenState extends State<SplashScreen>
     );
     _controller.forward();
 
-    // Brief calm transition before navigating to the appropriate initial view
+    // Wait briefly so the fade-in completes before replacing the splash route.
     _navigationTimer = Timer(const Duration(milliseconds: 500), _navigateNext);
   }
 
+  // Routes signed-in caregivers to the main shell and others to sign-in.
   void _navigateNext() {
     if (!mounted) return;
     final sessionState = AuthScope.maybeOf(context);
@@ -54,6 +56,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    // Cancel the pending timer and dispose the animation controller to avoid
+    // callbacks firing after this widget leaves the tree.
     _navigationTimer?.cancel();
     _controller.dispose();
     super.dispose();

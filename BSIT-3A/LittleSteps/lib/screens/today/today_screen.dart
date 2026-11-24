@@ -10,12 +10,28 @@ import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
+import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
 
-// View states representing the five interaction states for the Today screen.
-enum TodayViewState { loading, ready, empty, error, offline }
+/// Interaction states displayed by [TodayScreen].
+enum TodayViewState {
+  /// Initial network request is in flight.
+  loading,
 
-// Default sample activities used when catalog activities are resolved or tested offline.
+  /// Planned activities are loaded and displayed.
+  ready,
+
+  /// Zero activities are scheduled for the selected date.
+  empty,
+
+  /// A recoverable request error occurred.
+  error,
+
+  /// Cached activities are displayed while offline.
+  offline,
+}
+
+/// Default sample activities used when catalog items are resolved offline.
 final List<Activity> defaultTodayActivities = [
   const Activity(
     id: 'act-stack-cups',
@@ -89,24 +105,23 @@ final List<Activity> defaultTodayActivities = [
   ),
 ];
 
-// In-memory store persisting seen state of the non-diagnostic advisory across sessions.
+/// In-memory store recording whether the non-diagnostic advisory was dismissed.
 class TodayAdvisoryStorage {
-  // Set of storage keys identifying profiles or installations that dismissed the advisory.
   static final Set<String> _seenKeys = <String>{};
 
-  // Checks whether the non-diagnostic advisory has been seen for the given user key.
+  /// Returns whether the advisory has been dismissed for [userKey].
   static bool hasSeen(String userKey) => _seenKeys.contains(userKey);
 
-  // Records that the non-diagnostic advisory has been seen for the given user key.
+  /// Marks the advisory as dismissed for [userKey].
   static void markSeen(String userKey) => _seenKeys.add(userKey);
 
-  // Clears recorded advisory views for test isolation.
+  /// Clears recorded dismissals for test isolation.
   static void reset() => _seenKeys.clear();
 }
 
-// Today tab presenting scheduled play activities, completion tracking, quick filters, and weather hints.
+/// Today tab presenting planned play activities, completion status, and weather hints.
 class TodayScreen extends StatefulWidget {
-  // Creates a [TodayScreen] with optional service and state overrides.
+  /// Creates a [TodayScreen] with optional service and state overrides.
   const TodayScreen({
     super.key,
     this.planService,
@@ -120,31 +135,31 @@ class TodayScreen extends StatefulWidget {
     this.isOffline = false,
   });
 
-  // Optional plan service for managing activity plans.
+  /// Optional plan service override for managing activity plans.
   final PlanService? planService;
 
-  // Optional catalog service for retrieving activity details and weather guidance.
+  /// Optional catalog service override for activity details and weather hints.
   final CatalogService? catalogService;
 
-  // Optional forced initial view state for testing.
+  /// Optional forced initial view state for widget tests.
   final TodayViewState? initialState;
 
-  // Optional initial list of planned items for testing.
+  /// Optional initial list of planned items for widget tests.
   final List<PlanItem>? initialPlans;
 
-  // Optional lookup map of activity metadata for testing.
+  /// Optional lookup map of activity metadata for widget tests.
   final Map<String, Activity>? initialActivities;
 
-  // Optional weather hint guidance for testing.
+  /// Optional weather hint override for widget tests.
   final WeatherHint? initialWeatherHint;
 
-  // Currently selected active child profile.
+  /// Currently selected active child profile.
   final Child? activeChild;
 
-  // Calendar date for which the plan is viewed.
+  /// Calendar date for which the plan is viewed.
   final DateTime? initialDate;
 
-  // Whether offline mode is simulated or active.
+  /// Whether offline mode is simulated or active.
   final bool isOffline;
 
   @override
@@ -282,15 +297,25 @@ class _TodayScreenState extends State<TodayScreen> {
     final planService = _resolvePlanService();
     final catalogService = _resolveCatalogService();
     final dateString = _formatDate(_currentDate);
+    final session = AuthScope.maybeOf(context);
+    final weatherLocation = session != null
+        ? session.weatherLocation
+        : WeatherLocation.iloiloCity;
 
     try {
       final results = await Future.wait([
         planService.getPlans(_effectiveChildId, date: dateString),
-        catalogService.getWeather(),
+        if (weatherLocation != null)
+          catalogService.getWeather(
+            latitude: weatherLocation.latitude,
+            longitude: weatherLocation.longitude,
+          )
+        else
+          Future<WeatherHint?>.value(null),
       ]);
 
       final fetchedPlans = results[0] as List<PlanItem>;
-      final fetchedWeather = results[1] as WeatherHint;
+      final fetchedWeather = results[1] as WeatherHint?;
 
       for (final plan in fetchedPlans) {
         if (!_activityLookup.containsKey(plan.activityId)) {
@@ -569,11 +594,19 @@ class _TodayScreenState extends State<TodayScreen> {
   // Renders the empty state when no activities are scheduled for today.
   Widget _buildEmptyState() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.space24),
+      padding: const EdgeInsets.all(AppSpacing.space16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const ScreenHeader(
+            title: 'Today',
+            subtitle: 'Simple play activities planned for today.',
+          ),
+          const SizedBox(height: AppSpacing.space12),
           _buildAdvisorySection(),
-          const SizedBox(height: AppSpacing.space32),
+          const SizedBox(height: AppSpacing.space12),
+          _buildWeatherHintSection(),
+          const SizedBox(height: AppSpacing.space12),
           const EmptyStateView(
             title: 'No activities planned for today',
             message: 'You have no play activities scheduled for today. Explore the catalog to add activities.',
@@ -594,11 +627,13 @@ class _TodayScreenState extends State<TodayScreen> {
       onRefresh: _loadTodayPlan,
       color: AppColors.forest,
       child: ListView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space16,
-          vertical: AppSpacing.space12,
-        ),
+        padding: const EdgeInsets.all(AppSpacing.space16),
         children: [
+          const ScreenHeader(
+            title: 'Today',
+            subtitle: 'Simple play activities planned for today.',
+          ),
+          const SizedBox(height: AppSpacing.space12),
           _buildAdvisorySection(),
           const SizedBox(height: AppSpacing.space12),
           _buildWeatherHintSection(),
@@ -728,8 +763,8 @@ class _TodayScreenState extends State<TodayScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.wb_sunny_outlined,
+                Icon(
+                  hint.isRainy ? Icons.cloud_outlined : Icons.wb_sunny_outlined,
                   size: 20,
                   color: AppColors.forest,
                 ),

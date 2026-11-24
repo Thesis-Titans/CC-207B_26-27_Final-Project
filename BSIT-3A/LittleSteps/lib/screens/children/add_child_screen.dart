@@ -6,14 +6,47 @@ import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 
-/// Form screen for adding a new child profile.
+/// Developmental age bands supported by the child profile API contract.
+enum ChildAgeBand {
+  /// 0 to 5 months (`0-5m`).
+  zeroToFiveMonths('0-5m', '0–5 months'),
+
+  /// 6 to 11 months (`6-11m`).
+  sixToElevenMonths('6-11m', '6–11 months'),
+
+  /// 12 to 23 months (`12-23m`).
+  twelveToTwentyThreeMonths('12-23m', '12–23 months'),
+
+  /// 24 to 35 months (`24-35m`).
+  twentyFourToThirtyFiveMonths('24-35m', '24–35 months'),
+
+  /// 36 to 47 months (`36-47m`).
+  thirtySixToFortySevenMonths('36-47m', '36–47 months'),
+
+  /// 48 to 59 months (`48-59m`).
+  fortyEightToFiftyNineMonths('48-59m', '48–59 months'),
+
+  /// 60 to 71 months (`60-71m`).
+  sixtyToSeventyOneMonths('60-71m', '60–71 months');
+
+  const ChildAgeBand(this.code, this.label);
+
+  /// Wire code sent to the backend API.
+  final String code;
+
+  /// Caregiver-facing label displayed in dropdown menus.
+  final String label;
+}
+
+/// Form screen for registering a child profile with nickname and age band.
 ///
-/// Collects child nickname and age band while preserving privacy
-/// without requiring full birthdates, legal names, or photos.
+/// Collects only the fields required for age-appropriate activity filtering
+/// (no legal surname, exact birthdate, or photo).
 class AddChildScreen extends StatefulWidget {
+  /// Creates an [AddChildScreen] with an optional [childrenService] override.
   const AddChildScreen({super.key, this.childrenService});
 
-  /// Optional injected children service for testing.
+  /// Optional injected service used in widget tests.
   final ChildrenService? childrenService;
 
   @override
@@ -21,30 +54,16 @@ class AddChildScreen extends StatefulWidget {
 }
 
 class _AddChildScreenState extends State<AddChildScreen> {
+  // Coordinates validation across all FormField descendants on submission.
   final _formKey = GlobalKey<FormState>();
   final _nicknameController = TextEditingController();
 
-  static const Map<String, String> _ageBands = {
-    '0–5 months': '0-5m',
-    '6–11 months': '6-11m',
-    '12–23 months': '12-23m',
-    '24–35 months': '24-35m',
-    '36–47 months': '36-47m',
-    '48–59 months': '48-59m',
-    '60–71 months': '60-71m',
-  };
-
-  late String _selectedAgeBand;
+  ChildAgeBand _selectedAgeBand = ChildAgeBand.twelveToTwentyThreeMonths;
   bool _saving = false;
 
   @override
-  void initState() {
-    super.initState();
-    _selectedAgeBand = '12-23m';
-  }
-
-  @override
   void dispose() {
+    // Release native text-input listeners when the screen leaves the tree.
     _nicknameController.dispose();
     super.dispose();
   }
@@ -59,10 +78,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
     final nickname = _nicknameController.text.trim();
     final sessionState = AuthScope.maybeOf(context);
 
-    late final Child newChild;
     final service =
         widget.childrenService ??
-        (sessionState != null && AuthScope.maybeOf(context) != null
+        (sessionState != null
             ? ChildrenService(apiClient: AuthScope.apiClientOf(context))
             : null);
 
@@ -74,12 +92,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
       return;
     }
 
+    late final Child newChild;
     try {
       newChild = await service.createChild(
         nickname: nickname,
-        ageBand: _selectedAgeBand,
+        ageBand: _selectedAgeBand.code,
       );
     } catch (error) {
+      // Guard BuildContext usage after the async network gap.
       if (!mounted) return;
       setState(() => _saving = false);
       final message = error is ApiException
@@ -102,6 +122,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
           duration: const Duration(seconds: 2),
         ),
       );
+      // Return the created Child model to the calling screen.
       Navigator.pop(context, newChild);
     }
   }
@@ -124,7 +145,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Intro
                     Text(
                       'Create a child profile',
                       style: theme.textTheme.headlineSmall?.copyWith(
@@ -140,8 +160,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.space24),
-
-                    // Nickname Input
                     Text(
                       'Nickname',
                       style: theme.textTheme.labelMedium?.copyWith(
@@ -164,8 +182,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       },
                     ),
                     const SizedBox(height: AppSpacing.space20),
-
-                    // Age Range Dropdown
                     Text(
                       'Age range',
                       style: theme.textTheme.labelMedium?.copyWith(
@@ -173,17 +189,17 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.space8),
-                    DropdownButtonFormField<String>(
+                    DropdownButtonFormField<ChildAgeBand>(
                       initialValue: _selectedAgeBand,
                       decoration: const InputDecoration(
                         prefixIcon: Icon(Icons.cake_outlined),
                         border: OutlineInputBorder(),
                       ),
-                      items: _ageBands.entries
+                      items: ChildAgeBand.values
                           .map(
-                            (entry) => DropdownMenuItem(
-                              value: entry.value,
-                              child: Text(entry.key),
+                            (band) => DropdownMenuItem(
+                              value: band,
+                              child: Text(band.label),
                             ),
                           )
                           .toList(),
@@ -194,8 +210,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       },
                     ),
                     const SizedBox(height: AppSpacing.space24),
-
-                    // Privacy Assurance Card
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.space16),
                       decoration: BoxDecoration(
@@ -224,8 +238,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.space24),
-
-                    // Submit Button
                     FilledButton(
                       onPressed: _saving ? null : _submit,
                       style: FilledButton.styleFrom(

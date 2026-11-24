@@ -21,10 +21,7 @@ void main() {
     expect(find.text('Cup tower'), findsOneWidget);
     expect(find.text('clean cups'), findsOneWidget);
     expect(find.text('Source: Synthetic fixture'), findsOneWidget);
-    expect(
-      find.text('Provisional Academic Reference — Pending Review'),
-      findsOneWidget,
-    );
+    expect(find.text('Educational play reference'), findsOneWidget);
     expect(find.text("Add to today's plan"), findsOneWidget);
   });
 

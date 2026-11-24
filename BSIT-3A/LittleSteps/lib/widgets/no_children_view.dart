@@ -8,6 +8,7 @@ import 'brand_logo.dart';
 /// Welcomes the caregiver, displays the brand illustration, and provides
 /// a primary call to action to configure their first child profile.
 class NoChildrenView extends StatelessWidget {
+  /// Creates a [NoChildrenView].
   const NoChildrenView({
     super.key,
     this.caregiverName,
@@ -35,8 +36,9 @@ class NoChildrenView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final greeting = caregiverName != null && caregiverName!.trim().isNotEmpty
-        ? 'Welcome, ${caregiverName!.trim()}'
+    final name = caregiverName?.trim();
+    final greeting = name != null && name.isNotEmpty
+        ? 'Welcome, $name'
         : 'Welcome';
 
     return Center(
@@ -50,7 +52,6 @@ class NoChildrenView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Caregiver Salutation
               Text(
                 greeting,
                 style: theme.textTheme.headlineSmall?.copyWith(
@@ -69,11 +70,9 @@ class NoChildrenView extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.space20),
 
-              // Decorative Brand Artwork
               const ParentChildIllustration(height: 140),
               const SizedBox(height: AppSpacing.space20),
 
-              // Actionable Onboarding Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.space24),
@@ -130,7 +129,6 @@ class NoChildrenView extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.space16),
 
-              // Privacy Reassurance
               Text(
                 'We only keep a nickname and age range. '
                 'No birthdays, surnames or photos are required.',

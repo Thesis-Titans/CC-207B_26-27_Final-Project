@@ -5,6 +5,7 @@ import '../theme/app_tokens.dart';
 
 /// A card displaying a summary of an activity in lists and search results.
 class ActivityCard extends StatelessWidget {
+  /// Creates an [ActivityCard].
   const ActivityCard({
     super.key,
     required this.activity,

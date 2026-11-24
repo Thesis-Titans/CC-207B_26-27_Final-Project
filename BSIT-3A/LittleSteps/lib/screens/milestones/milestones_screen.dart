@@ -9,10 +9,26 @@ import '../../widgets/screen_header.dart';
 import 'observation_form_sheet.dart';
 
 /// View states for the milestones screen.
-enum MilestonesViewState { ready, loading, empty, error, offline }
+enum MilestonesViewState {
+  /// Prompts and saved observations are displayed.
+  ready,
+
+  /// Observations are loading from the backend.
+  loading,
+
+  /// Zero prompts match the active filters.
+  empty,
+
+  /// A recoverable request error occurred.
+  error,
+
+  /// Cached observations are displayed while offline.
+  offline,
+}
 
 /// Milestones tab displaying developmental observation prompts grouped by ECCD domain.
 class MilestonesScreen extends StatefulWidget {
+  /// Creates a [MilestonesScreen].
   const MilestonesScreen({
     super.key,
     this.initialState = MilestonesViewState.ready,
@@ -21,9 +37,16 @@ class MilestonesScreen extends StatefulWidget {
     this.milestonesService,
   });
 
+  /// Initial view state override for widget tests.
   final MilestonesViewState initialState;
+
+  /// Observational prompts rendered on the screen.
   final List<MilestonePrompt> prompts;
+
+  /// Preloaded observations keyed by milestone prompt identifier.
   final Map<String, MilestoneObservation> initialObservations;
+
+  /// Optional service override for loading and saving observations.
   final MilestonesService? milestonesService;
 
   @override
@@ -314,25 +337,32 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
               : null,
         ),
         const SizedBox(height: AppSpacing.space12),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space12,
-            vertical: AppSpacing.space8,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AppColors.borderSubtle),
-            borderRadius: BorderRadius.circular(AppRadius.control),
-          ),
-          child: Row(
-            children: [
-              Text(
-                'For $_childName · $_childAgeDisplay',
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Spacer(),
-              const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
-            ],
+        InkWell(
+          onTap: () => Navigator.pushNamed(context, '/children'),
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.space12,
+              vertical: AppSpacing.space8,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: AppColors.borderSubtle),
+              borderRadius: BorderRadius.circular(AppRadius.control),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  'For $_childName · $_childAgeDisplay',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.arrow_drop_down,
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.space12),

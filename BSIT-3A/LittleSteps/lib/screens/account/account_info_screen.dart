@@ -3,10 +3,20 @@ import 'package:flutter/material.dart';
 import '../../theme/app_tokens.dart';
 
 /// Describes the account information page to display.
-enum AccountInfoPage { privacy, about, help }
+enum AccountInfoPage {
+  /// Data collection, retention, and caregiver choices notice.
+  privacy,
+
+  /// Product overview, non-diagnostic notice, and clinical framework sources.
+  about,
+
+  /// Usage guidance, concern escalation, and project support channels.
+  help,
+}
 
 /// Plain-language privacy, product and help information pages.
 class AccountInfoScreen extends StatelessWidget {
+  /// Creates an [AccountInfoScreen] for [page].
   const AccountInfoScreen({super.key, required this.page});
 
   /// Information page shown by this screen.
@@ -113,8 +123,8 @@ class AccountInfoScreen extends StatelessWidget {
       ),
       _InfoSection(
         'Contact us',
-        'For help with LittleSteps, contact the project team through your '
-            'course or project support channel.',
+        'For help or feedback with LittleSteps, reach the Thesis Titans team '
+            'at https://github.com/Thesis-Titans.',
       ),
     ],
   };
@@ -123,12 +133,18 @@ class AccountInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_title)),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        itemCount: _sections.length,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space12),
-        itemBuilder: (context, index) =>
-            _InfoSectionCard(section: _sections[index]),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(AppSpacing.space16),
+            itemCount: _sections.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(height: AppSpacing.space12),
+            itemBuilder: (context, index) =>
+                _InfoSectionCard(section: _sections[index]),
+          ),
+        ),
       ),
     );
   }
