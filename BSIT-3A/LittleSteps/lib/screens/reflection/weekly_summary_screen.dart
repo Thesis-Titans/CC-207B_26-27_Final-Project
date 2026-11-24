@@ -10,9 +10,7 @@ import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 
-
 enum WeeklySummaryViewState {
- 
   ready,
 
   /// Weekly summary data is loading from the backend.
