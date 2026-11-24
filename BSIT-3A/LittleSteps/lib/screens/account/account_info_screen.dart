@@ -15,12 +15,11 @@ enum AccountInfoPage {
   help,
 }
 
-/// Plain-language privacy, product and help information pages.
+/// Privacy, about, and help screens.
 class AccountInfoScreen extends StatelessWidget {
   /// Creates an [AccountInfoScreen] for [page].
   const AccountInfoScreen({super.key, required this.page});
 
-  /// Information page shown by this screen.
   final AccountInfoPage page;
 
   String get _title => switch (page) {

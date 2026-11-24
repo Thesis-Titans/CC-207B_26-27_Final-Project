@@ -10,7 +10,7 @@ import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 
-/// Account, child profile and data-rights settings.
+/// Account, child profile, and data rights settings.
 class SettingsScreen extends StatefulWidget {
   /// Creates a [SettingsScreen].
   const SettingsScreen({
@@ -24,25 +24,12 @@ class SettingsScreen extends StatefulWidget {
     this.onChildDeleted,
   });
 
-  /// Email address of the signed-in caregiver, when available.
   final String? email;
-
-  /// Child profiles associated with this caregiver.
   final List<Child> children;
-
-  /// Service for export and account deletion requests.
   final AccountService? accountService;
-
-  /// Service for child profile deletion requests.
   final ChildrenService? childrenService;
-
-  /// Called when the caregiver chooses to sign out.
   final VoidCallback? onSignOut;
-
-  /// Called after account deletion succeeds.
   final VoidCallback? onAccountDeleted;
-
-  /// Called with the id of a child after deletion succeeds.
   final ValueChanged<String>? onChildDeleted;
 
   @override

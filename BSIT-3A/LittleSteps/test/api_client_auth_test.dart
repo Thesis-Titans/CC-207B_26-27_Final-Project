@@ -124,7 +124,11 @@ void main() {
           ApiClient.isProtectedPath('/api/v1/children/c1/journal'),
           isTrue,
         );
-        expect(ApiClient.isProtectedPath('/api/v1/catalog/books'), isTrue);
+        expect(ApiClient.isProtectedPath('/api/v1/catalog/books'), isFalse);
+        expect(
+          ApiClient.isProtectedPath('/api/v1/catalog/books/search'),
+          isFalse,
+        );
 
         expect(
           ApiClient.isProtectedPath('/api/v1/catalog/activities'),

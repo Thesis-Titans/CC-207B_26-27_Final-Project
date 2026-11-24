@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import '../../models/activity.dart';
 import '../../models/child.dart';
 import '../../services/api_client.dart';
+import '../../services/ai_service.dart';
+import '../../services/books_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_theme.dart';
@@ -15,6 +17,7 @@ import '../../utils/url_helper.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
+import 'storybooks_section.dart';
 
 const _ageBands = <String, String>{
   '0-5m': '0–5 months',
@@ -73,13 +76,21 @@ String _childAgeLabel(Child child) {
 /// Browse provisional learning activities and add one to today's plan.
 class ExploreScreen extends StatefulWidget {
   /// Creates an [ExploreScreen].
-  const ExploreScreen({super.key, this.catalogService, this.planService});
+  const ExploreScreen({
+    super.key,
+    this.catalogService,
+    this.planService,
+    this.onPlanAdded,
+  });
 
   /// Optional catalog service used by tests or a containing feature.
   final CatalogService? catalogService;
 
   /// Optional plans service used by tests or a containing feature.
   final PlanService? planService;
+
+  /// Called when an item is added to today's plan.
+  final ValueChanged<Activity>? onPlanAdded;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -93,6 +104,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool _offline = false;
   bool _initialLoadStarted = false;
   bool _storybooksSelected = false;
+  BookshelfShelf _selectedBookshelf = BookshelfShelf.openLibrary;
+  int _savedBookCount = 0;
   String? _errorMessage;
   String? _ageBand;
   String? _domain;
@@ -282,8 +295,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
         childId: child.id,
         activityId: activity.id,
         scheduledDate: date,
+        durationMinutes: activity.durationMinutes,
       );
       if (!mounted) return;
+      widget.onPlanAdded?.call(activity);
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Added to today's plan")));
     } catch (error) {
@@ -379,14 +394,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             showInlineIdeaHelper: false,
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.space24),
-                        SizedBox(
-                          width: 340,
-                          child: _IdeaHelperEntryCard(
-                            onTap: () =>
-                                Navigator.pushNamed(context, '/ai-suggest'),
+                        if (!_storybooksSelected) ...[
+                          const SizedBox(width: AppSpacing.space24),
+                          SizedBox(
+                            width: 340,
+                            child: _IdeaHelperEntryCard(
+                              onTap: () =>
+                                  Navigator.pushNamed(context, '/ai-suggest'),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ],
@@ -427,36 +444,82 @@ class _ExploreScreenState extends State<ExploreScreen> {
               const SizedBox(height: AppSpacing.space16),
               _ExploreSections(
                 storybooksSelected: _storybooksSelected,
+                selectedShelf: _selectedBookshelf,
+                savedBookCount: _savedBookCount,
                 onActivities: () => setState(() => _storybooksSelected = false),
-                onStorybooks: () => setState(() => _storybooksSelected = true),
+                onStorybooks: () => setState(() {
+                  _storybooksSelected = true;
+                  _selectedBookshelf = BookshelfShelf.openLibrary;
+                }),
+                onBookshelf: () => setState(() {
+                  _storybooksSelected = true;
+                  _selectedBookshelf = BookshelfShelf.ourBookshelf;
+                }),
+                onRhymes: () => setState(() {
+                  _storybooksSelected = true;
+                  _selectedBookshelf = BookshelfShelf.rhymes;
+                }),
               ),
-              const SizedBox(height: AppSpacing.space16),
-              _buildSearchAndAgeRow(),
-              const SizedBox(height: AppSpacing.space16),
+              if (!_storybooksSelected) ...[
+                const SizedBox(height: AppSpacing.space16),
+                _buildSearchAndAgeRow(),
+                const SizedBox(height: AppSpacing.space16),
+              ],
             ]),
           ),
         ),
-        SliverToBoxAdapter(
-          child: _DomainFilters(
-            selectedDomain: _domain,
-            onSelected: (domain) => _changeFilter(
-              ageBand: _ageBand,
-              domain: domain,
-              language: _language,
+        if (!_storybooksSelected) ...[
+          SliverToBoxAdapter(
+            child: _DomainFilters(
+              selectedDomain: _domain,
+              onSelected: (domain) => _changeFilter(
+                ageBand: _ageBand,
+                domain: domain,
+                language: _language,
+              ),
             ),
           ),
-        ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate(
+                _buildResultsChildren(
+                  context: context,
+                  activities: activities,
+                  activeChild: activeChild,
+                  resultMessage: resultMessage,
+                  languageFilterLabel: languageFilterLabel,
+                  showInlineIdeaHelper: showInlineIdeaHelper,
+                ),
+              ),
+            ),
+          ),
+        ],
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate(
-              _buildResultsChildren(
-                context: context,
-                activities: activities,
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space16,
+            AppSpacing.space8,
+            AppSpacing.space16,
+            AppSpacing.space24,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Visibility(
+              visible: _storybooksSelected,
+              maintainState: true,
+              child: StorybooksSection(
+                booksService: BooksService(
+                  apiClient: _catalogService.apiClient,
+                ),
+                aiService: AiService(apiClient: _catalogService.apiClient),
+                planService: _planService,
                 activeChild: activeChild,
-                resultMessage: resultMessage,
-                languageFilterLabel: languageFilterLabel,
-                showInlineIdeaHelper: showInlineIdeaHelper,
+                selectedShelf: _selectedBookshelf,
+                isOffline: _offline,
+                onShelfSelected: (shelf) =>
+                    setState(() => _selectedBookshelf = shelf),
+                onSavedCountChanged: (count) =>
+                    setState(() => _savedBookCount = count),
+                onPlanActivity: _addToPlan,
               ),
             ),
           ),
@@ -478,29 +541,59 @@ class _ExploreScreenState extends State<ExploreScreen> {
       children: [
         _ExploreSections(
           storybooksSelected: _storybooksSelected,
+          selectedShelf: _selectedBookshelf,
+          savedBookCount: _savedBookCount,
           onActivities: () => setState(() => _storybooksSelected = false),
-          onStorybooks: () => setState(() => _storybooksSelected = true),
+          onStorybooks: () => setState(() {
+            _storybooksSelected = true;
+            _selectedBookshelf = BookshelfShelf.openLibrary;
+          }),
+          onBookshelf: () => setState(() {
+            _storybooksSelected = true;
+            _selectedBookshelf = BookshelfShelf.ourBookshelf;
+          }),
+          onRhymes: () => setState(() {
+            _storybooksSelected = true;
+            _selectedBookshelf = BookshelfShelf.rhymes;
+          }),
         ),
-        const SizedBox(height: AppSpacing.space16),
-        _buildSearchAndAgeRow(),
-        const SizedBox(height: AppSpacing.space16),
-        _DomainFilters(
-          selectedDomain: _domain,
-          horizontalPadding: 0,
-          onSelected: (domain) => _changeFilter(
-            ageBand: _ageBand,
-            domain: domain,
-            language: _language,
+        if (!_storybooksSelected) ...[
+          const SizedBox(height: AppSpacing.space16),
+          _buildSearchAndAgeRow(),
+          const SizedBox(height: AppSpacing.space16),
+          _DomainFilters(
+            selectedDomain: _domain,
+            horizontalPadding: 0,
+            onSelected: (domain) => _changeFilter(
+              ageBand: _ageBand,
+              domain: domain,
+              language: _language,
+            ),
           ),
-        ),
-        ..._buildResultsChildren(
-          context: context,
-          activities: activities,
-          activeChild: activeChild,
-          resultMessage: resultMessage,
-          languageFilterLabel: languageFilterLabel,
-          showInlineIdeaHelper: showInlineIdeaHelper,
-        ),
+          ..._buildResultsChildren(
+            context: context,
+            activities: activities,
+            activeChild: activeChild,
+            resultMessage: resultMessage,
+            languageFilterLabel: languageFilterLabel,
+            showInlineIdeaHelper: showInlineIdeaHelper,
+          ),
+        ] else ...[
+          const SizedBox(height: AppSpacing.space16),
+          StorybooksSection(
+            booksService: BooksService(apiClient: _catalogService.apiClient),
+            aiService: AiService(apiClient: _catalogService.apiClient),
+            planService: _planService,
+            activeChild: activeChild,
+            selectedShelf: _selectedBookshelf,
+            isOffline: _offline,
+            onShelfSelected: (shelf) =>
+                setState(() => _selectedBookshelf = shelf),
+            onSavedCountChanged: (count) =>
+                setState(() => _savedBookCount = count),
+            onPlanActivity: _addToPlan,
+          ),
+        ],
       ],
     );
   }
@@ -690,29 +783,85 @@ class _ExploreScreenState extends State<ExploreScreen> {
 class _ExploreSections extends StatelessWidget {
   const _ExploreSections({
     required this.storybooksSelected,
+    required this.selectedShelf,
+    required this.savedBookCount,
     required this.onActivities,
     required this.onStorybooks,
+    required this.onBookshelf,
+    required this.onRhymes,
   });
 
   final bool storybooksSelected;
+  final BookshelfShelf selectedShelf;
+  final int savedBookCount;
   final VoidCallback onActivities;
   final VoidCallback onStorybooks;
+  final VoidCallback onBookshelf;
+  final VoidCallback onRhymes;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      _SectionButton(
-        label: 'Activities',
-        selected: !storybooksSelected,
-        onPressed: onActivities,
-      ),
-      const SizedBox(width: AppSpacing.space8),
-      _SectionButton(
-        label: 'Storybooks',
-        selected: storybooksSelected,
-        onPressed: onStorybooks,
-      ),
-    ],
+  Widget build(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        _SectionButton(
+          label: const Text('Activities'),
+          selected: !storybooksSelected,
+          onPressed: onActivities,
+        ),
+        const SizedBox(width: AppSpacing.space8),
+        _SectionButton(
+          label: const Text('Storybooks'),
+          selected:
+              storybooksSelected && selectedShelf == BookshelfShelf.openLibrary,
+          onPressed: onStorybooks,
+        ),
+        const SizedBox(width: AppSpacing.space8),
+        _SectionButton(
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Our Bookshelf'),
+              if (savedBookCount > 0) ...[
+                const SizedBox(width: AppSpacing.space8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space8,
+                    vertical: AppSpacing.space4,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        storybooksSelected &&
+                            selectedShelf == BookshelfShelf.ourBookshelf
+                        ? AppColors.surfaceCard
+                        : AppColors.softGreen,
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
+                  ),
+                  child: Text(
+                    '$savedBookCount',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.forest,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          selected:
+              storybooksSelected &&
+              selectedShelf == BookshelfShelf.ourBookshelf,
+          onPressed: onBookshelf,
+        ),
+        const SizedBox(width: AppSpacing.space8),
+        _SectionButton(
+          label: const Text('Read & Sing Together'),
+          selected:
+              storybooksSelected && selectedShelf == BookshelfShelf.rhymes,
+          onPressed: onRhymes,
+        ),
+      ],
+    ),
   );
 }
 
@@ -723,7 +872,7 @@ class _SectionButton extends StatelessWidget {
     required this.onPressed,
   });
 
-  final String label;
+  final Widget label;
   final bool selected;
   final VoidCallback onPressed;
 
@@ -740,7 +889,7 @@ class _SectionButton extends StatelessWidget {
                   horizontal: AppSpacing.space16,
                 ),
               ),
-              child: Text(label),
+              child: label,
             )
           : OutlinedButton(
               onPressed: onPressed,
@@ -750,7 +899,7 @@ class _SectionButton extends StatelessWidget {
                 ),
                 foregroundColor: theme.colorScheme.onSurface,
               ),
-              child: Text(label),
+              child: label,
             ),
     );
   }
