@@ -134,7 +134,7 @@ class _FakeAuthService implements AuthService {
   Future<void> signOut() async {}
 }
 
-/// Builds a note for [childId] 'child-1' with fixed timestamps.
+/// Builds a note for the child with id `child-1`, with fixed timestamps.
 JournalEntry _entry({
   required String id,
   required String entryDate,
