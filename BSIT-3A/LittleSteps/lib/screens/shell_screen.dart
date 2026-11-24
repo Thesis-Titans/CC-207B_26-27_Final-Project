@@ -100,10 +100,12 @@ class _ShellScreenState extends State<ShellScreen> {
     return ChildrenService(apiClient: apiClient);
   }
 
-  Future<void> _loadChildrenIfNeeded() async {
+  Future<void> _refreshChildren({bool force = false}) async {
     final sessionState = AuthScope.maybeOf(context);
     if (sessionState == null || !sessionState.isAuthenticated) return;
-    if (_children.isNotEmpty && sessionState.activeChild != null) return;
+    if (!force && _children.isNotEmpty && sessionState.activeChild != null) {
+      return;
+    }
     if (_isLoadingChildren) return;
 
     _isLoadingChildren = true;
@@ -118,8 +120,12 @@ class _ShellScreenState extends State<ShellScreen> {
         _isLoadingChildren = false;
       });
 
-      if (sessionState.activeChild == null && fetched.isNotEmpty) {
-        sessionState.setActiveChild(fetched.first);
+      final currentActiveId = sessionState.activeChild?.id;
+      final stillExists =
+          currentActiveId != null &&
+          fetched.any((child) => child.id == currentActiveId);
+      if (!stillExists) {
+        sessionState.setActiveChild(fetched.isNotEmpty ? fetched.first : null);
       }
     } catch (_) {
       if (mounted) {
@@ -129,6 +135,8 @@ class _ShellScreenState extends State<ShellScreen> {
       }
     }
   }
+
+  Future<void> _loadChildrenIfNeeded() => _refreshChildren();
 
   void _goToToday() {
     setState(() {
@@ -226,36 +234,25 @@ class _ShellScreenState extends State<ShellScreen> {
             ),
     ];
 
-    void onChildChipTap() {
+    Future<void> onChildChipTap() async {
       if (!isAuthenticated) {
-        Navigator.pushNamed(
+        await Navigator.pushNamed(
           context,
           '/sign-in',
           arguments: 'Please sign in to select or manage child profiles.',
         );
       } else {
-        Navigator.pushNamed(context, '/children');
+        await Navigator.pushNamed(context, '/children');
+        if (mounted) {
+          await _refreshChildren(force: true);
+        }
       }
     }
 
-    final avatarInitial =
-        formattedCaregiver != null && formattedCaregiver.isNotEmpty
-        ? formattedCaregiver[0].toUpperCase()
-        : (rawEmail != null && rawEmail.isNotEmpty
-              ? rawEmail[0].toUpperCase()
-              : 'C');
-
-    Widget buildAvatar() => CircleAvatar(
-      radius: 14,
-      backgroundColor: AppColors.softGreen,
-      child: Text(
-        avatarInitial,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: AppColors.forest,
-        ),
-      ),
+    Widget buildAccountIcon() => const Icon(
+      Icons.account_circle_outlined,
+      size: 26,
+      color: AppColors.forest,
     );
 
     // IndexedStack keeps all five tab subtrees mounted so scroll position and
@@ -297,8 +294,10 @@ class _ShellScreenState extends State<ShellScreen> {
                       : BrandLogo(onTap: _goToToday),
                   actions: [
                     if (activeChild != null)
-                      SizedBox(
-                        width: compactHeader ? 132 : null,
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: compactHeader ? 148 : 220,
+                        ),
                         child: ChildChip(
                           activeChild: activeChild,
                           compact: compactHeader,
@@ -306,7 +305,7 @@ class _ShellScreenState extends State<ShellScreen> {
                         ),
                       ),
                     IconButton(
-                      icon: buildAvatar(),
+                      icon: buildAccountIcon(),
                       tooltip: 'Account',
                       onPressed: () => _showAccountMenu(sessionState),
                     ),
@@ -524,6 +523,29 @@ class _ShellScreenState extends State<ShellScreen> {
     );
   }
 
+  Future<void> _handleSignOut(AuthSessionState? sessionState) async {
+    if (sessionState != null) {
+      await sessionState.signOut();
+    }
+    widget.onSignOut?.call();
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/sign-in', (route) => false);
+    }
+  }
+
+  void _handleChildDeleted(AuthSessionState? sessionState, String childId) {
+    final remaining = _children.where((c) => c.id != childId).toList();
+    setState(() {
+      _children = remaining;
+    });
+    if (sessionState != null && sessionState.activeChild?.id == childId) {
+      sessionState.setActiveChild(
+        remaining.isNotEmpty ? remaining.first : null,
+      );
+    }
+    widget.onChildDeleted?.call(childId);
+  }
+
   Future<void> _showAccountMenu(AuthSessionState? sessionState) async {
     final effectiveEmail = sessionState?.currentUser?.email ?? widget.email;
     final effectiveChildren = _children.isNotEmpty
@@ -531,6 +553,20 @@ class _ShellScreenState extends State<ShellScreen> {
         : (sessionState?.activeChild != null
               ? <Child>[sessionState!.activeChild!]
               : widget.children);
+    final isAuthenticated = sessionState?.isAuthenticated ?? false;
+    final resolvedApiClient = isAuthenticated
+        ? AuthScope.apiClientOf(context)
+        : null;
+    final effectiveAccountService =
+        widget.accountService ??
+        (resolvedApiClient != null
+            ? AccountService(apiClient: resolvedApiClient)
+            : null);
+    final effectiveChildrenService =
+        widget.childrenService ??
+        (resolvedApiClient != null
+            ? ChildrenService(apiClient: resolvedApiClient)
+            : null);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -554,34 +590,37 @@ class _ShellScreenState extends State<ShellScreen> {
         onSignOut: () async {
           // Close the modal bottom sheet before clearing session routes.
           Navigator.pop(sheetContext);
-          if (sessionState != null) {
-            await sessionState.signOut();
-          }
-          widget.onSignOut?.call();
-          if (mounted) {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              '/sign-in',
-              (route) => false,
-            );
-          }
+          await _handleSignOut(sessionState);
         },
         onOpenSettings: () {
           // Close the modal bottom sheet first so it is not still open on back.
           Navigator.pop(sheetContext);
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => SettingsScreen(
-                email: effectiveEmail,
-                children: effectiveChildren,
-                accountService: widget.accountService,
-                childrenService: widget.childrenService,
-                onSignOut: widget.onSignOut,
-                onAccountDeleted: widget.onAccountDeleted,
-                onChildDeleted: widget.onChildDeleted,
-              ),
-            ),
-          );
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SettingsScreen(
+                    email: effectiveEmail,
+                    children: effectiveChildren,
+                    accountService: effectiveAccountService,
+                    childrenService: effectiveChildrenService,
+                    onSignOut: isAuthenticated || widget.onSignOut != null
+                        ? () => _handleSignOut(sessionState)
+                        : null,
+                    onAccountDeleted:
+                        widget.onAccountDeleted ??
+                        (isAuthenticated
+                            ? () => _handleSignOut(sessionState)
+                            : null),
+                    onChildDeleted: (childId) =>
+                        _handleChildDeleted(sessionState, childId),
+                  ),
+                ),
+              )
+              .then((_) {
+                if (mounted && isAuthenticated) {
+                  _refreshChildren(force: true);
+                }
+              });
         },
       ),
     );

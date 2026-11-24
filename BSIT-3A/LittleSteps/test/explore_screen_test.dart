@@ -165,7 +165,9 @@ void main() {
     expect(observer.lastPushed?.transitionDuration, Duration.zero);
     expect(observer.lastPushed?.reverseTransitionDuration, Duration.zero);
     await tester.pumpAndSettle();
-    expect(find.text('More filters'), findsOneWidget);
+    expect(find.text('Filters'), findsOneWidget);
+    expect(find.text("Child's age"), findsWidgets);
+    expect(find.text('Language'), findsOneWidget);
   });
 }
 

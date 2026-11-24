@@ -435,6 +435,19 @@ class _AddChildScreenState extends State<AddChildScreen> {
                     : const Text('Save'),
               ),
             ),
+            if (_isEditing) ...[
+              const SizedBox(height: AppSpacing.space20),
+              Center(
+                child: TextButton(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/account/settings'),
+                  child: const Text(
+                    'Need to delete this profile and its records? Manage in Settings',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

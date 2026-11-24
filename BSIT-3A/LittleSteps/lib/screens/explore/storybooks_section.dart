@@ -62,6 +62,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
   Timer? _searchDebounce;
 
   bool _isLoadingBooks = true;
+  bool _initialBooksLoaded = false;
   String? _booksError;
   bool _showingOfflineBooks = false;
   List<BookItem> _openLibraryBooks = [];
@@ -116,12 +117,15 @@ class _StorybooksSectionState extends State<StorybooksSection> {
   @override
   void initState() {
     super.initState();
-    _loadOpenLibraryBooks();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_initialBooksLoaded) {
+      _initialBooksLoaded = true;
+      _loadOpenLibraryBooks();
+    }
     final childId = widget.activeChild?.id;
     if (_lastLoadedChildId != childId) {
       _lastLoadedChildId = childId;
@@ -190,7 +194,10 @@ class _StorybooksSectionState extends State<StorybooksSection> {
 
   Future<void> _loadSavedBooks() async {
     final childId = widget.activeChild?.id;
-    if (childId == null) {
+    final session = AuthScope.maybeOf(context);
+    final canFetchSaved =
+        widget.booksService != null || (session?.isAuthenticated ?? false);
+    if (childId == null || !canFetchSaved) {
       setState(() {
         _savedBooks = [];
         _visibleSavedCount = _bookPageSize;

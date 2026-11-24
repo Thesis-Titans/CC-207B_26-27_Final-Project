@@ -223,8 +223,50 @@ void main() {
       expect(find.textContaining('cdc.gov'), findsOneWidget);
       expect(find.textContaining('healthychildren.org'), findsOneWidget);
       expect(find.textContaining('eccdcouncil.gov.ph'), findsOneWidget);
+      expect(find.textContaining('https://'), findsNothing);
+      expect(find.byIcon(Icons.open_in_new), findsNWidgets(4));
     },
   );
+
+  testWidgets('deleting the last child removes it and invokes onChildDeleted', (
+    tester,
+  ) async {
+    String? deletedChildId;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(
+          email: 'ana@example.com',
+          children: [
+            Child(
+              id: 'c1',
+              nickname: 'Maya',
+              ageBand: '12-23m',
+              createdAt: DateTime(2026, 11, 24),
+              updatedAt: DateTime(2026, 11, 24),
+            ),
+          ],
+          accountService: _FakeAccountService(),
+          childrenService: _FakeChildrenService(),
+          onChildDeleted: (id) => deletedChildId = id,
+        ),
+      ),
+    );
+
+    expect(
+      find.text(
+        'Account actions will be available after sign-in is connected.',
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(find.text('Delete Maya’s records'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete records'));
+    await tester.pumpAndSettle();
+
+    expect(deletedChildId, 'c1');
+    expect(find.text('No children added yet'), findsOneWidget);
+  });
 }
 
 class _FakeAccountService extends AccountService {
