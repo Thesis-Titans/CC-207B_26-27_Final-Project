@@ -54,6 +54,45 @@ class _FakeAuthService implements AuthService {
 }
 
 void main() {
+  testWidgets('shell header fits a 320dp viewport', (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sessionState = AuthSessionState(authService: _FakeAuthService());
+    await sessionState.signIn(
+      email: 'caregiver@example.com',
+      password: 'password123',
+    );
+    final child = Child(
+      id: 'child-320',
+      nickname: 'Maya',
+      ageBand: '12-23m',
+      createdAt: DateTime.utc(2026),
+      updatedAt: DateTime.utc(2026),
+    );
+    sessionState.setActiveChild(child);
+
+    await tester.pumpWidget(
+      AuthScope(
+        sessionState: sessionState,
+        apiClient: ApiClient(baseUrl: 'http://test'),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: ShellScreen(children: [child]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.descendant(of: find.byType(ChildChip), matching: find.text('Maya')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('shell shows five tabs and switches between them', (
     tester,
   ) async {

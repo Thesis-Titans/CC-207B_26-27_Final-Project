@@ -120,8 +120,15 @@ class _ShellScreenState extends State<ShellScreen> {
     }
   }
 
+  void _goToToday() {
+    setState(() {
+      _currentIndex = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final compactHeader = MediaQuery.sizeOf(context).width < 380;
     final sessionState = AuthScope.maybeOf(context);
     final isAuthenticated = sessionState?.isAuthenticated ?? false;
     final activeChild = sessionState?.activeChild;
@@ -183,29 +190,33 @@ class _ShellScreenState extends State<ShellScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: BrandLogo(
-          onTap: () {
-            setState(() {
-              _currentIndex = 0;
-            });
-          },
-        ),
+        title: compactHeader
+            ? IconButton(
+                tooltip: 'LittleSteps home',
+                onPressed: _goToToday,
+                icon: const GrowthSymbol(size: 26),
+              )
+            : BrandLogo(onTap: _goToToday),
         actions: [
           if (activeChild != null)
-            ChildChip(
-              activeChild: activeChild,
-              onTap: () {
-                if (!isAuthenticated) {
-                  Navigator.pushNamed(
-                    context,
-                    '/sign-in',
-                    arguments:
-                        'Please sign in to select or manage child profiles.',
-                  );
-                } else {
-                  Navigator.pushNamed(context, '/children');
-                }
-              },
+            SizedBox(
+              width: compactHeader ? 132 : null,
+              child: ChildChip(
+                activeChild: activeChild,
+                compact: compactHeader,
+                onTap: () {
+                  if (!isAuthenticated) {
+                    Navigator.pushNamed(
+                      context,
+                      '/sign-in',
+                      arguments:
+                          'Please sign in to select or manage child profiles.',
+                    );
+                  } else {
+                    Navigator.pushNamed(context, '/children');
+                  }
+                },
+              ),
             ),
           IconButton(
             icon: CircleAvatar(
