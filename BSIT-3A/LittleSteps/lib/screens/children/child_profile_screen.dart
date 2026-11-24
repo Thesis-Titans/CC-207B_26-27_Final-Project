@@ -6,6 +6,7 @@ import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/state_views.dart';
+import 'add_child_screen.dart';
 
 /// Lists the caregiver's child profiles and lets them pick the active
 /// child (issue #3).
@@ -51,6 +52,19 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   /// Opens the add child form, then reloads the list so a new child shows.
   Future<void> _openAddChild() async {
     await Navigator.pushNamed(context, '/children/add');
+    if (!mounted) {
+      return;
+    }
+    _load();
+  }
+
+  /// Opens the form to edit [child], then reloads the list so the changes
+  /// show.
+  Future<void> _openEditChild(Child child) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => AddChildScreen(child: child)),
+    );
     if (!mounted) {
       return;
     }
@@ -115,14 +129,19 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
               final isActive = child.id == activeChildId;
               return ListTile(
                 minTileHeight: AppSizes.touchTarget,
-                leading: const Icon(Icons.child_care_outlined),
+                // The active child shows a check instead of the child icon.
+                leading: isActive
+                    ? const Icon(Icons.check_circle, semanticLabel: 'Active')
+                    : const Icon(Icons.child_care_outlined),
                 title: Text(child.nickname),
                 subtitle: Text(
                   ageBandForCode(child.ageBand)?.label ?? child.ageBand,
                 ),
-                trailing: isActive
-                    ? const Icon(Icons.check_circle, semanticLabel: 'Active')
-                    : null,
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Edit ${child.nickname}',
+                  onPressed: () => _openEditChild(child),
+                ),
                 selected: isActive,
                 onTap: () => _select(child),
               );

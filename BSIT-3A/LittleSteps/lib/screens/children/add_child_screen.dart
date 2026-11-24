@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/age_band.dart';
+import '../../models/child.dart';
 import '../../models/child_validators.dart';
 import '../../routing/app_router.dart';
 import '../../services/api_client.dart';
@@ -9,7 +10,8 @@ import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 
-/// Form for adding a child profile (issue #3).
+/// Form for adding a child profile, or editing one when [child] is given
+/// (issue #3).
 ///
 /// Caregivers give either a birth month and year (the app shows the age
 /// band it leads to) or, if they prefer, an age band directly.
@@ -17,8 +19,12 @@ import '../../widgets/auth_scope.dart';
 /// Fields are checked on the device first, and the server still checks every field
 /// when the profile is saved.
 class AddChildScreen extends StatefulWidget {
-  /// Creates the add child profile screen.
-  const AddChildScreen({super.key});
+  /// Creates the form. Pass [child] to edit that profile instead of adding
+  /// a new one.
+  const AddChildScreen({super.key, this.child});
+
+  /// The profile to edit, or null to add a new child.
+  final Child? child;
 
   @override
   State<AddChildScreen> createState() => _AddChildScreenState();
@@ -43,6 +49,35 @@ class _AddChildScreenState extends State<AddChildScreen> {
   /// The age band picked when [_useAgeBand] is true.
   AgeBand? _ageBand;
 
+  /// Whether this form edits an existing profile.
+  bool get _isEditing => widget.child != null;
+
+  /// Fills in the form from the child being edited, if any.
+  @override
+  void initState() {
+    super.initState();
+    final child = widget.child;
+    if (child == null) {
+      return;
+    }
+    _nicknameController.text = child.nickname;
+
+    // A birth date is stored as 'YYYY-MM', such as '2025-03'.
+    final parts = child.birthMonthYear?.split('-');
+    final year = parts == null ? null : int.tryParse(parts[0]);
+    final month = parts == null || parts.length < 2
+        ? null
+        : int.tryParse(parts[1]);
+    if (year != null && month != null) {
+      _birthYear = year;
+      _birthMonth = month;
+    } else {
+      // No birth date was given, so the profile uses an age band.
+      _useAgeBand = true;
+      _ageBand = ageBandForCode(child.ageBand);
+    }
+  }
+
   /// Disposes the nickname controller when the screen is removed from the tree.
   @override
   void dispose() {
@@ -63,8 +98,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
   /// The API fields this form has an input for.
   static const _formFields = {'nickname', 'birthMonthYear', 'ageBand'};
 
-  /// Shows the server's errors from [error] under the fields they belong
-  /// to. An error for a field the form has no input for (such as the
+  /// Shows the server's errors from [error] under the fields they belong to
+  /// An error for a field the form has no input for (such as the
   /// limit on children) is shown above the Save button instead.
   void _showServerErrors(ApiException error) {
     final fieldErrors = <String, String>{};
@@ -123,12 +158,32 @@ class _AddChildScreenState extends State<AddChildScreen> {
     });
 
     try {
-      final child = await childrenService.createChild(
-        nickname: _nicknameController.text.trim(),
-        ageBand: _useAgeBand ? _ageBand!.code : null,
-        birthMonthYear: _useAgeBand ? null : _birthMonthYear,
-      );
-      session.setActiveChild(child);
+      final nickname = _nicknameController.text.trim();
+      final ageBand = _useAgeBand ? _ageBand!.code : null;
+      final birthMonthYear = _useAgeBand ? null : _birthMonthYear;
+      final editing = widget.child;
+
+      final Child child;
+      if (editing == null) {
+        child = await childrenService.createChild(
+          nickname: nickname,
+          ageBand: ageBand,
+          birthMonthYear: birthMonthYear,
+        );
+        // A newly added child becomes the active child.
+        session.setActiveChild(child);
+      } else {
+        child = await childrenService.updateChild(
+          id: editing.id,
+          nickname: nickname,
+          ageBand: ageBand,
+          birthMonthYear: birthMonthYear,
+        );
+        // Keep the header chip up to date if the active child was edited.
+        if (session.activeChild?.id == child.id) {
+          session.setActiveChild(child);
+        }
+      }
       if (!mounted) {
         return;
       }
@@ -206,9 +261,19 @@ class _AddChildScreenState extends State<AddChildScreen> {
   Widget build(BuildContext context) {
     final currentYear = DateTime.now().year;
     final band = _derivedBand;
+    final years = [for (var i = 0; i < _yearCount; i++) currentYear - i];
+    // A dropdown must contain its selected value. An edited child who is
+    // now older than the list covers keeps their year, and the birth date
+    // check then explains that the age is out of range.
+    final birthYear = _birthYear;
+    if (birthYear != null && !years.contains(birthYear)) {
+      years.add(birthYear);
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add child profile')),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit child profile' : 'Add child profile'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -300,11 +365,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   errorText: _fieldErrors['birthMonthYear'],
                 ),
                 items: [
-                  for (var i = 0; i < _yearCount; i++)
-                    DropdownMenuItem(
-                      value: currentYear - i,
-                      child: Text('${currentYear - i}'),
-                    ),
+                  for (final year in years)
+                    DropdownMenuItem(value: year, child: Text('$year')),
                 ],
                 onChanged: (value) {
                   setState(() {
