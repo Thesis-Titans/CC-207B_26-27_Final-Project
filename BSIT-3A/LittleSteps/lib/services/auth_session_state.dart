@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/auth_user.dart';
 import '../models/child.dart';
+import '../models/weather.dart';
 import 'auth_service.dart';
 
 /// Manages the in-memory authentication session and active child profile.
@@ -21,6 +22,7 @@ class AuthSessionState extends ChangeNotifier {
   AuthUser? _currentUser;
   Child? _activeChild;
   String? _unsavedDraft;
+  WeatherLocation? _weatherLocation = WeatherLocation.iloiloCity;
 
   /// Currently signed-in caregiver user, or `null` if unauthenticated.
   AuthUser? get currentUser => _currentUser;
@@ -34,8 +36,21 @@ class AuthSessionState extends ChangeNotifier {
   /// Any unsaved draft text preserved across session expirations.
   String? get unsavedDraft => _unsavedDraft;
 
+  /// Selected Philippine city for optional Open-Meteo play-weather hints,
+  /// or `null` when weather hints are turned off.
+  WeatherLocation? get weatherLocation => _weatherLocation;
+
   /// Active ID token for API authorization.
   String? get idToken => _currentUser?.idToken;
+
+  /// Updates the city used for optional play-weather hints.
+  ///
+  /// Pass `null` to disable weather hints across the app.
+  void setWeatherLocation(WeatherLocation? location) {
+    if (_weatherLocation == location) return;
+    _weatherLocation = location;
+    notifyListeners();
+  }
 
   /// Updates or preserves an unsaved draft before signing out or upon expiry.
   void setUnsavedDraft(String? draft) {

@@ -9,6 +9,7 @@ import 'package:littlesteps/services/auth_service.dart';
 import 'package:littlesteps/services/auth_session_state.dart';
 import 'package:littlesteps/theme/app_theme.dart';
 import 'package:littlesteps/widgets/auth_scope.dart';
+import 'package:littlesteps/widgets/brand_logo.dart';
 import 'package:littlesteps/widgets/child_chip.dart';
 import 'package:littlesteps/widgets/no_children_view.dart';
 
@@ -296,4 +297,29 @@ void main() {
       expect(find.text('Add Child Route'), findsOneWidget);
     },
   );
+
+  testWidgets('shell switches to NavigationRail on wide viewports', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light(), home: const ShellScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.byType(BrandLogo), findsOneWidget);
+
+    final rail = find.byType(NavigationRail);
+    await tester.tap(find.descendant(of: rail, matching: find.text('Explore')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ExploreScreen), findsOneWidget);
+  });
 }

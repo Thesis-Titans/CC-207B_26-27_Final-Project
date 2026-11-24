@@ -7,6 +7,7 @@ import '../theme/app_tokens.dart';
 /// Prompts caregivers to generate play ideas tailored to available materials,
 /// time constraints, and the child's developmental age band.
 class IdeaHelperCard extends StatelessWidget {
+  /// Creates an [IdeaHelperCard].
   const IdeaHelperCard({super.key, this.childName, this.onTap});
 
   /// Optional nickname of the active child to personalize the card copy.
@@ -18,8 +19,9 @@ class IdeaHelperCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final subtitleText = childName != null && childName!.trim().isNotEmpty
-        ? 'Find a play idea for ${childName!.trim()} with the time and materials you have.'
+    final name = childName?.trim();
+    final subtitleText = name != null && name.isNotEmpty
+        ? 'Find a play idea for $name with the time and materials you have.'
         : 'Find a play idea with the time and materials you have.';
 
     return Container(

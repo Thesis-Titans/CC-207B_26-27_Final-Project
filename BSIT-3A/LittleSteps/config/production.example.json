@@ -1,0 +1,5 @@
+{
+  "USE_FIREBASE_EMULATOR": "false",
+  "API_BASE_URL": "https://asia-southeast1-littlesteps-prod.cloudfunctions.net/api",
+  "FIREBASE_API_KEY": "replace-with-firebase-web-api-key"
+}

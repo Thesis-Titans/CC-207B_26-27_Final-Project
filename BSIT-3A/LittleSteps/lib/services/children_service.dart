@@ -3,6 +3,7 @@ import 'api_client.dart';
 
 /// Service for managing child profiles.
 class ChildrenService {
+  /// Creates a [ChildrenService].
   ChildrenService({required this.apiClient});
 
   /// The client used for API requests.

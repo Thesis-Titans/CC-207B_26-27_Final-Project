@@ -3,16 +3,31 @@ import 'package:intl/intl.dart';
 
 import '../../models/summary.dart';
 import '../../services/api_client.dart';
+import '../../services/milestones_service.dart';
+import '../../services/plan_service.dart';
 import '../../services/summary_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 
 /// View states for the weekly summary screen.
-enum WeeklySummaryViewState { ready, loading, error, offline }
+enum WeeklySummaryViewState {
+  /// Weekly summary metrics and reflection card are displayed.
+  ready,
+
+  /// Weekly summary data is loading from the backend.
+  loading,
+
+  /// A recoverable request error occurred.
+  error,
+
+  /// Cached weekly summary data is displayed while offline.
+  offline,
+}
 
 /// "This week" reflection tab presenting factual weekly summaries for the active child.
 class WeeklySummaryScreen extends StatefulWidget {
+  /// Creates a [WeeklySummaryScreen].
   const WeeklySummaryScreen({
     super.key,
     this.initialState = WeeklySummaryViewState.ready,
@@ -21,14 +36,29 @@ class WeeklySummaryScreen extends StatefulWidget {
     this.childName,
     this.childAgeBand,
     this.summaryService,
+    this.onFindIdea,
   });
 
+  /// Initial view state override for widget tests.
   final WeeklySummaryViewState initialState;
+
+  /// Initial ISO week identifier selected on load.
   final String initialWeek;
+
+  /// Optional map of preloaded summaries keyed by ISO week.
   final Map<String, WeeklySummary>? summaries;
+
+  /// Optional child nickname override for widget tests.
   final String? childName;
+
+  /// Optional child age-band override for widget tests.
   final String? childAgeBand;
+
+  /// Optional service override for fetching weekly summaries.
   final SummaryService? summaryService;
+
+  /// Optional callback invoked when the caregiver taps "Find a 10-minute idea".
+  final VoidCallback? onFindIdea;
 
   @override
   State<WeeklySummaryScreen> createState() => _WeeklySummaryScreenState();
@@ -77,38 +107,80 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     return widget.childAgeBand ?? '14 months';
   }
 
-  static WeeklySummary _createEmptyCurrentWeekSummary() {
-    final now = DateTime.now();
-    final monday = DateTime.utc(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
+  MilestonesService _resolveMilestonesService() {
+    return MilestonesService(apiClient: _resolveApiClient());
+  }
 
-    final thursday = monday.add(const Duration(days: 3));
-    final jan4 = DateTime.utc(thursday.year, 1, 4);
-    final weekNumber = 1 + ((thursday.difference(jan4).inDays) / 7).floor();
-    final weekStr = weekNumber.toString().padLeft(2, '0');
-    final weekId = '${thursday.year}-W$weekStr';
+  PlanService _resolvePlanService() {
+    return PlanService(apiClient: _resolveApiClient());
+  }
 
-    return WeeklySummary(
-      id: weekId,
-      weekStartDate: DateFormat('yyyy-MM-dd').format(monday),
-      weekEndDate: DateFormat('yyyy-MM-dd').format(sunday),
-      completedActivityCount: 0,
-      observedMilestoneCount: 0,
-      totalPlannedActivities: 0,
-      domainDistribution: const {
-        'cognitive': 0,
-        'motor': 0,
-        'language': 0,
-        'socioEmotional': 0,
-      },
-      topActivityIds: const [],
-      reflectionPrompt: '',
-      generatedAt: now,
-    );
+  static String dateToIsoWeek(String dateStr) {
+    try {
+      final parts = dateStr.split('-');
+      if (parts.length < 3) return '';
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+      final date = DateTime.utc(year, month, day);
+
+      final thursday = date.add(
+        Duration(days: 4 - (date.weekday == 0 ? 7 : date.weekday)),
+      );
+      final isoYear = thursday.year;
+      final jan4 = DateTime.utc(isoYear, 1, 4);
+      final week1Monday = jan4.subtract(Duration(days: jan4.weekday - 1));
+      final weekNumber =
+          1 + ((thursday.difference(week1Monday).inDays) / 7).floor();
+      return '$isoYear-W${weekNumber.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  static WeeklySummary _createEmptyWeekSummaryForId(String weekId) {
+    try {
+      final parts = weekId.split('-W');
+      final year = int.parse(parts[0]);
+      final week = int.parse(parts[1]);
+
+      final jan4 = DateTime.utc(year, 1, 4);
+      final jan4Dow = jan4.weekday;
+      final week1Monday = jan4.subtract(Duration(days: jan4Dow - 1));
+      final monday = week1Monday.add(Duration(days: (week - 1) * 7));
+      final sunday = monday.add(const Duration(days: 6));
+
+      return WeeklySummary(
+        id: weekId,
+        weekStartDate: DateFormat('yyyy-MM-dd').format(monday),
+        weekEndDate: DateFormat('yyyy-MM-dd').format(sunday),
+        completedActivityCount: 0,
+        observedMilestoneCount: 0,
+        totalPlannedActivities: 0,
+        domainDistribution: const {
+          'cognitive': 0,
+          'motor': 0,
+          'language': 0,
+          'socioEmotional': 0,
+        },
+        topActivityIds: const [],
+        reflectionPrompt: '',
+        generatedAt: DateTime.now(),
+      );
+    } catch (_) {
+      return WeeklySummary(
+        id: weekId,
+        weekStartDate: '',
+        weekEndDate: '',
+        completedActivityCount: 0,
+        observedMilestoneCount: 0,
+        totalPlannedActivities: 0,
+        domainDistribution: const {},
+        topActivityIds: const [],
+        reflectionPrompt: '',
+        generatedAt: DateTime.now(),
+      );
+    }
   }
 
   @override
@@ -119,9 +191,9 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
       _selectedWeekId = widget.initialWeek;
       _summaries = widget.summaries!;
     } else {
-      final emptyCurrent = _createEmptyCurrentWeekSummary();
-      _selectedWeekId = emptyCurrent.id;
-      _summaries = {emptyCurrent.id: emptyCurrent};
+      _currentState = WeeklySummaryViewState.loading;
+      _selectedWeekId = '';
+      _summaries = {};
     }
   }
 
@@ -131,6 +203,7 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     if (widget.summaries != null) {
       _summaries = widget.summaries!;
       _selectedWeekId = widget.initialWeek;
+      _currentState = widget.initialState;
       return;
     }
     final childId = _childId;
@@ -138,23 +211,16 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     if (!_initialLoadStarted || childChanged) {
       _initialLoadStarted = true;
       _lastChildId = childId;
-      if (childChanged) {
-        final emptyCurrent = _createEmptyCurrentWeekSummary();
-        _summaries = {emptyCurrent.id: emptyCurrent};
-        _selectedWeekId = emptyCurrent.id;
-      }
-      _loadWeeklySummary(_selectedWeekId, childId: childId);
+      _loadWeeklySummary(null, childId);
     }
   }
 
-  Future<void> _loadWeeklySummary(String weekId, {String? childId}) async {
+  Future<void> _loadWeeklySummary([String? weekId, String? childId]) async {
     final targetChildId = childId ?? _childId;
     if (targetChildId == null) {
-      final emptyCurrent = _createEmptyCurrentWeekSummary();
       if (mounted) {
         setState(() {
-          _selectedWeekId = emptyCurrent.id;
-          _summaries = {emptyCurrent.id: emptyCurrent};
+          _currentState = WeeklySummaryViewState.ready;
         });
       }
       return;
@@ -167,8 +233,44 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
         week: weekId,
       );
       if (!mounted || targetChildId != _lastChildId) return;
+
+      final updatedSummaries = Map<String, WeeklySummary>.from(_summaries);
+      updatedSummaries[summary.id] = summary;
+
+      // Discover recorded past weeks with activities or milestones in database
+      try {
+        final milestonesService = _resolveMilestonesService();
+        final planService = _resolvePlanService();
+        final obsList = await milestonesService.getObservations(targetChildId);
+        final plansList = await planService.getPlans(targetChildId);
+
+        for (final obs in obsList) {
+          if (obs.observedDate.isNotEmpty) {
+            final w = dateToIsoWeek(obs.observedDate);
+            if (w.isNotEmpty && !updatedSummaries.containsKey(w)) {
+              updatedSummaries[w] = _createEmptyWeekSummaryForId(w);
+            }
+          }
+        }
+        for (final plan in plansList) {
+          if (plan.scheduledDate.isNotEmpty) {
+            final w = dateToIsoWeek(plan.scheduledDate);
+            if (w.isNotEmpty && !updatedSummaries.containsKey(w)) {
+              updatedSummaries[w] = _createEmptyWeekSummaryForId(w);
+            }
+          }
+        }
+      } catch (_) {}
+
+      final sortedKeys = updatedSummaries.keys.toList()
+        ..sort((a, b) => b.compareTo(a));
+      final sortedMap = <String, WeeklySummary>{};
+      for (final k in sortedKeys) {
+        sortedMap[k] = updatedSummaries[k]!;
+      }
+
       setState(() {
-        _summaries[summary.id] = summary;
+        _summaries = sortedMap;
         _selectedWeekId = summary.id;
         _currentState = WeeklySummaryViewState.ready;
       });
@@ -284,18 +386,26 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
             vertical: AppSpacing.space8,
           ),
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AppColors.borderSubtle),
+            color: AppColors.softGreen,
             borderRadius: BorderRadius.circular(AppRadius.control),
+            border: Border.all(color: AppColors.borderSubtle),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              const Icon(
+                Icons.child_care_outlined,
+                size: 16,
+                color: AppColors.forest,
+              ),
+              const SizedBox(width: AppSpacing.space8),
               Text(
                 'For $_childName · $_childAgeDisplay',
-                style: const TextStyle(fontWeight: FontWeight.w500),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.forest,
+                ),
               ),
-              const Spacer(),
-              const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
             ],
           ),
         ),
@@ -325,7 +435,10 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 Row(
                   children: [
                     Text(
-                      _currentSummary?.formattedRange ?? _selectedWeekId,
+                      _currentSummary?.formattedRange ??
+                          (_selectedWeekId.isNotEmpty
+                              ? _selectedWeekId
+                              : 'Current week'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -347,9 +460,11 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           _buildLoadingState()
         else if (_currentState == WeeklySummaryViewState.error)
           _buildErrorState()
-        else ...[
-          if (_currentState == WeeklySummaryViewState.offline)
-            _buildOfflineBanner(),
+        else if (_currentState == WeeklySummaryViewState.offline) ...[
+          _buildOfflineBanner(),
+          if (_currentSummary != null && !_currentSummary!.isEmptyWeek)
+            _buildPopulatedWeekView(_currentSummary!),
+        ] else ...[
           if (_currentSummary == null || _currentSummary!.isEmptyWeek)
             _buildEmptyWeekCard()
           else
@@ -360,137 +475,134 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
   }
 
   Widget _buildPopulatedWeekView(WeeklySummary summary) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
+    final summaryCard = Container(
+      padding: const EdgeInsets.all(AppSpacing.space16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'This week with $_childName',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: AppSpacing.space12),
+          Row(
             children: [
-              Text(
-                'This week with $_childName',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.space12,
+                    horizontal: AppSpacing.space12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.softGreen,
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${summary.completedActivityCount}',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.forest,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'activities\ncompleted',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.space12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.space12,
-                        horizontal: AppSpacing.space12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.softGreen,
-                        borderRadius: BorderRadius.circular(AppRadius.control),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${summary.completedActivityCount}',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.forest,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'activities\ncompleted',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                              height: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.space12,
+                    horizontal: AppSpacing.space12,
                   ),
-                  const SizedBox(width: AppSpacing.space12),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.space12,
-                        horizontal: AppSpacing.space12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.softGreen,
-                        borderRadius: BorderRadius.circular(AppRadius.control),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${summary.observedMilestoneCount}',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.forest,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            summary.observedMilestoneCount == 1
-                                ? 'milestone\nnoticed'
-                                : 'milestones\nnoticed',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
-                              height: 1.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  decoration: BoxDecoration(
+                    color: AppColors.softGreen,
+                    borderRadius: BorderRadius.circular(AppRadius.control),
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              Text(
-                "Based only on what you wrote down. It's not a test, and it never compares $_childName with other children. Journal notes stay private.",
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: AppColors.textSecondary, height: 1.35),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${summary.observedMilestoneCount}',
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.forest,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        summary.observedMilestoneCount == 1
+                            ? 'milestone\nnoticed'
+                            : 'milestones\nnoticed',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: AppSpacing.space16),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
+          const SizedBox(height: AppSpacing.space12),
+          Text(
+            "Based only on what you wrote down. It's not a test, and it never compares $_childName with other children. Journal notes stay private.",
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.textSecondary, height: 1.35),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Everyday play areas',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              ..._buildDomainRows(summary.domainDistribution),
-            ],
+        ],
+      ),
+    );
+
+    final domainsCard = Container(
+      padding: const EdgeInsets.all(AppSpacing.space16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Everyday play areas',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.space16),
-        if (summary.reflectionPrompt.isNotEmpty)
-          Container(
+          const SizedBox(height: AppSpacing.space12),
+          ..._buildDomainRows(summary.domainDistribution),
+        ],
+      ),
+    );
+
+    final promptCard = summary.reflectionPrompt.isNotEmpty
+        ? Container(
             padding: const EdgeInsets.all(AppSpacing.space16),
             decoration: BoxDecoration(
               color: AppColors.cream,
@@ -523,9 +635,48 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 ),
               ],
             ),
-          ),
-        const SizedBox(height: AppSpacing.space24),
-      ],
+          )
+        : null;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 860 && promptCard != null) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.space24),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      summaryCard,
+                      const SizedBox(height: AppSpacing.space16),
+                      domainsCard,
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.space24),
+                SizedBox(width: 340, child: promptCard),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            summaryCard,
+            const SizedBox(height: AppSpacing.space16),
+            domainsCard,
+            if (promptCard != null) ...[
+              const SizedBox(height: AppSpacing.space16),
+              promptCard,
+            ],
+            const SizedBox(height: AppSpacing.space24),
+          ],
+        );
+      },
     );
   }
 
@@ -620,8 +771,11 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 ),
               ),
               onPressed: () {
-                // Navigate to Explore tab or initial route
-                Navigator.of(context).maybePop();
+                if (widget.onFindIdea != null) {
+                  widget.onFindIdea!();
+                } else {
+                  Navigator.pushNamed(context, '/ai-suggest');
+                }
               },
               child: const Text(
                 'Find a 10-minute idea',

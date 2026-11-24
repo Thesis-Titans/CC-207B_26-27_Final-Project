@@ -5,6 +5,7 @@ import 'api_client.dart';
 
 /// Service for accessing activities, picture books, and weather advisories.
 class CatalogService {
+  /// Creates a [CatalogService].
   CatalogService({required this.apiClient});
 
   /// The client used for API requests.

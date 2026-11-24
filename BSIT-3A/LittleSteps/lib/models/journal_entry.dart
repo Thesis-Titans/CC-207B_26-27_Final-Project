@@ -1,5 +1,6 @@
-/// A private caregiver journal entry.
+/// A private caregiver journal entry recorded for a child.
 class JournalEntry {
+  /// Creates a [JournalEntry].
   const JournalEntry({
     required this.id,
     required this.childId,
@@ -9,13 +10,25 @@ class JournalEntry {
     required this.updatedAt,
   });
 
+  /// Unique identifier of the journal entry.
   final String id;
+
+  /// Identifier of the child profile this note belongs to.
   final String childId;
+
+  /// Calendar date of the entry in `YYYY-MM-DD` format.
   final String entryDate;
+
+  /// Private caregiver note body.
   final String content;
+
+  /// Timestamp when the entry was created.
   final DateTime createdAt;
+
+  /// Timestamp when the entry was last updated.
   final DateTime updatedAt;
 
+  /// Creates a [JournalEntry] from a decoded JSON object.
   factory JournalEntry.fromJson(Map<String, dynamic> json) {
     return JournalEntry(
       id: json['id'] as String,
@@ -27,6 +40,7 @@ class JournalEntry {
     );
   }
 
+  /// Serializes this [JournalEntry] to a JSON map.
   Map<String, dynamic> toJson() {
     return {
       'id': id,

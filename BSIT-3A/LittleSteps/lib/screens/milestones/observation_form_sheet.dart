@@ -9,6 +9,7 @@ import '../../theme/app_tokens.dart';
 /// Allows caregivers to mark whether a milestone was observed and optionally save
 /// private notes and the observation date.
 class ObservationFormSheet extends StatefulWidget {
+  /// Creates an [ObservationFormSheet].
   const ObservationFormSheet({
     super.key,
     required this.prompt,
@@ -20,12 +21,25 @@ class ObservationFormSheet extends StatefulWidget {
     required this.onSave,
   });
 
+  /// Milestone prompt being recorded or edited.
   final MilestonePrompt prompt;
+
+  /// Display nickname of the active child.
   final String childName;
+
+  /// Approximate age of the active child in months.
   final int childAgeMonths;
+
+  /// Existing saved observation when editing, if any.
   final MilestoneObservation? initialObservation;
+
+  /// Whether the app is currently offline.
   final bool isOffline;
+
+  /// Optional callback to retry connectivity from the offline banner.
   final VoidCallback? onRetryOffline;
+
+  /// Callback invoked with the saved [MilestoneObservation].
   final ValueChanged<MilestoneObservation> onSave;
 
   @override

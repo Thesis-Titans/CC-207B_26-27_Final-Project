@@ -4,6 +4,7 @@ import '../theme/app_tokens.dart';
 
 /// A loading indicator with an optional status message.
 class LoadingView extends StatelessWidget {
+  /// Creates a [LoadingView].
   const LoadingView({super.key, this.message = 'Loading...'});
 
   /// Status message displayed below the progress indicator.
@@ -30,6 +31,7 @@ class LoadingView extends StatelessWidget {
 
 /// An empty state placeholder with an icon, message, and optional action.
 class EmptyStateView extends StatelessWidget {
+  /// Creates an [EmptyStateView].
   const EmptyStateView({
     super.key,
     required this.title,
@@ -55,12 +57,14 @@ class EmptyStateView extends StatelessWidget {
   /// Callback executed when the action button is pressed.
   final VoidCallback? onAction;
 
-  /// Announces the empty-state copy when it appears or changes.
+  /// Whether to announce the empty-state copy as a semantic live region.
   final bool announce;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final buttonLabel = actionLabel;
+    final buttonAction = onAction;
 
     return Center(
       child: Padding(
@@ -95,9 +99,9 @@ class EmptyStateView extends StatelessWidget {
                 ),
               ),
             ),
-            if (actionLabel != null && onAction != null) ...[
+            if (buttonLabel != null && buttonAction != null) ...[
               const SizedBox(height: AppSpacing.space24),
-              FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+              FilledButton(onPressed: buttonAction, child: Text(buttonLabel)),
             ],
           ],
         ),
@@ -106,8 +110,9 @@ class EmptyStateView extends StatelessWidget {
   }
 }
 
-/// An error state placeholder with a retry button.
+/// An error state placeholder with an optional retry button.
 class ErrorView extends StatelessWidget {
+  /// Creates an [ErrorView].
   const ErrorView({super.key, required this.message, this.onRetry});
 
   /// Descriptive error message to display.
@@ -142,7 +147,7 @@ class ErrorView extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Try Again'),
+                label: const Text('Try again'),
               ),
             ],
           ],
@@ -154,6 +159,7 @@ class ErrorView extends StatelessWidget {
 
 /// A banner indicating that the device is currently offline.
 class OfflineBanner extends StatelessWidget {
+  /// Creates an [OfflineBanner].
   const OfflineBanner({
     super.key,
     this.message = 'Working offline. Changes will sync when reconnected.',

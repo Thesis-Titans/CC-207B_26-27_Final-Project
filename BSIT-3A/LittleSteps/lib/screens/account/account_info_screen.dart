@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_tokens.dart';
+import '../../utils/url_helper.dart';
 
 /// Describes the account information page to display.
-enum AccountInfoPage { privacy, about, help }
+enum AccountInfoPage {
+  /// Data collection, retention, and caregiver choices notice.
+  privacy,
 
-/// Plain-language privacy, product and help information pages.
+  /// Product overview, non-diagnostic notice, and clinical framework sources.
+  about,
+
+  /// Usage guidance, concern escalation, and project support channels.
+  help,
+}
+
+/// Privacy, about, and help screens.
 class AccountInfoScreen extends StatelessWidget {
+  /// Creates an [AccountInfoScreen] for [page].
   const AccountInfoScreen({super.key, required this.page});
 
-  /// Information page shown by this screen.
+  /// The informational page variant to render.
   final AccountInfoPage page;
 
   String get _title => switch (page) {
@@ -70,15 +81,30 @@ class AccountInfoScreen extends StatelessWidget {
       _InfoSection(
         'Where content comes from',
         'Activities and milestone prompts are grounded in published pediatric '
-            'and early childhood frameworks:\n\n'
-            '• CDC Developmental Milestones (Learn the Signs. Act Early.)\n'
-            '  https://www.cdc.gov/ncbddd/actearly/milestones/\n\n'
-            '• American Academy of Pediatrics (AAP)\n'
-            '  https://www.healthychildren.org\n\n'
-            '• WHO Nurturing Care Framework for Early Childhood Development\n'
-            '  https://nurturing-care.org\n\n'
-            '• Philippine Early Learning Standards (ECCD Council)\n'
-            '  https://eccdcouncil.gov.ph',
+            'and early childhood frameworks:',
+        links: [
+          _ExternalResourceLink(
+            title: 'CDC Developmental Milestones (Learn the Signs. Act Early.)',
+            domainLabel: 'cdc.gov',
+            url: 'https://www.cdc.gov/ncbddd/actearly/milestones/',
+          ),
+          _ExternalResourceLink(
+            title: 'American Academy of Pediatrics (AAP)',
+            domainLabel: 'healthychildren.org',
+            url: 'https://www.healthychildren.org',
+          ),
+          _ExternalResourceLink(
+            title:
+                'WHO Nurturing Care Framework for Early Childhood Development',
+            domainLabel: 'nurturing-care.org',
+            url: 'https://nurturing-care.org',
+          ),
+          _ExternalResourceLink(
+            title: 'Philippine Early Learning Standards (ECCD Council)',
+            domainLabel: 'eccdcouncil.gov.ph',
+            url: 'https://eccdcouncil.gov.ph',
+          ),
+        ],
       ),
       _InfoSection(
         'Who made LittleSteps',
@@ -113,8 +139,15 @@ class AccountInfoScreen extends StatelessWidget {
       ),
       _InfoSection(
         'Contact us',
-        'For help with LittleSteps, contact the project team through your '
-            'course or project support channel.',
+        'For help or feedback with LittleSteps, reach the Thesis Titans team '
+            'on GitHub:',
+        links: [
+          _ExternalResourceLink(
+            title: 'Thesis Titans on GitHub',
+            domainLabel: 'github.com/Thesis-Titans',
+            url: 'https://github.com/Thesis-Titans',
+          ),
+        ],
       ),
     ],
   };
@@ -123,22 +156,41 @@ class AccountInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_title)),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        itemCount: _sections.length,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space12),
-        itemBuilder: (context, index) =>
-            _InfoSectionCard(section: _sections[index]),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(AppSpacing.space16),
+            itemCount: _sections.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(height: AppSpacing.space12),
+            itemBuilder: (context, index) =>
+                _InfoSectionCard(section: _sections[index]),
+          ),
+        ),
       ),
     );
   }
 }
 
+class _ExternalResourceLink {
+  const _ExternalResourceLink({
+    required this.title,
+    required this.domainLabel,
+    required this.url,
+  });
+
+  final String title;
+  final String domainLabel;
+  final String url;
+}
+
 class _InfoSection {
-  const _InfoSection(this.title, this.body);
+  const _InfoSection(this.title, this.body, {this.links = const []});
 
   final String title;
   final String body;
+  final List<_ExternalResourceLink> links;
 }
 
 class _InfoSectionCard extends StatelessWidget {
@@ -148,17 +200,67 @@ class _InfoSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(section.title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.space8),
-            Text(section.body, style: Theme.of(context).textTheme.bodyMedium),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.space16,
+              AppSpacing.space16,
+              AppSpacing.space16,
+              section.links.isEmpty ? AppSpacing.space16 : AppSpacing.space12,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(section.title, style: theme.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.space8),
+                Text(section.body, style: theme.textTheme.bodyMedium),
+              ],
+            ),
+          ),
+          if (section.links.isNotEmpty) ...[
+            const Divider(height: 1),
+            for (var index = 0; index < section.links.length; index++) ...[
+              if (index > 0) const Divider(height: 1),
+              Semantics(
+                link: true,
+                hint: 'Opens external website',
+                child: ListTile(
+                  minTileHeight: AppSizes.touchTarget,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space16,
+                    vertical: AppSpacing.space4,
+                  ),
+                  title: Text(
+                    section.links[index].title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    section.links[index].domainLabel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.forest,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.open_in_new,
+                    size: 18,
+                    color: AppColors.forest,
+                  ),
+                  onTap: () =>
+                      openExternalUrl(context, section.links[index].url),
+                ),
+              ),
+            ],
           ],
-        ),
+        ],
       ),
     );
   }

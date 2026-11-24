@@ -3,6 +3,7 @@ import 'api_client.dart';
 
 /// Service for a child's planned activities (`/children/:childId/plans`).
 class PlanService {
+  /// Creates a [PlanService].
   PlanService({required this.apiClient});
 
   /// The client used for API requests.
@@ -30,10 +31,15 @@ class PlanService {
     required String childId,
     required String activityId,
     required String scheduledDate,
+    int? durationMinutes,
   }) async {
     final data = await apiClient.post(
       _base(childId),
-      body: {'activityId': activityId, 'scheduledDate': scheduledDate},
+      body: {
+        'activityId': activityId,
+        'scheduledDate': scheduledDate,
+        'durationMinutes': ?durationMinutes,
+      },
     ) as Map<String, dynamic>;
     return PlanItem.fromJson(data);
   }

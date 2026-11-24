@@ -4,6 +4,7 @@ import '../theme/app_tokens.dart';
 
 /// A banner displaying a non-diagnostic advisory notice.
 class AdvisoryBanner extends StatelessWidget {
+  /// Creates an [AdvisoryBanner].
   const AdvisoryBanner({
     super.key,
     this.message = 'Not a diagnostic tool. Observational play suggestions only. You know your child best.',

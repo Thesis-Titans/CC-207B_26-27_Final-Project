@@ -3,6 +3,7 @@ import 'api_client.dart';
 
 /// Service for managing private caregiver journal entries.
 class JournalService {
+  /// Creates a [JournalService].
   JournalService({required this.apiClient});
 
   /// The client used for API requests.

@@ -130,6 +130,18 @@ abstract final class AppSizes {
 
   /// Standard height of the bottom navigation bar.
   static const double bottomBarHeight = 72;
+
+  /// Width of the extended desktop navigation sidebar.
+  static const double sidebarWidth = 240;
+
+  /// Maximum readable width for single-column content screens and forms.
+  static const double contentMaxWidth = 760;
+
+  /// Maximum width for primary desktop two-column workspace layouts.
+  static const double wideContentMaxWidth = 1320;
+
+  /// Minimum viewport width that switches from bottom bar to side navigation.
+  static const double wideLayoutBreakpoint = 840;
 }
 
 /// Animation durations and curve constants.

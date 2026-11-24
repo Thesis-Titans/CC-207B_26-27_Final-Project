@@ -21,10 +21,7 @@ void main() {
     expect(find.text('Cup tower'), findsOneWidget);
     expect(find.text('clean cups'), findsOneWidget);
     expect(find.text('Source: Synthetic fixture'), findsOneWidget);
-    expect(
-      find.text('Provisional Academic Reference — Pending Review'),
-      findsOneWidget,
-    );
+    expect(find.text('Educational play reference'), findsOneWidget);
     expect(find.text("Add to today's plan"), findsOneWidget);
   });
 
@@ -168,8 +165,88 @@ void main() {
     expect(observer.lastPushed?.transitionDuration, Duration.zero);
     expect(observer.lastPushed?.reverseTransitionDuration, Duration.zero);
     await tester.pumpAndSettle();
-    expect(find.text('More filters'), findsOneWidget);
+    expect(find.text('Filters'), findsOneWidget);
+    expect(find.text("Child's age"), findsWidgets);
+    expect(find.text('Language'), findsOneWidget);
   });
+
+  testWidgets(
+    'citation sheet shows non-diagnostic copy, dynamic framework title, and website CTA',
+    (tester) async {
+      final eccdActivity = Activity(
+        id: 'act-eccd-nelf',
+        title: 'Stack the Plastic Cups',
+        type: 'activity',
+        language: 'en',
+        domain: 'cognitive',
+        ageBand: '12-23m',
+        durationMinutes: 10,
+        durationEstimate: '10 mins',
+        setting: 'indoor',
+        materials: const ['plastic cups'],
+        instructions: const ['Stack plastic cups together.'],
+        limitations: 'Supervise closely.',
+        status: 'reviewed_approved',
+        provenanceSource: 'ECCD Council NELF (2010), Annex 4, p. 78',
+      );
+      await _pumpExplore(tester, _FakeCatalogService([eccdActivity]));
+
+      await tester.ensureVisible(find.textContaining('ECCD Council NELF'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('ECCD Council NELF'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Where this activity comes from'), findsOneWidget);
+      expect(
+        find.text('Philippine National Early Learning Framework (NELF)'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Adapted from published early childhood play and learning guidelines.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('clinical'), findsNothing);
+      expect(find.text('Visit ECCD Council website'), findsOneWidget);
+      expect(find.text('eccdcouncil.gov.ph'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'citation sheet omits external portal button for unmapped sources',
+    (tester) async {
+      final genericActivity = Activity(
+        id: 'act-generic',
+        title: 'Water Pouring',
+        type: 'activity',
+        language: 'en',
+        domain: 'motor',
+        ageBand: '12-23m',
+        durationMinutes: 10,
+        durationEstimate: '10 mins',
+        setting: 'indoor',
+        materials: const ['cups'],
+        instructions: const ['Pour water between cups.'],
+        limitations: 'Supervise around water.',
+        status: 'reviewed_approved',
+        provenanceSource: 'Community Early Play Handbook (2024)',
+      );
+      await _pumpExplore(tester, _FakeCatalogService([genericActivity]));
+
+      await tester.ensureVisible(
+        find.textContaining('Community Early Play Handbook'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Community Early Play Handbook'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Where this activity comes from'), findsOneWidget);
+      expect(find.text('Published early childhood guide'), findsOneWidget);
+      expect(find.text('Visit ECCD Council website'), findsNothing);
+      expect(find.byIcon(Icons.open_in_new), findsNothing);
+    },
+  );
 }
 
 Future<void> _pumpExplore(

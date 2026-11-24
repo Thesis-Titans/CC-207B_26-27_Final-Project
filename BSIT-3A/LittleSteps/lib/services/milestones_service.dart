@@ -4,6 +4,7 @@ import 'api_client.dart';
 /// Service for a child's milestone observations
 /// (`/children/:childId/milestones`).
 class MilestonesService {
+  /// Creates a [MilestonesService].
   MilestonesService({required this.apiClient});
 
   /// The client used for API requests.

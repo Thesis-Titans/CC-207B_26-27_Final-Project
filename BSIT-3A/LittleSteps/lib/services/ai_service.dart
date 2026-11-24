@@ -1,14 +1,18 @@
 import '../models/recommendation.dart';
 import 'api_client.dart';
 
-/// Service for requesting play suggestions with catalog fallback.
+/// Client service for requesting AI play recommendations and story activities.
 class AiService {
+  /// Creates an [AiService] backed by [apiClient].
   AiService({required this.apiClient});
 
-  /// The client used for API requests.
+  /// HTTP client used to send authenticated requests to the backend API.
   final ApiClient apiClient;
 
-  /// Requests play suggestions based on age band and available materials.
+  /// Requests play suggestions for [ageBand], [setting], [timeMinutes], and [materials].
+  ///
+  /// Sends only non-identifying play context so child names and private notes
+  /// never leave the device in AI prompts.
   Future<RecommendationResponse> getRecommendations({
     required String ageBand,
     String? domain,

@@ -9,10 +9,26 @@ import '../../widgets/screen_header.dart';
 import 'observation_form_sheet.dart';
 
 /// View states for the milestones screen.
-enum MilestonesViewState { ready, loading, empty, error, offline }
+enum MilestonesViewState {
+  /// Prompts and saved observations are displayed.
+  ready,
+
+  /// Observations are loading from the backend.
+  loading,
+
+  /// Zero prompts match the active filters.
+  empty,
+
+  /// A recoverable request error occurred.
+  error,
+
+  /// Cached observations are displayed while offline.
+  offline,
+}
 
 /// Milestones tab displaying developmental observation prompts grouped by ECCD domain.
 class MilestonesScreen extends StatefulWidget {
+  /// Creates a [MilestonesScreen].
   const MilestonesScreen({
     super.key,
     this.initialState = MilestonesViewState.ready,
@@ -21,9 +37,16 @@ class MilestonesScreen extends StatefulWidget {
     this.milestonesService,
   });
 
+  /// Initial view state override for widget tests.
   final MilestonesViewState initialState;
+
+  /// Observational prompts rendered on the screen.
   final List<MilestonePrompt> prompts;
+
+  /// Preloaded observations keyed by milestone prompt identifier.
   final Map<String, MilestoneObservation> initialObservations;
+
+  /// Optional service override for loading and saving observations.
   final MilestonesService? milestonesService;
 
   @override
@@ -55,20 +78,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       }
     }
     return 14;
-  }
-
-  String get _childAgeDisplay {
-    final session = AuthScope.maybeOf(context);
-    final activeChild = session?.activeChild;
-    if (activeChild != null) {
-      final band = activeChild.ageBand;
-      if (band.contains('month')) return band;
-      if (band.endsWith('m')) {
-        return '${band.substring(0, band.length - 1)} months';
-      }
-      return '$band months';
-    }
-    return '14 months';
   }
 
   // Maps the active child's age in months to the nearest milestone prompt band.
@@ -132,6 +141,10 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
 
   Future<void> _loadObservations(String? childId) async {
     if (childId == null || widget.initialObservations.isNotEmpty) return;
+    final session = AuthScope.maybeOf(context);
+    final canFetch =
+        widget.milestonesService != null || (session?.isAuthenticated ?? false);
+    if (!canFetch) return;
 
     try {
       final service = _resolveMilestonesService();
@@ -312,28 +325,6 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           onAdvisoryTap: !_showAdvisory
               ? () => setState(() => _showAdvisory = true)
               : null,
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space12,
-            vertical: AppSpacing.space8,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AppColors.borderSubtle),
-            borderRadius: BorderRadius.circular(AppRadius.control),
-          ),
-          child: Row(
-            children: [
-              Text(
-                'For $_childName · $_childAgeDisplay',
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const Spacer(),
-              const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
-            ],
-          ),
         ),
         const SizedBox(height: AppSpacing.space12),
         if (_currentState == MilestonesViewState.loading)
@@ -645,9 +636,12 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     );
   }
 
+  bool _showDomainRightFade = true;
+
   Widget _buildDomainChips() {
-    return SingleChildScrollView(
+    final row = SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.only(right: AppSpacing.space20),
       child: Row(
         children: [
           ChoiceChip(
@@ -702,6 +696,31 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           }),
         ],
       ),
+    );
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.axis != Axis.horizontal) return false;
+        final hasMoreRight =
+            notification.metrics.maxScrollExtent > 0 &&
+            notification.metrics.extentAfter > 4;
+        if (hasMoreRight != _showDomainRightFade) {
+          setState(() => _showDomainRightFade = hasMoreRight);
+        }
+        return false;
+      },
+      child: _showDomainRightFade
+          ? ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: [0.0, 0.9, 1.0],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              child: row,
+            )
+          : row,
     );
   }
 

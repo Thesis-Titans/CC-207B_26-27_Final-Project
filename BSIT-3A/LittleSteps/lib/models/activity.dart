@@ -1,5 +1,6 @@
-/// An activity in the learning catalog.
+/// A play or learning activity in the catalog.
 class Activity {
+  /// Creates an [Activity].
   const Activity({
     required this.id,
     required this.title,
@@ -17,25 +18,49 @@ class Activity {
     required this.provenanceSource,
   });
 
+  /// Unique catalog activity identifier.
   final String id;
+
+  /// Caregiver-facing activity title.
   final String title;
+
+  /// Catalog entry type (for example, `activity`).
   final String type;
 
-  /// One of `en`, `fil` or `hil`.
+  /// ISO language code (`en`, `fil`, or `hil`).
   final String language;
+
+  /// Developmental play domain (`cognitive`, `motor`, `language`, `socioEmotional`).
   final String domain;
+
+  /// Target developmental age band (for example, `12-23m`).
   final String ageBand;
+
+  /// Approximate play duration in minutes.
   final int durationMinutes;
+
+  /// Human-readable duration label (for example, `10–15 mins`).
   final String durationEstimate;
+
+  /// Recommended play setting (`indoor`, `outdoor`, or `either`).
   final String setting;
+
+  /// Household materials used during the activity.
   final List<String> materials;
+
+  /// Ordered step-by-step instructions for caregivers.
   final List<String> instructions;
+
+  /// Safety and supervision notes for caregivers.
   final String limitations;
 
-  /// Review status: `reviewed_approved`, `synthetic_fixture` or `draft`.
+  /// Content publication status returned by the catalog API.
   final String status;
+
+  /// Published early-learning framework or citation backing the activity.
   final String provenanceSource;
 
+  /// Creates an [Activity] from a decoded JSON object.
   factory Activity.fromJson(Map<String, dynamic> json) {
     return Activity(
       id: json['id'] as String,
@@ -55,6 +80,7 @@ class Activity {
     );
   }
 
+  /// Serializes this [Activity] to a JSON map.
   Map<String, dynamic> toJson() {
     return {
       'id': id,

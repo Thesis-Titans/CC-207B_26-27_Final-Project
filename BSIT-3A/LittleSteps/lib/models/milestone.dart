@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+/// A saved caregiver observation for a developmental milestone prompt.
 class MilestoneObservation {
+  /// Creates a [MilestoneObservation].
   const MilestoneObservation({
     required this.id,
     required this.childId,
@@ -12,16 +14,34 @@ class MilestoneObservation {
     required this.updatedAt,
   });
 
+  /// Unique identifier of the saved observation record.
   final String id;
+
+  /// Identifier of the child profile associated with the observation.
   final String childId;
+
+  /// Identifier of the catalog [MilestonePrompt].
   final String milestoneId;
+
+  /// Recorded observation status (`observed` or `not_yet`).
   final String status;
+
+  /// Calendar date of the observation in `YYYY-MM-DD` format.
   final String observedDate;
+
+  /// Optional private caregiver note attached to the observation.
   final String? notes;
+
+  /// Timestamp when the observation was created.
   final DateTime createdAt;
+
+  /// Timestamp when the observation was last updated.
   final DateTime updatedAt;
+
+  /// Whether the caregiver marked this prompt as observed.
   bool get isObserved => status == 'observed';
 
+  /// Creates a [MilestoneObservation] from a decoded JSON object.
   factory MilestoneObservation.fromJson(Map<String, dynamic> json) {
     return MilestoneObservation(
       id: json['id'] as String,
@@ -36,20 +56,35 @@ class MilestoneObservation {
   }
 }
 
+/// Early-learning developmental domains used to group milestone prompts.
 enum MilestoneDomain {
+  /// Problem-solving and exploration (`Thinking`).
   cognitive('cognitive', 'Thinking', Icons.psychology_outlined),
+
+  /// Gross and fine movement (`Moving`).
   motor('motor', 'Moving', Icons.directions_run_outlined),
+
+  /// Receptive and expressive communication (`Talking`).
   language('language', 'Talking', Icons.chat_bubble_outline),
+
+  /// Social connection and emotional expression (`Feelings`).
   socioEmotional('socioEmotional', 'Feelings', Icons.favorite_border);
 
   const MilestoneDomain(this.key, this.label, this.icon);
 
+  /// Wire domain key matching the backend API.
   final String key;
+
+  /// Caregiver-facing domain label.
   final String label;
+
+  /// Representative icon for domain headers and filter chips.
   final IconData icon;
 }
 
+/// An age-grouped observational prompt shown on the Milestones tab.
 class MilestonePrompt {
+  /// Creates a [MilestonePrompt].
   const MilestonePrompt({
     required this.id,
     required this.domain,
@@ -60,14 +95,26 @@ class MilestonePrompt {
         'Source: CDC Developmental Milestones & Early Learning Guidelines',
   });
 
+  /// Unique identifier of the milestone prompt.
   final String id;
+
+  /// Developmental domain this prompt belongs to.
   final MilestoneDomain domain;
+
+  /// Short observational prompt title.
   final String title;
+
+  /// Concrete everyday examples caregivers can watch for during play.
   final List<String> lookFor;
+
+  /// Human-readable age range for the prompt (for example, `12-23 months`).
   final String ageBand;
+
+  /// Published guideline citation backing the prompt.
   final String provenance;
 }
 
+/// Curated observational prompts across developmental age bands.
 const List<MilestonePrompt> sampleMilestonePrompts = [
   // 0-11 months
   MilestonePrompt(
