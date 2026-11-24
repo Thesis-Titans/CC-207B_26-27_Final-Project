@@ -15,11 +15,15 @@ class LocalDataCache {
   static const List<String> _permittedPrefixes = [
     '/api/v1/children',
     '/api/v1/catalog/activities',
+    '/api/v1/catalog/books',
   ];
 
   // Checks whether the given endpoint path is permitted for local offline caching.
   bool isCacheablePath(String path) {
     if (path.contains('/plans')) return true;
+    if (RegExp(r'^/api/v1/children/[^/]+/books$').hasMatch(path)) {
+      return true;
+    }
     for (final prefix in _permittedPrefixes) {
       if (path == prefix || path.startsWith('$prefix?')) return true;
     }
