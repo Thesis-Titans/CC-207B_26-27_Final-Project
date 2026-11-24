@@ -35,6 +35,24 @@ void main() {
         "Nickname can't contain line breaks or tabs",
       );
     });
+
+    // Stricter than the API: letters, spaces, - ' and . only.
+    test('rejects numbers and symbols', () {
+      expect(
+        validateNickname('3443'),
+        "Use letters only. Spaces, - and ' are fine.",
+      );
+      expect(
+        validateNickname('Mia2'),
+        "Use letters only. Spaces, - and ' are fine.",
+      );
+    });
+
+    test('accepts hyphens, apostrophes and accents', () {
+      expect(validateNickname('Mary-Ann'), isNull);
+      expect(validateNickname("O'Neil"), isNull);
+      expect(validateNickname('José'), isNull);
+    });
   });
 
   group('validateBirthMonthYear', () {

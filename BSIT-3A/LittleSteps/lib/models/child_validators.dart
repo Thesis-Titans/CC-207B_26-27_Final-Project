@@ -7,6 +7,12 @@ const int maxNicknameLength = 50;
 /// which the API rejects in a nickname.
 final RegExp _controlCharacters = RegExp(r'[\x00-\x1F\x7F]');
 
+/// Matches a nickname made only of letters (any language), spaces,
+/// hyphens, apostrophes and periods, such as "Mary-Ann" or "José".
+///
+/// This is stricter than the API, which also accepts numbers and symbols.
+final RegExp _allowedNickname = RegExp(r"^[\p{L}\p{M} '.-]+$", unicode: true);
+
 /// Returns an error message if [value] is not a valid nickname,
 /// or null if it is valid.
 ///
@@ -23,6 +29,9 @@ String? validateNickname(String? value) {
   }
   if (_controlCharacters.hasMatch(nickname)) {
     return "Nickname can't contain line breaks or tabs";
+  }
+  if (!_allowedNickname.hasMatch(nickname)) {
+    return "Use letters only. Spaces, - and ' are fine.";
   }
   return null;
 }
