@@ -9,6 +9,7 @@ import '../../services/api_client.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
+import 'offline_notice.dart';
 
 /// Form for adding a child profile, or editing one when [child] is given
 /// (issue #3).
@@ -91,6 +92,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
   /// The server's error message from the last save, if it failed.
   String? _errorMessage;
 
+  /// Whether the last save failed because the device is offline.
+  bool _offline = false;
+
   /// The server's error for each field from the last save, keyed by the
   /// API field name: `nickname`, `birthMonthYear` or `ageBand`.
   Map<String, String> _fieldErrors = const {};
@@ -153,6 +157,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
     setState(() {
       _saving = true;
+      _offline = false;
       _errorMessage = null;
       _fieldErrors = const {};
     });
@@ -198,14 +203,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
       }
       _showServerErrors(error);
     } catch (_) {
-      // For example, no connection to the server.
+      // ApiClient turns every server reply into an ApiException, so any
+      // other error means the request never reached the server: offline.
+      // The form keeps what was typed, so Save can simply be tapped again.
       if (!mounted) {
         return;
       }
       setState(() {
-        _errorMessage =
-            "Couldn't save the profile. Check your connection "
-            'and try again.';
+        _offline = true;
       });
     } finally {
       if (mounted) {
@@ -382,6 +387,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
               ],
             ],
             const SizedBox(height: AppSpacing.space16),
+            if (_offline) ...[
+              const OfflineNotice(),
+              const SizedBox(height: AppSpacing.space16),
+            ],
             if (_errorMessage != null) ...[
               Text(
                 _errorMessage!,

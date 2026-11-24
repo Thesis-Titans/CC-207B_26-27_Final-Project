@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../models/age_band.dart';
 import '../../models/child.dart';
+import '../../services/api_client.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/state_views.dart';
 import 'add_child_screen.dart';
+import 'offline_notice.dart';
 
 /// Lists the caregiver's child profiles and lets them pick the active
 /// child (issue #3).
@@ -96,6 +98,17 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
             return const LoadingView(message: 'Loading children...');
           }
           if (snapshot.hasError) {
+            // ApiClient turns every server reply into an ApiException, so
+            // any other error means the server was never reached: offline.
+            // The list, and with it Add and Edit, waits for a connection.
+            if (snapshot.error is! ApiException) {
+              return Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.space16),
+                  child: OfflineNotice(onRetry: _load),
+                ),
+              );
+            }
             return ErrorView(
               message: "Couldn't load children. Check your connection.",
               onRetry: _load,
