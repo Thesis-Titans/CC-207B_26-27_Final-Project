@@ -442,7 +442,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Idea Helper',
+              'Idea helper',
               style: Theme.of(context).textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),

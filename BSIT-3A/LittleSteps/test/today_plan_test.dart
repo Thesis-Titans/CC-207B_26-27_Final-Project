@@ -199,7 +199,7 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(find.text('Try Again'), findsOneWidget);
+        expect(find.text('Try again'), findsOneWidget);
       },
     );
   });

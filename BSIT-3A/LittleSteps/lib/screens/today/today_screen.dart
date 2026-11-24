@@ -793,7 +793,7 @@ class _TodayScreenState extends State<TodayScreen> {
                         _activityLookup[plan.activityId] ??
                         Activity(
                           id: plan.activityId,
-                          title: 'Scheduled Activity',
+                          title: 'Scheduled activity',
                           type: 'activity',
                           language: 'en',
                           domain: 'play',
@@ -1114,7 +1114,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
     return Semantics(
       liveRegion: true,
-      label: 'Weather Guidance: ${hint.hint}',
+      label: 'Weather guidance: ${hint.hint}',
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.space16),
         padding: const EdgeInsets.symmetric(

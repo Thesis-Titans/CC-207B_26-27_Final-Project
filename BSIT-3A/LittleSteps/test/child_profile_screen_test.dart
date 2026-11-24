@@ -40,7 +40,7 @@ void main() {
 
     expect(find.text('Maya'), findsOneWidget);
     expect(find.text('Leo'), findsOneWidget);
-    expect(find.text('Tap card to switch'), findsWidgets);
+    expect(find.text('Tap to switch'), findsWidgets);
 
     // Tapping the nickname on the card body selects that child.
     await tester.tap(find.text('Leo'));
@@ -48,5 +48,6 @@ void main() {
 
     expect(selectedChild?.id, 'c2');
     expect(selectedChild?.nickname, 'Leo');
+    expect(find.text('Switched to Leo'), findsOneWidget);
   });
 }

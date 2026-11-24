@@ -36,7 +36,7 @@ class BookCard extends StatelessWidget {
     final theme = Theme.of(context);
     final authorText = book.authors.isNotEmpty
         ? book.authors.join(', ')
-        : 'Unknown Author';
+        : 'Unknown author';
     final subjectsText = book.subjects.isNotEmpty
         ? book.subjects.take(2).join(' · ')
         : null;
