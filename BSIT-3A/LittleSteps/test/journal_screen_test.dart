@@ -59,13 +59,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No journal notes yet'), findsOneWidget);
-    expect(find.text('Add observation'), findsOneWidget);
+    expect(find.text('No notes for Maya yet'), findsOneWidget);
+    expect(
+      find.text(
+        'Only you can see your notes. They are never shared or sent to AI.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Private by design'), findsNothing);
+    expect(find.text('Add note'), findsOneWidget);
 
-    await tester.tap(find.text('Add observation'));
+    await tester.tap(find.text('Add note'));
     await tester.pumpAndSettle();
 
-    expect(find.text('New private note'), findsOneWidget);
+    expect(find.text('New note'), findsOneWidget);
     expect(find.text('0 / 2,000'), findsOneWidget);
 
     await tester.enterText(
@@ -97,7 +104,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add observation'));
+    await tester.tap(find.text('Add note'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -231,7 +238,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add observation'));
+    await tester.tap(find.text('Add note'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -282,9 +289,12 @@ void main() {
       ]);
       await tester.pumpAndSettle();
 
-      expect(find.text('Private notes about Tala.'), findsOneWidget);
+      expect(
+        find.text('Everyday moments and notes about Tala.'),
+        findsOneWidget,
+      );
       expect(find.text('Maya private secret note'), findsNothing);
-      expect(find.text('No journal notes yet'), findsOneWidget);
+      expect(find.text('No notes for Tala yet'), findsOneWidget);
     },
   );
 }

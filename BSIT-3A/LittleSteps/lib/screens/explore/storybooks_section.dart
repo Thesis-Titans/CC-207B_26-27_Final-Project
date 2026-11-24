@@ -16,10 +16,21 @@ import '../../widgets/book_card.dart';
 import '../../widgets/state_views.dart';
 import 'play_companion_dialog.dart';
 
-enum BookshelfShelf { openLibrary, ourBookshelf, rhymes }
+/// Shelf tabs available inside [StorybooksSection].
+enum BookshelfShelf {
+  /// Searchable children's catalog sourced from Open Library.
+  openLibrary,
 
-/// Explore's Open Library, saved books, and rhyme shelves.
+  /// Books saved to the active child's family bookshelf.
+  ourBookshelf,
+
+  /// Curated traditional Philippine rhymes and singing routines.
+  rhymes,
+}
+
+/// Explore section hosting Open Library books, saved books, and rhymes.
 class StorybooksSection extends StatefulWidget {
+  /// Creates a [StorybooksSection].
   const StorybooksSection({
     super.key,
     this.booksService,
@@ -33,22 +44,31 @@ class StorybooksSection extends StatefulWidget {
     this.onPlanActivity,
   });
 
+  /// Optional books service override used in tests.
   final BooksService? booksService;
 
+  /// Optional AI service override for generating story play companions.
   final AiService? aiService;
 
+  /// Optional plan service override for scheduling story activities.
   final PlanService? planService;
 
+  /// Currently selected child profile, or `null` when unavailable.
   final Child? activeChild;
 
+  /// Active bookshelf tab to display.
   final BookshelfShelf selectedShelf;
 
+  /// Whether the parent screen is currently offline.
   final bool isOffline;
 
+  /// Callback invoked when the caregiver switches bookshelf tabs.
   final ValueChanged<BookshelfShelf>? onShelfSelected;
 
+  /// Callback invoked whenever the saved books count changes.
   final ValueChanged<int>? onSavedCountChanged;
 
+  /// Callback invoked when a story or rhyme activity is added to today's plan.
   final void Function(Activity activity)? onPlanActivity;
 
   @override
@@ -62,6 +82,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
   Timer? _searchDebounce;
 
   bool _isLoadingBooks = true;
+  bool _initialBooksLoaded = false;
   String? _booksError;
   bool _showingOfflineBooks = false;
   List<BookItem> _openLibraryBooks = [];
@@ -116,12 +137,15 @@ class _StorybooksSectionState extends State<StorybooksSection> {
   @override
   void initState() {
     super.initState();
-    _loadOpenLibraryBooks();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_initialBooksLoaded) {
+      _initialBooksLoaded = true;
+      _loadOpenLibraryBooks();
+    }
     final childId = widget.activeChild?.id;
     if (_lastLoadedChildId != childId) {
       _lastLoadedChildId = childId;
@@ -190,7 +214,10 @@ class _StorybooksSectionState extends State<StorybooksSection> {
 
   Future<void> _loadSavedBooks() async {
     final childId = widget.activeChild?.id;
-    if (childId == null) {
+    final session = AuthScope.maybeOf(context);
+    final canFetchSaved =
+        widget.booksService != null || (session?.isAuthenticated ?? false);
+    if (childId == null || !canFetchSaved) {
       setState(() {
         _savedBooks = [];
         _visibleSavedCount = _bookPageSize;

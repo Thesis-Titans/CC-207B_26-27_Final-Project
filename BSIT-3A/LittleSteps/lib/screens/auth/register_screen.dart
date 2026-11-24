@@ -7,9 +7,9 @@ import '../../widgets/auth_scope.dart';
 
 /// Caregiver registration screen.
 ///
-/// Prominently displays the mandatory privacy notice before account creation,
-/// adheres to WCAG 3.3.8 (allowing paste and password managers via AutofillGroup),
-/// and enforces 48dp touch targets and accessible announcements.
+/// Displays the privacy notice before account creation, supports password
+/// managers and paste input through [AutofillGroup], and announces validation
+/// and submission status changes to assistive technologies.
 class RegisterScreen extends StatefulWidget {
   /// Creates a [RegisterScreen].
   const RegisterScreen({super.key});

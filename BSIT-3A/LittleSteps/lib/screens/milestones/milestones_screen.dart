@@ -141,6 +141,10 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
 
   Future<void> _loadObservations(String? childId) async {
     if (childId == null || widget.initialObservations.isNotEmpty) return;
+    final session = AuthScope.maybeOf(context);
+    final canFetch =
+        widget.milestonesService != null || (session?.isAuthenticated ?? false);
+    if (!canFetch) return;
 
     try {
       final service = _resolveMilestonesService();
@@ -632,9 +636,12 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     );
   }
 
+  bool _showDomainRightFade = true;
+
   Widget _buildDomainChips() {
-    return SingleChildScrollView(
+    final row = SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.only(right: AppSpacing.space20),
       child: Row(
         children: [
           ChoiceChip(
@@ -689,6 +696,31 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           }),
         ],
       ),
+    );
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.axis != Axis.horizontal) return false;
+        final hasMoreRight =
+            notification.metrics.maxScrollExtent > 0 &&
+            notification.metrics.extentAfter > 4;
+        if (hasMoreRight != _showDomainRightFade) {
+          setState(() => _showDomainRightFade = hasMoreRight);
+        }
+        return false;
+      },
+      child: _showDomainRightFade
+          ? ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: [0.0, 0.9, 1.0],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              child: row,
+            )
+          : row,
     );
   }
 

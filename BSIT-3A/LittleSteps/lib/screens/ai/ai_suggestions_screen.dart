@@ -76,6 +76,8 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   String? _domain;
 
   bool _isLoading = false;
+  bool _isAddingAll = false;
+  final Set<String> _addedActivityIds = {};
   RecommendationResponse? _response;
   String? _rateLimitMessage;
   String? _fallbackNotice;
@@ -220,6 +222,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
           _fallbackNotice = "The idea helper isn't working right now. Here are a few favorites for this age from our activity list.";
         }
       });
+      unawaited(_syncTodayPlannedIds());
     } on ApiException catch (e) {
       if (!mounted) return;
       if (e.statusCode == 429 || e.code == 'RATE_LIMITED') {
@@ -287,9 +290,29 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     }
   }
 
+  Future<void> _syncTodayPlannedIds() async {
+    final childId = _effectiveChild?.id ?? widget.initialChild?.id;
+    final session = AuthScope.maybeOf(context);
+    final canFetch =
+        widget.planService != null ||
+        widget.apiClient != null ||
+        (session?.isAuthenticated ?? false);
+    if (childId == null || !canFetch) return;
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    try {
+      final plans = await _resolvePlanService().getPlans(childId, date: today);
+      if (!mounted) return;
+      setState(() {
+        _addedActivityIds.addAll(plans.map((p) => p.activityId));
+      });
+    } catch (_) {
+      // Ignore pre-check failures; individual add actions handle errors.
+    }
+  }
+
   Future<void> _addToPlan(Recommendation item) async {
     final childId = _effectiveChild?.id ?? widget.initialChild?.id;
-    if (childId == null) return;
+    if (childId == null || _addedActivityIds.contains(item.activityId)) return;
     final today = DateTime.now().toIso8601String().substring(0, 10);
 
     try {
@@ -297,8 +320,12 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
         childId: childId,
         activityId: item.activityId,
         scheduledDate: today,
+        durationMinutes: item.activity?.durationMinutes,
       );
       if (!mounted) return;
+      setState(() {
+        _addedActivityIds.add(item.activityId);
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Added "${item.title}" to today\'s plan'),
@@ -318,11 +345,54 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     }
   }
 
+  Future<void> _addAllToPlan(List<Recommendation> suggestions) async {
+    final childId = _effectiveChild?.id ?? widget.initialChild?.id;
+    if (childId == null || _isAddingAll) return;
+    final pending = suggestions
+        .where((item) => !_addedActivityIds.contains(item.activityId))
+        .toList();
+    if (pending.isEmpty) return;
+
+    setState(() => _isAddingAll = true);
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final service = _resolvePlanService();
+    var addedCount = 0;
+
+    for (final item in pending) {
+      try {
+        await service.addActivityToPlan(
+          childId: childId,
+          activityId: item.activityId,
+          scheduledDate: today,
+          durationMinutes: item.activity?.durationMinutes,
+        );
+        addedCount++;
+        if (mounted) {
+          setState(() {
+            _addedActivityIds.add(item.activityId);
+          });
+        }
+      } catch (_) {
+        // Continue attempting remaining items so partial success is preserved.
+      }
+    }
+
+    if (!mounted) return;
+    setState(() => _isAddingAll = false);
+    final message = addedCount > 0
+        ? 'Added $addedCount ${addedCount == 1 ? 'activity' : 'activities'} to today\'s plan'
+        : 'Could not add activities to today\'s plan. Please try again.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
+    );
+  }
+
   void _resetToForm() {
     setState(() {
       _response = null;
       _rateLimitMessage = null;
       _fallbackNotice = null;
+      _addedActivityIds.clear();
     });
   }
 
@@ -372,7 +442,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Idea Helper',
+              'Idea helper',
               style: Theme.of(context).textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
@@ -750,7 +820,22 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
               ),
           ],
         ),
+        if (isAi) ...[
+          const SizedBox(height: AppSpacing.space4),
+          Text(
+            'Matched from reviewed LittleSteps activities for your inputs.',
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
         const SizedBox(height: AppSpacing.space8),
+
+        if (_timeMinutes >= 30 &&
+            response != null &&
+            response.suggestions.isNotEmpty) ...[
+          _buildPlayBlockBanner(response.suggestions),
+          const SizedBox(height: AppSpacing.space12),
+        ],
 
         Container(
           padding: const EdgeInsets.all(AppSpacing.space12),
@@ -819,6 +904,76 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       default:
         return setting;
     }
+  }
+
+  Widget _buildPlayBlockBanner(List<Recommendation> suggestions) {
+    final totalMinutes = suggestions.fold<int>(
+      0,
+      (sum, item) => sum + (item.activity?.durationMinutes ?? 10),
+    );
+    final count = suggestions.length;
+    final allAdded = suggestions.every(
+      (item) => _addedActivityIds.contains(item.activityId),
+    );
+    final pacingSummary = totalMinutes < _timeMinutes
+        ? '$count short reviewed ${count == 1 ? 'activity' : 'activities'} '
+              '(~$totalMinutes mins total) · repeat favorites or mix in free '
+              'play to fill $_timeMinutes min.'
+        : '$count short reviewed ${count == 1 ? 'activity' : 'activities'} '
+              '(~$totalMinutes mins total) paced for young attention spans.';
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.space12),
+      decoration: BoxDecoration(
+        color: AppColors.softGreen.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.schedule_outlined,
+                size: 18,
+                color: AppColors.forest,
+              ),
+              const SizedBox(width: AppSpacing.space8),
+              Expanded(
+                child: Text(
+                  'Play block for $_timeMinutes min',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppColors.forest,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space4),
+          Text(
+            pacingSummary,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.textPrimary),
+          ),
+          if (count >= 2 && _effectiveChild != null) ...[
+            const SizedBox(height: AppSpacing.space12),
+            OutlinedButton.icon(
+              onPressed: (allAdded || _isAddingAll)
+                  ? null
+                  : () => _addAllToPlan(suggestions),
+              icon: Icon(allAdded ? Icons.check : Icons.playlist_add, size: 18),
+              label: Text(
+                allAdded
+                    ? "All added to today's plan"
+                    : "Add all to today's plan",
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildSuggestionCard(Recommendation suggestion) {
@@ -961,12 +1116,26 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
               ),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: _effectiveChild == null
-                    ? null
-                    : () => _addToPlan(suggestion),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text("Add to today's plan"),
+              child: Builder(
+                builder: (context) {
+                  final alreadyAdded = _addedActivityIds.contains(
+                    suggestion.activityId,
+                  );
+                  return FilledButton.icon(
+                    onPressed: (_effectiveChild == null || alreadyAdded)
+                        ? null
+                        : () => _addToPlan(suggestion),
+                    icon: Icon(
+                      alreadyAdded ? Icons.check : Icons.add,
+                      size: 18,
+                    ),
+                    label: Text(
+                      alreadyAdded
+                          ? "Added to today's plan"
+                          : "Add to today's plan",
+                    ),
+                  );
+                },
               ),
             ),
           ],

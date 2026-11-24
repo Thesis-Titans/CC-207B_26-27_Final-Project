@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 
 import '../../models/summary.dart';
 import '../../services/api_client.dart';
+import '../../services/milestones_service.dart';
+import '../../services/plan_service.dart';
 import '../../services/summary_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
@@ -105,38 +107,80 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     return widget.childAgeBand ?? '14 months';
   }
 
-  static WeeklySummary _createEmptyCurrentWeekSummary() {
-    final now = DateTime.now();
-    final monday = DateTime.utc(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
-    final sunday = monday.add(const Duration(days: 6));
+  MilestonesService _resolveMilestonesService() {
+    return MilestonesService(apiClient: _resolveApiClient());
+  }
 
-    final thursday = monday.add(const Duration(days: 3));
-    final jan4 = DateTime.utc(thursday.year, 1, 4);
-    final weekNumber = 1 + ((thursday.difference(jan4).inDays) / 7).floor();
-    final weekStr = weekNumber.toString().padLeft(2, '0');
-    final weekId = '${thursday.year}-W$weekStr';
+  PlanService _resolvePlanService() {
+    return PlanService(apiClient: _resolveApiClient());
+  }
 
-    return WeeklySummary(
-      id: weekId,
-      weekStartDate: DateFormat('yyyy-MM-dd').format(monday),
-      weekEndDate: DateFormat('yyyy-MM-dd').format(sunday),
-      completedActivityCount: 0,
-      observedMilestoneCount: 0,
-      totalPlannedActivities: 0,
-      domainDistribution: const {
-        'cognitive': 0,
-        'motor': 0,
-        'language': 0,
-        'socioEmotional': 0,
-      },
-      topActivityIds: const [],
-      reflectionPrompt: '',
-      generatedAt: now,
-    );
+  static String dateToIsoWeek(String dateStr) {
+    try {
+      final parts = dateStr.split('-');
+      if (parts.length < 3) return '';
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+      final date = DateTime.utc(year, month, day);
+
+      final thursday = date.add(
+        Duration(days: 4 - (date.weekday == 0 ? 7 : date.weekday)),
+      );
+      final isoYear = thursday.year;
+      final jan4 = DateTime.utc(isoYear, 1, 4);
+      final week1Monday = jan4.subtract(Duration(days: jan4.weekday - 1));
+      final weekNumber =
+          1 + ((thursday.difference(week1Monday).inDays) / 7).floor();
+      return '$isoYear-W${weekNumber.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  static WeeklySummary _createEmptyWeekSummaryForId(String weekId) {
+    try {
+      final parts = weekId.split('-W');
+      final year = int.parse(parts[0]);
+      final week = int.parse(parts[1]);
+
+      final jan4 = DateTime.utc(year, 1, 4);
+      final jan4Dow = jan4.weekday;
+      final week1Monday = jan4.subtract(Duration(days: jan4Dow - 1));
+      final monday = week1Monday.add(Duration(days: (week - 1) * 7));
+      final sunday = monday.add(const Duration(days: 6));
+
+      return WeeklySummary(
+        id: weekId,
+        weekStartDate: DateFormat('yyyy-MM-dd').format(monday),
+        weekEndDate: DateFormat('yyyy-MM-dd').format(sunday),
+        completedActivityCount: 0,
+        observedMilestoneCount: 0,
+        totalPlannedActivities: 0,
+        domainDistribution: const {
+          'cognitive': 0,
+          'motor': 0,
+          'language': 0,
+          'socioEmotional': 0,
+        },
+        topActivityIds: const [],
+        reflectionPrompt: '',
+        generatedAt: DateTime.now(),
+      );
+    } catch (_) {
+      return WeeklySummary(
+        id: weekId,
+        weekStartDate: '',
+        weekEndDate: '',
+        completedActivityCount: 0,
+        observedMilestoneCount: 0,
+        totalPlannedActivities: 0,
+        domainDistribution: const {},
+        topActivityIds: const [],
+        reflectionPrompt: '',
+        generatedAt: DateTime.now(),
+      );
+    }
   }
 
   @override
@@ -147,9 +191,9 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
       _selectedWeekId = widget.initialWeek;
       _summaries = widget.summaries!;
     } else {
-      final emptyCurrent = _createEmptyCurrentWeekSummary();
-      _selectedWeekId = emptyCurrent.id;
-      _summaries = {emptyCurrent.id: emptyCurrent};
+      _currentState = WeeklySummaryViewState.loading;
+      _selectedWeekId = '';
+      _summaries = {};
     }
   }
 
@@ -159,6 +203,7 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     if (widget.summaries != null) {
       _summaries = widget.summaries!;
       _selectedWeekId = widget.initialWeek;
+      _currentState = widget.initialState;
       return;
     }
     final childId = _childId;
@@ -166,23 +211,16 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     if (!_initialLoadStarted || childChanged) {
       _initialLoadStarted = true;
       _lastChildId = childId;
-      if (childChanged) {
-        final emptyCurrent = _createEmptyCurrentWeekSummary();
-        _summaries = {emptyCurrent.id: emptyCurrent};
-        _selectedWeekId = emptyCurrent.id;
-      }
-      _loadWeeklySummary(_selectedWeekId, childId: childId);
+      _loadWeeklySummary(null, childId);
     }
   }
 
-  Future<void> _loadWeeklySummary(String weekId, {String? childId}) async {
+  Future<void> _loadWeeklySummary([String? weekId, String? childId]) async {
     final targetChildId = childId ?? _childId;
     if (targetChildId == null) {
-      final emptyCurrent = _createEmptyCurrentWeekSummary();
       if (mounted) {
         setState(() {
-          _selectedWeekId = emptyCurrent.id;
-          _summaries = {emptyCurrent.id: emptyCurrent};
+          _currentState = WeeklySummaryViewState.ready;
         });
       }
       return;
@@ -195,8 +233,44 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
         week: weekId,
       );
       if (!mounted || targetChildId != _lastChildId) return;
+
+      final updatedSummaries = Map<String, WeeklySummary>.from(_summaries);
+      updatedSummaries[summary.id] = summary;
+
+      // Discover recorded past weeks with activities or milestones in database
+      try {
+        final milestonesService = _resolveMilestonesService();
+        final planService = _resolvePlanService();
+        final obsList = await milestonesService.getObservations(targetChildId);
+        final plansList = await planService.getPlans(targetChildId);
+
+        for (final obs in obsList) {
+          if (obs.observedDate.isNotEmpty) {
+            final w = dateToIsoWeek(obs.observedDate);
+            if (w.isNotEmpty && !updatedSummaries.containsKey(w)) {
+              updatedSummaries[w] = _createEmptyWeekSummaryForId(w);
+            }
+          }
+        }
+        for (final plan in plansList) {
+          if (plan.scheduledDate.isNotEmpty) {
+            final w = dateToIsoWeek(plan.scheduledDate);
+            if (w.isNotEmpty && !updatedSummaries.containsKey(w)) {
+              updatedSummaries[w] = _createEmptyWeekSummaryForId(w);
+            }
+          }
+        }
+      } catch (_) {}
+
+      final sortedKeys = updatedSummaries.keys.toList()
+        ..sort((a, b) => b.compareTo(a));
+      final sortedMap = <String, WeeklySummary>{};
+      for (final k in sortedKeys) {
+        sortedMap[k] = updatedSummaries[k]!;
+      }
+
       setState(() {
-        _summaries[summary.id] = summary;
+        _summaries = sortedMap;
         _selectedWeekId = summary.id;
         _currentState = WeeklySummaryViewState.ready;
       });
@@ -361,7 +435,10 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 Row(
                   children: [
                     Text(
-                      _currentSummary?.formattedRange ?? _selectedWeekId,
+                      _currentSummary?.formattedRange ??
+                          (_selectedWeekId.isNotEmpty
+                              ? _selectedWeekId
+                              : 'Current week'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -383,9 +460,11 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           _buildLoadingState()
         else if (_currentState == WeeklySummaryViewState.error)
           _buildErrorState()
-        else ...[
-          if (_currentState == WeeklySummaryViewState.offline)
-            _buildOfflineBanner(),
+        else if (_currentState == WeeklySummaryViewState.offline) ...[
+          _buildOfflineBanner(),
+          if (_currentSummary != null && !_currentSummary!.isEmptyWeek)
+            _buildPopulatedWeekView(_currentSummary!),
+        ] else ...[
           if (_currentSummary == null || _currentSummary!.isEmptyWeek)
             _buildEmptyWeekCard()
           else

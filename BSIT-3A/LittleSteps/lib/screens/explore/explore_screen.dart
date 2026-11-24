@@ -203,7 +203,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     unawaited(_loadActivities());
   }
 
-  Future<void> _openMoreFilters() async {
+  Future<void> _openMoreFilters(Child? activeChild) async {
+    final defaultAgeBand = _catalogAgeBand(activeChild?.ageBand);
     await showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -213,59 +214,116 @@ class _ExploreScreenState extends State<ExploreScreen> {
       sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
           ? AnimationStyle.noAnimation
           : null,
-      builder: (sheetContext) => SizedBox(
-        width: double.infinity,
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space16,
-              AppSpacing.space8,
-              AppSpacing.space16,
-              AppSpacing.space24,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'More filters',
-                  style: Theme.of(context).textTheme.titleLarge,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final hasCustomFilters =
+              _ageBand != defaultAgeBand || _language != null;
+          return SizedBox(
+            width: double.infinity,
+            child: SafeArea(
+              top: false,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.space16,
+                  AppSpacing.space8,
+                  AppSpacing.space16,
+                  AppSpacing.space24,
                 ),
-                const SizedBox(height: AppSpacing.space16),
-                Text(
-                  'Language',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.space8),
-                Wrap(
-                  spacing: AppSpacing.space8,
-                  runSpacing: AppSpacing.space8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _LanguageChip(
-                      label: 'All languages',
-                      selected: _language == null,
-                      onSelected: () => _selectLanguage(sheetContext, null),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Filters',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        if (hasCustomFilters)
+                          TextButton(
+                            onPressed: () {
+                              _changeFilter(
+                                ageBand: defaultAgeBand,
+                                domain: _domain,
+                                language: null,
+                              );
+                              Navigator.pop(sheetContext);
+                            },
+                            child: const Text('Reset filters'),
+                          ),
+                      ],
                     ),
-                    ..._languages.entries.map(
-                      (entry) => _LanguageChip(
-                        label: entry.value,
-                        selected: _language == entry.key,
-                        onSelected: () =>
-                            _selectLanguage(sheetContext, entry.key),
+                    const SizedBox(height: AppSpacing.space16),
+                    Text(
+                      "Child's age",
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    DropdownButtonFormField<String?>(
+                      key: ValueKey('age-$_ageBand'),
+                      initialValue: _ageBand,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: "Child's age",
                       ),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('All age bands'),
+                        ),
+                        ..._ageBands.entries.map(
+                          (entry) => DropdownMenuItem<String?>(
+                            value: entry.key,
+                            child: Text(entry.value),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        _changeFilter(
+                          ageBand: value,
+                          domain: _domain,
+                          language: _language,
+                        );
+                        setSheetState(() {});
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.space20),
+                    Text(
+                      'Language',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    Wrap(
+                      spacing: AppSpacing.space8,
+                      runSpacing: AppSpacing.space8,
+                      children: [
+                        _LanguageChip(
+                          label: 'All languages',
+                          selected: _language == null,
+                          onSelected: () => _selectLanguage(sheetContext, null),
+                        ),
+                        ..._languages.entries.map(
+                          (entry) => _LanguageChip(
+                            label: entry.value,
+                            selected: _language == entry.key,
+                            onSelected: () =>
+                                _selectLanguage(sheetContext, entry.key),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.space16),
+                    Text(
+                      'Defaults to your active child\'s age range. Adjust anytime to browse other ages or languages.',
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.space16),
-                Text(
-                  'Choose a language for activities.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -461,9 +519,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 }),
               ),
               if (!_storybooksSelected) ...[
-                const SizedBox(height: AppSpacing.space16),
-                _buildSearchAndAgeRow(),
-                const SizedBox(height: AppSpacing.space16),
+                const SizedBox(height: AppSpacing.space12),
+                _buildSearchAndFilterRow(activeChild),
+                const SizedBox(height: AppSpacing.space12),
               ],
             ]),
           ),
@@ -558,9 +616,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           }),
         ),
         if (!_storybooksSelected) ...[
-          const SizedBox(height: AppSpacing.space16),
-          _buildSearchAndAgeRow(),
-          const SizedBox(height: AppSpacing.space16),
+          const SizedBox(height: AppSpacing.space12),
+          _buildSearchAndFilterRow(activeChild),
+          const SizedBox(height: AppSpacing.space12),
           _DomainFilters(
             selectedDomain: _domain,
             horizontalPadding: 0,
@@ -598,62 +656,60 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildSearchAndAgeRow() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final searchField = TextField(
-          key: const ValueKey('materials-search'),
-          controller: _searchController,
-          onChanged: (value) => setState(() => _searchQuery = value),
-          decoration: const InputDecoration(
-            hintText: 'Search activities or materials',
-            prefixIcon: Icon(Icons.search),
-          ),
-        );
-        final ageDropdown = DropdownButtonFormField<String?>(
-          key: ValueKey('age-$_ageBand'),
-          initialValue: _ageBand,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: "Child's age"),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('All age bands'),
+  Widget _buildSearchAndFilterRow(Child? activeChild) {
+    final defaultAgeBand = _catalogAgeBand(activeChild?.ageBand);
+    final activeFilterCount =
+        (_ageBand != defaultAgeBand ? 1 : 0) + (_language != null ? 1 : 0);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: TextField(
+            key: const ValueKey('materials-search'),
+            controller: _searchController,
+            onChanged: (value) => setState(() => _searchQuery = value),
+            decoration: const InputDecoration(
+              hintText: 'Search activities or materials',
+              prefixIcon: Icon(Icons.search),
             ),
-            ..._ageBands.entries.map(
-              (entry) => DropdownMenuItem<String?>(
-                value: entry.key,
-                child: Text(entry.value),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.space8),
+        SizedBox(
+          width: AppSizes.touchTarget,
+          height: AppSizes.touchTarget,
+          child: OutlinedButton(
+            key: const ValueKey('more-filters'),
+            onPressed: () => _openMoreFilters(activeChild),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.control),
+              ),
+              side: BorderSide(
+                color: activeFilterCount > 0
+                    ? AppColors.forest
+                    : AppColors.borderInput,
+              ),
+              backgroundColor: activeFilterCount > 0
+                  ? AppColors.softGreen
+                  : AppColors.surfaceCard,
+            ),
+            child: Tooltip(
+              message: activeFilterCount > 0
+                  ? 'Filters ($activeFilterCount active)'
+                  : 'Filters',
+              child: Badge.count(
+                count: activeFilterCount,
+                isLabelVisible: activeFilterCount > 0,
+                backgroundColor: AppColors.forest,
+                child: const Icon(Icons.tune, color: AppColors.forest),
               ),
             ),
-          ],
-          onChanged: (value) => _changeFilter(
-            ageBand: value,
-            domain: _domain,
-            language: _language,
           ),
-        );
-
-        if (constraints.maxWidth >= 520) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: searchField),
-              const SizedBox(width: AppSpacing.space12),
-              Expanded(flex: 2, child: ageDropdown),
-            ],
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            searchField,
-            const SizedBox(height: AppSpacing.space12),
-            ageDropdown,
-          ],
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -665,20 +721,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
     required String languageFilterLabel,
     required bool showInlineIdeaHelper,
   }) {
+    final defaultAgeBand = _catalogAgeBand(activeChild?.ageBand);
+    final hasCustomFilter =
+        _ageBand != defaultAgeBand ||
+        _language != null ||
+        _domain != null ||
+        _searchQuery.trim().isNotEmpty;
+    final activeSummary = _language == null
+        ? resultMessage
+        : '$resultMessage · ${_languages[_language] ?? _language}';
+
     return [
-      SizedBox(
-        height: AppSizes.touchTarget,
-        child: TextButton(
-          key: const ValueKey('more-filters'),
-          onPressed: _openMoreFilters,
-          style: TextButton.styleFrom(
-            alignment: Alignment.centerLeft,
-            padding: EdgeInsets.zero,
-            foregroundColor: Theme.of(context).colorScheme.primary,
-          ),
-          child: Text('More filters · $languageFilterLabel', maxLines: 2),
-        ),
-      ),
       const SizedBox(height: AppSpacing.space8),
       if (_offline) const _OfflineCatalogNotice(),
       if (_errorMessage != null) ...[
@@ -692,13 +745,48 @@ class _ExploreScreenState extends State<ExploreScreen> {
         const SizedBox(height: AppSpacing.space8),
       ],
       if (!_storybooksSelected && !_loading && _errorMessage == null)
-        Semantics(
-          liveRegion: true,
-          child: Text(
-            resultMessage,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  activeSummary,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
+            if (hasCustomFilter)
+              TextButton(
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _ageBand = defaultAgeBand;
+                    _domain = null;
+                    _language = null;
+                    _searchQuery = '';
+                  });
+                  unawaited(_loadActivities());
+                },
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space8,
+                  ),
+                ),
+                child: const Text('Reset'),
+              ),
+          ],
         ),
+      if (showInlineIdeaHelper &&
+          !_loading &&
+          _errorMessage == null &&
+          !_storybooksSelected) ...[
+        const SizedBox(height: AppSpacing.space8),
+        _CompactIdeaHelperBar(
+          onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
+        ),
+      ],
       if (_loading && !_storybooksSelected) ...[
         const SizedBox(height: AppSpacing.space8),
         Semantics(
@@ -727,7 +815,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             onAction: () {
               _searchController.clear();
               setState(() {
-                _ageBand = _catalogAgeBand(activeChild?.ageBand);
+                _ageBand = defaultAgeBand;
                 _domain = null;
                 _language = null;
                 _searchQuery = '';
@@ -743,38 +831,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
           icon: Icons.menu_book_outlined,
         ),
       if (!_loading && _errorMessage == null && !_storybooksSelected)
-        ...activities.indexed.expand((entry) {
-          final index = entry.$1;
-          final activity = entry.$2;
-          return <Widget>[
-            Padding(
-              padding: const EdgeInsets.only(
-                top: AppSpacing.space12,
-                bottom: AppSpacing.space4,
-              ),
-              child: _ActivityResultCard(
-                activity: activity,
-                onAdd: () => _addToPlan(activity),
-              ),
+        ...activities.map(
+          (activity) => Padding(
+            padding: const EdgeInsets.only(
+              top: AppSpacing.space12,
+              bottom: AppSpacing.space4,
             ),
-            if (showInlineIdeaHelper && index == 1) ...[
-              const SizedBox(height: AppSpacing.space12),
-              _IdeaHelperEntryCard(
-                onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
-              ),
-            ],
-          ];
-        }),
-      if (showInlineIdeaHelper &&
-          !_loading &&
-          _errorMessage == null &&
-          !_storybooksSelected &&
-          activities.length < 2) ...[
-        const SizedBox(height: AppSpacing.space12),
-        _IdeaHelperEntryCard(
-          onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
+            child: _ActivityResultCard(
+              activity: activity,
+              onAdd: () => _addToPlan(activity),
+            ),
+          ),
         ),
-      ],
       const SizedBox(height: AppSpacing.space24),
     ];
   }
@@ -800,67 +868,71 @@ class _ExploreSections extends StatelessWidget {
   final VoidCallback onRhymes;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: Row(
-      children: [
-        _SectionButton(
-          label: const Text('Activities'),
-          selected: !storybooksSelected,
-          onPressed: onActivities,
-        ),
-        const SizedBox(width: AppSpacing.space8),
-        _SectionButton(
-          label: const Text('Storybooks'),
-          selected:
-              storybooksSelected && selectedShelf == BookshelfShelf.openLibrary,
-          onPressed: onStorybooks,
-        ),
-        const SizedBox(width: AppSpacing.space8),
-        _SectionButton(
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Our Bookshelf'),
-              if (savedBookCount > 0) ...[
-                const SizedBox(width: AppSpacing.space8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space8,
-                    vertical: AppSpacing.space4,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        storybooksSelected &&
-                            selectedShelf == BookshelfShelf.ourBookshelf
-                        ? AppColors.surfaceCard
-                        : AppColors.softGreen,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                  ),
-                  child: Text(
-                    '$savedBookCount',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.forest,
-                      fontWeight: FontWeight.bold,
+  Widget build(BuildContext context) => _HorizontalScrollFade(
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.only(right: AppSpacing.space20),
+      child: Row(
+        children: [
+          _SectionButton(
+            label: const Text('Activities'),
+            selected: !storybooksSelected,
+            onPressed: onActivities,
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          _SectionButton(
+            label: const Text('Storybooks'),
+            selected:
+                storybooksSelected &&
+                selectedShelf == BookshelfShelf.openLibrary,
+            onPressed: onStorybooks,
+          ),
+          const SizedBox(width: AppSpacing.space8),
+          _SectionButton(
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Our Bookshelf'),
+                if (savedBookCount > 0) ...[
+                  const SizedBox(width: AppSpacing.space8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space8,
+                      vertical: AppSpacing.space4,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          storybooksSelected &&
+                              selectedShelf == BookshelfShelf.ourBookshelf
+                          ? AppColors.surfaceCard
+                          : AppColors.softGreen,
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                    ),
+                    child: Text(
+                      '$savedBookCount',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.forest,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
+            selected:
+                storybooksSelected &&
+                selectedShelf == BookshelfShelf.ourBookshelf,
+            onPressed: onBookshelf,
           ),
-          selected:
-              storybooksSelected &&
-              selectedShelf == BookshelfShelf.ourBookshelf,
-          onPressed: onBookshelf,
-        ),
-        const SizedBox(width: AppSpacing.space8),
-        _SectionButton(
-          label: const Text('Read & Sing Together'),
-          selected:
-              storybooksSelected && selectedShelf == BookshelfShelf.rhymes,
-          onPressed: onRhymes,
-        ),
-      ],
+          const SizedBox(width: AppSpacing.space8),
+          _SectionButton(
+            label: const Text('Read & Sing Together'),
+            selected:
+                storybooksSelected && selectedShelf == BookshelfShelf.rhymes,
+            onPressed: onRhymes,
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -924,30 +996,37 @@ class _DomainFilters extends StatelessWidget {
     ];
     return SizedBox(
       height: 48,
-      child: ListView.separated(
-        key: const ValueKey('domain-filters'),
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-        itemCount: filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space8),
-        itemBuilder: (context, index) {
-          final filter = filters[index];
-          final selected = selectedDomain == filter.$2;
-          return SizedBox(
-            height: 48,
-            child: ChoiceChip(
-              key: ValueKey('domain-${filter.$2 ?? 'all'}'),
-              label: Text(filter.$1),
-              selected: selected,
-              showCheckmark: false,
-              onSelected: (_) => onSelected(filter.$2),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space12,
+      child: _HorizontalScrollFade(
+        child: ListView.separated(
+          key: const ValueKey('domain-filters'),
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            0,
+            horizontalPadding + AppSpacing.space20,
+            0,
+          ),
+          itemCount: filters.length,
+          separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space8),
+          itemBuilder: (context, index) {
+            final filter = filters[index];
+            final selected = selectedDomain == filter.$2;
+            return SizedBox(
+              height: 48,
+              child: ChoiceChip(
+                key: ValueKey('domain-${filter.$2 ?? 'all'}'),
+                label: Text(filter.$1),
+                selected: selected,
+                showCheckmark: false,
+                onSelected: (_) => onSelected(filter.$2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space12,
+                ),
+                materialTapTargetSize: MaterialTapTargetSize.padded,
               ),
-              materialTapTargetSize: MaterialTapTargetSize.padded,
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -1106,30 +1185,58 @@ class _ReviewBadge extends StatelessWidget {
 
   void _showSourceDetails(BuildContext context) {
     String? sourceUrl;
-    String portalName = 'Official Source';
-    if (source.contains('ECCD')) {
+    String? buttonLabel;
+    String? domainCaption;
+    String frameworkTitle = 'Published early childhood guide';
+
+    if (source.contains('NELF')) {
+      frameworkTitle = 'Philippine National Early Learning Framework (NELF)';
       sourceUrl = 'https://eccdcouncil.gov.ph';
-      portalName = 'ECCD Council Portal (eccdcouncil.gov.ph)';
+      buttonLabel = 'Visit ECCD Council website';
+      domainCaption = 'eccdcouncil.gov.ph';
+    } else if (source.contains('NELC')) {
+      frameworkTitle = 'Philippine National Early Learning Curriculum (NELC)';
+      sourceUrl = 'https://eccdcouncil.gov.ph';
+      buttonLabel = 'Visit ECCD Council website';
+      domainCaption = 'eccdcouncil.gov.ph';
+    } else if (source.contains('ECCD')) {
+      frameworkTitle = 'Early Childhood Care and Development (ECCD) Council';
+      sourceUrl = 'https://eccdcouncil.gov.ph';
+      buttonLabel = 'Visit ECCD Council website';
+      domainCaption = 'eccdcouncil.gov.ph';
     } else if (source.contains('CDC')) {
+      frameworkTitle = 'CDC Developmental Milestones';
       sourceUrl = 'https://www.cdc.gov/ncbddd/actearly/milestones/';
-      portalName = 'CDC Milestones Portal (cdc.gov)';
+      buttonLabel = 'Visit CDC website';
+      domainCaption = 'cdc.gov';
     } else if (source.contains('WHO')) {
+      frameworkTitle = 'WHO Nurturing Care Framework';
       sourceUrl = 'https://nurturing-care.org';
-      portalName = 'WHO Nurturing Care Portal (nurturing-care.org)';
+      buttonLabel = 'Visit WHO website';
+      domainCaption = 'nurturing-care.org';
     } else if (source.contains('AAP')) {
+      frameworkTitle = 'American Academy of Pediatrics (AAP)';
       sourceUrl = 'https://www.healthychildren.org';
-      portalName = 'HealthyChildren.org (AAP)';
+      buttonLabel = 'Visit AAP website';
+      domainCaption = 'healthychildren.org';
     }
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
+      useSafeArea: true,
+      showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppRadius.card),
         ),
       ),
       builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.all(AppSpacing.space24),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.space24,
+          AppSpacing.space8,
+          AppSpacing.space24,
+          AppSpacing.space24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1137,45 +1244,66 @@ class _ReviewBadge extends StatelessWidget {
             Row(
               children: [
                 const Icon(
-                  Icons.verified_outlined,
+                  Icons.menu_book_outlined,
                   color: AppColors.forest,
                   size: 22,
                 ),
                 const SizedBox(width: AppSpacing.space8),
-                Text(
-                  'Educational Play Citation',
-                  style: Theme.of(sheetContext).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Where this activity comes from',
+                    style: Theme.of(sheetContext).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.space12),
             Text(
-              source,
+              frameworkTitle,
               style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: AppSpacing.space8),
+            if (source.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.space4),
+              Text(
+                source,
+                style: Theme.of(sheetContext).textTheme.bodySmall
+                    ?.copyWith(color: AppColors.textSecondary),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.space12),
             Text(
-              'This activity is adapted from published early learning guidelines and clinical developmental standards.',
+              'Adapted from published early childhood play and learning guidelines.',
               style: Theme.of(sheetContext).textTheme.bodySmall
                   ?.copyWith(color: AppColors.textSecondary),
             ),
-            if (sourceUrl != null) ...[
+            if (sourceUrl != null && buttonLabel != null) ...[
               const SizedBox(height: AppSpacing.space16),
               SizedBox(
                 width: double.infinity,
+                height: AppSizes.touchTarget,
                 child: FilledButton.icon(
                   onPressed: () {
                     Navigator.pop(sheetContext);
                     openExternalUrl(context, sourceUrl!);
                   },
                   icon: const Icon(Icons.open_in_new, size: 16),
-                  label: Text(portalName),
+                  label: Text(buttonLabel),
                 ),
               ),
+              if (domainCaption != null) ...[
+                const SizedBox(height: AppSpacing.space8),
+                Center(
+                  child: Text(
+                    domainCaption,
+                    style: Theme.of(sheetContext).textTheme.labelSmall
+                        ?.copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: AppSpacing.space8),
           ],
@@ -1245,6 +1373,114 @@ class _ReviewBadge extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CompactIdeaHelperBar extends StatelessWidget {
+  const _CompactIdeaHelperBar({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card.outlined(
+      color: AppColors.softGreen.withValues(alpha: 0.45),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space12,
+            vertical: AppSpacing.space12,
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.lightbulb_outline,
+                color: AppColors.forest,
+                size: 20,
+              ),
+              const SizedBox(width: AppSpacing.space8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Need a play idea?',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Match time and items at home.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space8),
+              OutlinedButton(
+                onPressed: onTap,
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space12,
+                  ),
+                ),
+                child: const Text('Get a play idea'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HorizontalScrollFade extends StatefulWidget {
+  const _HorizontalScrollFade({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_HorizontalScrollFade> createState() => _HorizontalScrollFadeState();
+}
+
+class _HorizontalScrollFadeState extends State<_HorizontalScrollFade> {
+  bool _showRightFade = true;
+
+  bool _handleScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.horizontal) return false;
+    final hasMoreRight =
+        notification.metrics.maxScrollExtent > 0 &&
+        notification.metrics.extentAfter > 4;
+    if (hasMoreRight != _showRightFade) {
+      setState(() => _showRightFade = hasMoreRight);
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScroll,
+      child: _showRightFade
+          ? ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Colors.white, Colors.white, Colors.transparent],
+                stops: [0.0, 0.9, 1.0],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              child: widget.child,
+            )
+          : widget.child,
     );
   }
 }

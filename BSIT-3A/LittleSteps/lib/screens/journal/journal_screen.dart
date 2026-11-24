@@ -318,9 +318,7 @@ class _JournalScreenState extends State<JournalScreen> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          existing == null ? 'Private note saved.' : 'Private note updated.',
-        ),
+        content: Text(existing == null ? 'Note saved.' : 'Note updated.'),
       ),
     );
   }
@@ -335,7 +333,7 @@ class _JournalScreenState extends State<JournalScreen> {
           builder: (dialogContext) => AlertDialog(
             title: const Text('Delete this note?'),
             content: const Text(
-              'This permanently deletes this private note from your journal.',
+              'This permanently removes this note from your journal.',
             ),
             actions: [
               TextButton(
@@ -361,23 +359,19 @@ class _JournalScreenState extends State<JournalScreen> {
         _entries = _entries.where((item) => item.id != entry.id).toList();
       });
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Private note deleted.')));
+          .showSnackBar(const SnackBar(content: Text('Note deleted.')));
     } on NoConnectionApiException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            "You're offline. Reconnect to delete this private note.",
-          ),
+          content: Text("You're offline. Reconnect to delete this note."),
         ),
       );
     } on TimeoutApiException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            "You're offline. Reconnect to delete this private note.",
-          ),
+          content: Text("You're offline. Reconnect to delete this note."),
         ),
       );
     } on ApiException catch (error) {
@@ -395,9 +389,7 @@ class _JournalScreenState extends State<JournalScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            "You're offline. Reconnect to delete this private note.",
-          ),
+          content: Text("You're offline. Reconnect to delete this note."),
         ),
       );
     }
@@ -407,8 +399,14 @@ class _JournalScreenState extends State<JournalScreen> {
   Widget build(BuildContext context) {
     final activeChild = _effectiveChild;
     final subtitle = activeChild != null
-        ? 'Private notes about ${activeChild.nickname}.'
-        : 'Private notes and everyday moments you choose to remember.';
+        ? 'Everyday moments and notes about ${activeChild.nickname}.'
+        : 'Everyday moments and notes you choose to remember.';
+    final emptyTitle = activeChild != null
+        ? 'No notes for ${activeChild.nickname} yet'
+        : 'No notes yet';
+    final emptyMessage = activeChild != null
+        ? 'Jot down small wins, funny moments, or things ${activeChild.nickname} is trying.'
+        : 'Jot down small wins, funny moments, or things your child is trying.';
     final visibleEntries = _filteredEntries;
 
     return RefreshIndicator(
@@ -454,10 +452,10 @@ class _JournalScreenState extends State<JournalScreen> {
             ErrorView(message: _errorMessage!, onRetry: _loadEntries)
           else if (_entries.isEmpty)
             EmptyStateView(
-              title: 'No journal notes yet',
-              message: 'Your journal is private to you. Jot down a memory or everyday moment.',
+              title: emptyTitle,
+              message: emptyMessage,
               icon: Icons.book_outlined,
-              actionLabel: activeChild != null ? 'Add observation' : null,
+              actionLabel: activeChild != null ? 'Add note' : null,
               onAction: activeChild != null ? () => _openEditor() : null,
             )
           else ...[
@@ -549,7 +547,7 @@ class _PrivacyNoticeBanner extends StatelessWidget {
           const SizedBox(width: AppSpacing.space8),
           Expanded(
             child: Text(
-              'Private by design. Only you can see these notes. They are never sent to external AI, analytics, or logs.',
+              'Only you can see your notes. They are never shared or sent to AI.',
               style: Theme.of(context).textTheme.bodySmall
                   ?.copyWith(color: AppColors.textPrimary),
             ),
@@ -592,7 +590,7 @@ class _OfflineJournalBanner extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.space4),
           const Text(
-            'Reconnect to sync private notes. Any open draft stays on screen.',
+            'Reconnect to sync your notes. Any open draft stays on screen.',
             style: TextStyle(color: AppColors.textOffline),
           ),
           const SizedBox(height: AppSpacing.space12),
@@ -880,7 +878,7 @@ class _JournalEditorSheetState extends State<_JournalEditorSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _isEditing ? 'Edit private note' : 'New private note',
+                    _isEditing ? 'Edit note' : 'New note',
                     style: theme.textTheme.titleLarge,
                   ),
                   Container(
@@ -946,8 +944,9 @@ class _JournalEditorSheetState extends State<_JournalEditorSheet> {
                   widget.onDraftChanged?.call(value);
                 },
                 decoration: const InputDecoration(
-                  labelText: 'Observation note',
-                  hintText: 'Write a private memory or everyday moment...',
+                  labelText: 'What did you notice?',
+                  hintText:
+                      'Jot down a small win, funny moment, or something new...',
                   alignLabelWithHint: true,
                 ),
                 validator: (value) {
