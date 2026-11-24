@@ -1,5 +1,6 @@
-/// A child profile record.
+/// A child profile record associated with a caregiver account.
 class Child {
+  /// Creates a [Child].
   const Child({
     required this.id,
     required this.nickname,
@@ -9,13 +10,25 @@ class Child {
     required this.updatedAt,
   });
 
+  /// Unique identifier of the child profile.
   final String id;
+
+  /// Short nickname chosen by the caregiver.
   final String nickname;
+
+  /// Developmental age band code (for example, `12-23m`).
   final String ageBand;
+
+  /// Optional birth year and month in `YYYY-MM` format.
   final String? birthMonthYear;
+
+  /// Timestamp when the profile was created.
   final DateTime createdAt;
+
+  /// Timestamp when the profile was last updated.
   final DateTime updatedAt;
 
+  /// Creates a [Child] from a decoded JSON object.
   factory Child.fromJson(Map<String, dynamic> json) {
     return Child(
       id: json['id'] as String,
@@ -27,6 +40,7 @@ class Child {
     );
   }
 
+  /// Serializes this [Child] to a JSON map.
   Map<String, dynamic> toJson() {
     return {
       'id': id,

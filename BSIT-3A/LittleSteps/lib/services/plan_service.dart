@@ -3,6 +3,7 @@ import 'api_client.dart';
 
 /// Service for a child's planned activities (`/children/:childId/plans`).
 class PlanService {
+  /// Creates a [PlanService].
   PlanService({required this.apiClient});
 
   /// The client used for API requests.
