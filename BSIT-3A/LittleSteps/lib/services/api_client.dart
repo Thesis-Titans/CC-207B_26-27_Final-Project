@@ -171,6 +171,7 @@ class ApiClient {
   // Determines whether an endpoint [path] is protected by authentication.
   static bool isProtectedPath(String path) {
     if (path.contains('/catalog/activities') ||
+        path.contains('/catalog/books') ||
         path.contains('/catalog/weather') ||
         path.contains('/health')) {
       return false;

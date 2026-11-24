@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/child.dart';
 import '../theme/app_tokens.dart';
 
-/// Account actions and child switching displayed from the app header.
+/// Account actions and child switching bottom sheet.
 class AccountMenuSheet extends StatelessWidget {
   const AccountMenuSheet({
     super.key,
@@ -15,22 +15,11 @@ class AccountMenuSheet extends StatelessWidget {
     this.onOpenSettings,
   });
 
-  /// Email address of the signed-in caregiver, when available.
   final String? email;
-
-  /// Child profiles available to the caregiver.
   final List<Child> children;
-
-  /// Identifier of the currently selected child.
   final String? activeChildId;
-
-  /// Called after the caregiver selects a different child.
   final ValueChanged<Child>? onChildSelected;
-
-  /// Called when the caregiver chooses to sign out.
   final VoidCallback? onSignOut;
-
-  /// Opens settings with the current caregiver and child data.
   final VoidCallback? onOpenSettings;
 
   @override
