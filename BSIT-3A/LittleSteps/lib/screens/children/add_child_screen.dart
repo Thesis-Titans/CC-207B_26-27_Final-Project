@@ -3,13 +3,18 @@ import 'package:intl/intl.dart';
 
 import '../../models/age_band.dart';
 import '../../models/child_validators.dart';
+import '../../routing/app_router.dart';
+import '../../services/api_client.dart';
+import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../widgets/auth_scope.dart';
 
 /// Form for adding a child profile (issue #3).
 ///
 /// Caregivers give either a birth month and year (the app shows the age
-/// band it leads to) or, if they prefer, an age band directly. Fields are
-/// checked on the device first, and the server still checks every field
+/// band it leads to) or, if they prefer, an age band directly. 
+/// 
+/// Fields are checked on the device first, and the server still checks every field
 /// when the profile is saved.
 class AddChildScreen extends StatefulWidget {
   /// Creates the add child profile screen.
@@ -45,12 +50,80 @@ class _AddChildScreenState extends State<AddChildScreen> {
     super.dispose();
   }
 
-  /// Checks every field and shows its error message under it.
-  void _submit() {
-    if (!_formKey.currentState!.validate()) {
+  /// Whether the profile is being sent to the server.
+  bool _saving = false;
+
+  /// The server's error message from the last save, if it failed.
+  String? _errorMessage;
+
+  /// Checks every field, then saves the profile and makes it the active
+  /// child.
+  ///
+  /// Sends either the age band or the birth month and year, never both,
+  /// because the API accepts exactly one of them.
+  Future<void> _submit() async {
+    if (_saving || !_formKey.currentState!.validate()) {
       return;
     }
-    // Saving through ChildrenService is added in Step 3.
+
+    // Read everything that needs `context` before the first `await`.
+    final session = AuthScope.of(context);
+    final navigator = Navigator.of(context);
+    final childrenService = ChildrenService(
+      apiClient: AuthScope.apiClientOf(context),
+    );
+
+    setState(() {
+      _saving = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final child = await childrenService.createChild(
+        nickname: _nicknameController.text.trim(),
+        ageBand: _useAgeBand ? _ageBand!.code : null,
+        birthMonthYear: _useAgeBand ? null : _birthMonthYear,
+      );
+      session.setActiveChild(child);
+      if (!mounted) {
+        return;
+      }
+      if (navigator.canPop()) {
+        navigator.pop(child);
+      } else {
+        navigator.pushReplacementNamed(AppRouter.initialRoute);
+      }
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = error.message;
+      });
+    } catch (_) {
+      // For example, no connection to the server.
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage =
+            "Couldn't save the profile. Check your connection "
+            'and try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  /// The picked birth month and year in the API's `YYYY-MM` format,
+  /// such as `2025-03`.
+  String get _birthMonthYear {
+    final month = _birthMonth!.toString().padLeft(2, '0');
+    return '$_birthYear-$month';
   }
 
   /// The age band for the picked birth month and year, or null if
@@ -187,11 +260,28 @@ class _AddChildScreenState extends State<AddChildScreen> {
               ],
             ],
             const SizedBox(height: AppSpacing.space16),
+            if (_errorMessage != null) ...[
+              Text(
+                _errorMessage!,
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: AppColors.textError),
+              ),
+              const SizedBox(height: AppSpacing.space16),
+            ],
             SizedBox(
               height: AppSizes.touchTarget,
               child: FilledButton(
-                onPressed: _submit,
-                child: const Text('Save'),
+                onPressed: _saving ? null : _submit,
+                child: _saving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Save'),
               ),
             ),
           ],
