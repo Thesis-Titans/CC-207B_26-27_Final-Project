@@ -185,12 +185,16 @@ void main() {
         findsOneWidget,
       );
 
-      // Switch to This week tab - displays Maya's summary
+      // Switch to This week tab - displays reflection header and formatted age
       await tester.tap(
         find.descendant(of: nav, matching: find.text('This week')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('This week with Maya'), findsOneWidget);
+      expect(
+        find.text('A look back at the moments you wrote down.'),
+        findsOneWidget,
+      );
+      expect(find.text('For Maya · 12-23 months'), findsOneWidget);
 
       // Switch to Milestones tab - displays developmental prompt header
       await tester.tap(

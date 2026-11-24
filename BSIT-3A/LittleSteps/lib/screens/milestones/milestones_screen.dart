@@ -36,12 +36,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   MilestoneDomain? _selectedDomainFilter;
   bool _showAdvisory = true;
 
-  /// The age band whose prompts are currently displayed.
-  /// Defaults to the active child's age band; caregiver can browse other bands.
   late String _selectedAgeBand;
-
-  /// True after [didChangeDependencies] seeds [_selectedAgeBand] once.
-  bool _ageBandSeeded = false;
+  String? _lastChildId;
+  bool _initialLoadStarted = false;
 
   String get _childName {
     final session = AuthScope.maybeOf(context);
@@ -64,15 +61,17 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     final session = AuthScope.maybeOf(context);
     final activeChild = session?.activeChild;
     if (activeChild != null) {
-      return activeChild.ageBand.contains('month')
-          ? activeChild.ageBand
-          : '${activeChild.ageBand} months';
+      final band = activeChild.ageBand;
+      if (band.contains('month')) return band;
+      if (band.endsWith('m')) {
+        return '${band.substring(0, band.length - 1)} months';
+      }
+      return '$band months';
     }
     return '14 months';
   }
 
-  /// The age band that best matches the active child's age in months,
-  /// used to seed [_selectedAgeBand] on first load.
+  // Maps the active child's age in months to the nearest milestone prompt band.
   String get _childAgeBand {
     final months = _childAgeMonths;
     if (months < 12) return '0-11 months';
@@ -118,28 +117,38 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_ageBandSeeded) {
+    final childId = _childId;
+    final childChanged = childId != _lastChildId;
+    if (!_initialLoadStarted || childChanged) {
+      _initialLoadStarted = true;
+      _lastChildId = childId;
       _selectedAgeBand = _childAgeBand;
-      _ageBandSeeded = true;
+      if (childChanged && widget.initialObservations.isEmpty) {
+        _observations = {};
+      }
+      _loadObservations(childId);
     }
-    _loadObservations();
   }
 
-  Future<void> _loadObservations() async {
-    final childId = _childId;
+  Future<void> _loadObservations(String? childId) async {
     if (childId == null || widget.initialObservations.isNotEmpty) return;
 
     try {
       final service = _resolveMilestonesService();
       final fetched = await service.getObservations(childId);
-      if (mounted) {
-        setState(() {
-          for (final obs in fetched) {
-            _observations[obs.milestoneId] = obs;
-          }
-        });
-      }
-    } catch (_) {}
+      if (!mounted || childId != _lastChildId) return;
+      setState(() {
+        _observations = {for (final obs in fetched) obs.milestoneId: obs};
+      });
+    } on NoConnectionApiException {
+      if (!mounted || childId != _lastChildId) return;
+      setState(() => _currentState = MilestonesViewState.offline);
+    } on TimeoutApiException {
+      if (!mounted || childId != _lastChildId) return;
+      setState(() => _currentState = MilestonesViewState.offline);
+    } catch (_) {
+      // Keep prompts browsable even if saved observations fail to load.
+    }
   }
 
   void _showAgeBandPicker() {
@@ -207,6 +216,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   }
 
   Future<void> _saveObservation(MilestoneObservation observation) async {
+    final previous = _observations[observation.milestoneId];
     setState(() {
       _observations[observation.milestoneId] = observation;
     });
@@ -216,13 +226,12 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
 
     try {
       final service = _resolveMilestonesService();
-      final existing = _observations[observation.milestoneId];
-      if (existing != null &&
-          existing.id.isNotEmpty &&
-          !existing.id.startsWith('obs-local')) {
+      if (previous != null &&
+          previous.id.isNotEmpty &&
+          !previous.id.startsWith('obs-local')) {
         await service.updateObservation(
           childId: childId,
-          observationId: existing.id,
+          observationId: previous.id,
           status: observation.status,
           observedDate: observation.observedDate,
           notes: observation.notes,
@@ -235,13 +244,28 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           observedDate: observation.observedDate,
           notes: observation.notes,
         );
-        if (mounted) {
+        if (mounted && childId == _lastChildId) {
           setState(() {
             _observations[observation.milestoneId] = created;
           });
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted) return;
+      // Restore the prior local state when persistence fails.
+      setState(() {
+        if (previous != null) {
+          _observations[observation.milestoneId] = previous;
+        } else {
+          _observations.remove(observation.milestoneId);
+        }
+      });
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('Could not save observation. Please try again.'),
+        ),
+      );
+    }
   }
 
   void _openObservationSheet(MilestonePrompt prompt) {

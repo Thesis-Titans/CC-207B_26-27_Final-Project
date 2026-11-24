@@ -38,6 +38,8 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
   late WeeklySummaryViewState _currentState;
   late String _selectedWeekId;
   late Map<String, WeeklySummary> _summaries;
+  String? _lastChildId;
+  bool _initialLoadStarted = false;
 
   ApiClient _resolveApiClient() {
     return widget.summaryService?.apiClient ??
@@ -65,9 +67,12 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     final session = AuthScope.maybeOf(context);
     final activeChild = session?.activeChild;
     if (activeChild != null) {
-      return activeChild.ageBand.contains('month')
-          ? activeChild.ageBand
-          : '${activeChild.ageBand} months';
+      final band = activeChild.ageBand;
+      if (band.contains('month')) return band;
+      if (band.endsWith('m')) {
+        return '${band.substring(0, band.length - 1)} months';
+      }
+      return '$band months';
     }
     return widget.childAgeBand ?? '14 months';
   }
@@ -128,19 +133,25 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
       _selectedWeekId = widget.initialWeek;
       return;
     }
-    _loadWeeklySummary(_selectedWeekId);
+    final childId = _childId;
+    final childChanged = childId != _lastChildId;
+    if (!_initialLoadStarted || childChanged) {
+      _initialLoadStarted = true;
+      _lastChildId = childId;
+      if (childChanged) {
+        final emptyCurrent = _createEmptyCurrentWeekSummary();
+        _summaries = {emptyCurrent.id: emptyCurrent};
+        _selectedWeekId = emptyCurrent.id;
+      }
+      _loadWeeklySummary(_selectedWeekId, childId: childId);
+    }
   }
 
-  Future<void> _loadWeeklySummary(String weekId) async {
-    final childId = _childId;
-    if (childId == null) {
-      if (_childName == 'Maya') {
-        setState(() {
-          _summaries = sampleWeeklySummaries;
-          _selectedWeekId = widget.initialWeek;
-        });
-      } else {
-        final emptyCurrent = _createEmptyCurrentWeekSummary();
+  Future<void> _loadWeeklySummary(String weekId, {String? childId}) async {
+    final targetChildId = childId ?? _childId;
+    if (targetChildId == null) {
+      final emptyCurrent = _createEmptyCurrentWeekSummary();
+      if (mounted) {
         setState(() {
           _selectedWeekId = emptyCurrent.id;
           _summaries = {emptyCurrent.id: emptyCurrent};
@@ -151,27 +162,25 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
 
     try {
       final service = _resolveSummaryService();
-      final summary = await service.getWeeklySummary(childId, week: weekId);
-      if (mounted) {
-        setState(() {
-          _summaries[summary.id] = summary;
-          _selectedWeekId = summary.id;
-          _currentState = WeeklySummaryViewState.ready;
-        });
-      }
+      final summary = await service.getWeeklySummary(
+        targetChildId,
+        week: weekId,
+      );
+      if (!mounted || targetChildId != _lastChildId) return;
+      setState(() {
+        _summaries[summary.id] = summary;
+        _selectedWeekId = summary.id;
+        _currentState = WeeklySummaryViewState.ready;
+      });
+    } on NoConnectionApiException {
+      if (!mounted || targetChildId != _lastChildId) return;
+      setState(() => _currentState = WeeklySummaryViewState.offline);
+    } on TimeoutApiException {
+      if (!mounted || targetChildId != _lastChildId) return;
+      setState(() => _currentState = WeeklySummaryViewState.offline);
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          if (_childName == 'Maya') {
-            _summaries = sampleWeeklySummaries;
-            _selectedWeekId = widget.initialWeek;
-          } else if (!_summaries.containsKey(weekId)) {
-            final empty = _createEmptyCurrentWeekSummary();
-            _summaries[empty.id] = empty;
-            _selectedWeekId = empty.id;
-          }
-        });
-      }
+      if (!mounted || targetChildId != _lastChildId) return;
+      setState(() => _currentState = WeeklySummaryViewState.error);
     }
   }
 
