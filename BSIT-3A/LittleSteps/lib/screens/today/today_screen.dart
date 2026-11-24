@@ -118,6 +118,7 @@ class TodayScreen extends StatefulWidget {
     this.activeChild,
     this.initialDate,
     this.isOffline = false,
+    this.planRefreshKey = 0,
   });
 
   // Optional plan service for managing activity plans.
@@ -146,6 +147,9 @@ class TodayScreen extends StatefulWidget {
 
   // Whether offline mode is simulated or active.
   final bool isOffline;
+
+  /// Incremented when another tab adds a plan item.
+  final int planRefreshKey;
 
   @override
   State<TodayScreen> createState() => _TodayScreenState();
@@ -220,6 +224,19 @@ class _TodayScreenState extends State<TodayScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _advisorySeen = TodayAdvisoryStorage.hasSeen(_advisoryKey);
+  }
+
+  @override
+  void didUpdateWidget(covariant TodayScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialActivities != widget.initialActivities) {
+      _activityLookup.addAll(widget.initialActivities ?? const {});
+    }
+    if (oldWidget.planRefreshKey != widget.planRefreshKey) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadTodayPlan();
+      });
+    }
   }
 
   // Resolves the ApiClient using planService or context AuthScope.
