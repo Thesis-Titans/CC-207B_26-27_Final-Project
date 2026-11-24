@@ -96,8 +96,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String? _domain;
   String? _language;
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
   int _requestNumber = 0;
   String? _lastChildId;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -353,6 +360,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 const SizedBox(height: AppSpacing.space16),
                 TextField(
                   key: const ValueKey('materials-search'),
+                  controller: _searchController,
                   onChanged: (value) => setState(() => _searchQuery = value),
                   decoration: const InputDecoration(
                     hintText: 'Search activities or materials',
@@ -463,6 +471,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       actionLabel: 'Clear filters',
                       announce: true,
                       onAction: () {
+                        _searchController.clear();
                         setState(() {
                           _ageBand = _catalogAgeBand(activeChild?.ageBand);
                           _domain = null;
@@ -503,6 +512,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ],
                     ];
                   }),
+                if (!_loading &&
+                    _errorMessage == null &&
+                    !_storybooksSelected &&
+                    activities.length < 2) ...[
+                  const SizedBox(height: AppSpacing.space12),
+                  _IdeaHelperEntryCard(
+                    onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.space24),
               ]),
             ),

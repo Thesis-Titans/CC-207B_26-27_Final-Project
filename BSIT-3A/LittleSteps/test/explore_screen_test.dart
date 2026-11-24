@@ -51,6 +51,39 @@ void main() {
     expect(find.text('Clap together'), findsNothing);
   });
 
+  testWidgets('clear filters resets search input and shows Idea Helper card', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final catalog = _FakeCatalogService([_activity()]);
+    await _pumpExplore(tester, catalog);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('materials-search')),
+      'nonexistent',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No activities found matching your filters'),
+      findsOneWidget,
+    );
+    expect(find.text('Need a play idea?'), findsOneWidget);
+
+    await tester.tap(find.text('Clear filters'));
+    await tester.pumpAndSettle();
+
+    final searchField = tester.widget<TextField>(
+      find.byKey(const ValueKey('materials-search')),
+    );
+    expect(searchField.controller?.text, isEmpty);
+    expect(find.text('Cup tower'), findsOneWidget);
+  });
+
   testWidgets('domain filter reloads the catalog immediately', (tester) async {
     final catalog = _FakeCatalogService([_activity()]);
     await _pumpExplore(tester, catalog);
