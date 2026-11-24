@@ -5,7 +5,12 @@ import '../theme/app_tokens.dart';
 
 /// A header chip displaying the active child profile.
 class ChildChip extends StatelessWidget {
-  const ChildChip({super.key, required this.activeChild, this.onTap});
+  const ChildChip({
+    super.key,
+    required this.activeChild,
+    this.onTap,
+    this.compact = false,
+  });
 
   /// The active child profile, or `null` if none is selected.
   final Child? activeChild;
@@ -13,12 +18,18 @@ class ChildChip extends StatelessWidget {
   /// Callback invoked when the chip is tapped.
   final VoidCallback? onTap;
 
+  /// Shows only the nickname while retaining the full label for screen readers.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final label = activeChild != null
         ? '${activeChild!.nickname} (${activeChild!.ageBand})'
         : 'Select Child';
+    final visibleLabel = compact && activeChild != null
+        ? activeChild!.nickname
+        : label;
 
     return InkWell(
       onTap: onTap,
@@ -44,9 +55,10 @@ class ChildChip extends StatelessWidget {
               const SizedBox(width: AppSpacing.space8),
               Flexible(
                 child: Text(
-                  label,
+                  visibleLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  semanticsLabel: compact && activeChild != null ? label : null,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: AppColors.forest,
                     fontWeight: FontWeight.w600,

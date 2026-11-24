@@ -26,3 +26,4 @@ flutter:
   assets:
     - assets/brand/
     - assets/illustrations/
+    - assets/images/catalog_cover.png

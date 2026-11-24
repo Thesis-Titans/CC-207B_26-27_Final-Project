@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/child.dart';
+import '../../services/api_client.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
@@ -23,13 +24,15 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nicknameController = TextEditingController();
 
-  static const List<String> _ageBands = [
-    '0-11 months (Babies)',
-    '12-23 months (Young Toddlers)',
-    '24-35 months (Older Toddlers)',
-    '36-47 months (Young Preschoolers)',
-    '48-59 months (Older Preschoolers)',
-  ];
+  static const Map<String, String> _ageBands = {
+    '0–5 months': '0-5m',
+    '6–11 months': '6-11m',
+    '12–23 months': '12-23m',
+    '24–35 months': '24-35m',
+    '36–47 months': '36-47m',
+    '48–59 months': '48-59m',
+    '60–71 months': '60-71m',
+  };
 
   late String _selectedAgeBand;
   bool _saving = false;
@@ -37,7 +40,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedAgeBand = _ageBands[1]; // Default to 12-23 months
+    _selectedAgeBand = '12-23m';
   }
 
   @override
@@ -56,34 +59,37 @@ class _AddChildScreenState extends State<AddChildScreen> {
     final nickname = _nicknameController.text.trim();
     final sessionState = AuthScope.maybeOf(context);
 
-    // Format ageBand to clean string (e.g., '12-23m')
-    final cleanAgeBand = _selectedAgeBand.split(' ').first;
-
-    Child? newChild;
+    late final Child newChild;
     final service =
         widget.childrenService ??
         (sessionState != null && AuthScope.maybeOf(context) != null
             ? ChildrenService(apiClient: AuthScope.apiClientOf(context))
             : null);
 
-    if (service != null && sessionState?.isAuthenticated == true) {
-      try {
-        newChild = await service.createChild(
-          nickname: nickname,
-          ageBand: cleanAgeBand,
-        );
-      } catch (_) {
-        // Fallback for offline or local preview
-      }
+    if (service == null) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to save a child profile.')),
+      );
+      return;
     }
 
-    newChild ??= Child(
-      id: 'child-${DateTime.now().millisecondsSinceEpoch}',
-      nickname: nickname,
-      ageBand: cleanAgeBand,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
+    try {
+      newChild = await service.createChild(
+        nickname: nickname,
+        ageBand: _selectedAgeBand,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      final message = error is ApiException
+          ? error.message
+          : 'Check your connection and try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save child profile. $message')),
+      );
+      return;
+    }
 
     if (sessionState != null) {
       sessionState.setActiveChild(newChild);
@@ -173,9 +179,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
                         prefixIcon: Icon(Icons.cake_outlined),
                         border: OutlineInputBorder(),
                       ),
-                      items: _ageBands.map((band) {
-                        return DropdownMenuItem(value: band, child: Text(band));
-                      }).toList(),
+                      items: _ageBands.entries
+                          .map(
+                            (entry) => DropdownMenuItem(
+                              value: entry.value,
+                              child: Text(entry.key),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (value) {
                         if (value != null) {
                           setState(() => _selectedAgeBand = value);
