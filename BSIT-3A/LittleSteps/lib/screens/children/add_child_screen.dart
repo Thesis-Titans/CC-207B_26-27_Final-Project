@@ -12,8 +12,8 @@ import '../../widgets/auth_scope.dart';
 /// Form for adding a child profile (issue #3).
 ///
 /// Caregivers give either a birth month and year (the app shows the age
-/// band it leads to) or, if they prefer, an age band directly. 
-/// 
+/// band it leads to) or, if they prefer, an age band directly.
+///
 /// Fields are checked on the device first, and the server still checks every field
 /// when the profile is saved.
 class AddChildScreen extends StatefulWidget {
@@ -56,6 +56,49 @@ class _AddChildScreenState extends State<AddChildScreen> {
   /// The server's error message from the last save, if it failed.
   String? _errorMessage;
 
+  /// The server's error for each field from the last save, keyed by the
+  /// API field name: `nickname`, `birthMonthYear` or `ageBand`.
+  Map<String, String> _fieldErrors = const {};
+
+  /// The API fields this form has an input for.
+  static const _formFields = {'nickname', 'birthMonthYear', 'ageBand'};
+
+  /// Shows the server's errors from [error] under the fields they belong
+  /// to. An error for a field the form has no input for (such as the
+  /// limit on children) is shown above the Save button instead.
+  void _showServerErrors(ApiException error) {
+    final fieldErrors = <String, String>{};
+    String? otherError;
+    for (final detail in error.details) {
+      final field = detail['field'];
+      final issue = detail['issue'];
+      if (field is! String || issue is! String) {
+        continue;
+      }
+      if (_formFields.contains(field)) {
+        fieldErrors[field] = issue;
+      } else {
+        otherError ??= issue;
+      }
+    }
+    setState(() {
+      _fieldErrors = fieldErrors;
+      _errorMessage = fieldErrors.isEmpty
+          ? (otherError ?? error.message)
+          : otherError;
+    });
+  }
+
+  /// Removes the server's error for [field] once the caregiver changes it.
+  void _clearFieldError(String field) {
+    if (!_fieldErrors.containsKey(field)) {
+      return;
+    }
+    setState(() {
+      _fieldErrors = Map.of(_fieldErrors)..remove(field);
+    });
+  }
+
   /// Checks every field, then saves the profile and makes it the active
   /// child.
   ///
@@ -76,6 +119,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
     setState(() {
       _saving = true;
       _errorMessage = null;
+      _fieldErrors = const {};
     });
 
     try {
@@ -97,9 +141,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       if (!mounted) {
         return;
       }
-      setState(() {
-        _errorMessage = error.message;
-      });
+      _showServerErrors(error);
     } catch (_) {
       // For example, no connection to the server.
       if (!mounted) {
@@ -176,8 +218,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
               controller: _nicknameController,
               textInputAction: TextInputAction.done,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Nickname'),
+              decoration: InputDecoration(
+                labelText: 'Nickname',
+                errorText: _fieldErrors['nickname'],
+              ),
               validator: validateNickname,
+              onChanged: (_) => _clearFieldError('nickname'),
               onFieldSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: AppSpacing.space16),
@@ -188,6 +234,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
               onChanged: (value) {
                 setState(() {
                   _useAgeBand = value;
+                  _fieldErrors = Map.of(_fieldErrors)
+                    ..remove('ageBand')
+                    ..remove('birthMonthYear');
                 });
               },
             ),
@@ -198,7 +247,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
               DropdownButtonFormField<AgeBand>(
                 isExpanded: true,
                 initialValue: _ageBand,
-                decoration: const InputDecoration(labelText: 'Age band'),
+                decoration: InputDecoration(
+                  labelText: 'Age band',
+                  errorText: _fieldErrors['ageBand'],
+                ),
                 items: [
                   for (final ageBand in ageBands)
                     DropdownMenuItem(
@@ -210,6 +262,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   setState(() {
                     _ageBand = value;
                   });
+                  _clearFieldError('ageBand');
                 },
                 validator: (value) =>
                     value == null ? 'Choose an age band' : null,
@@ -232,6 +285,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   setState(() {
                     _birthMonth = value;
                   });
+                  _clearFieldError('birthMonthYear');
                 },
                 validator: (value) => value == null ? 'Choose a month' : null,
               ),
@@ -239,7 +293,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
               DropdownButtonFormField<int>(
                 isExpanded: true,
                 initialValue: _birthYear,
-                decoration: const InputDecoration(labelText: 'Birth year'),
+                // A server error about the birth date shows here, under
+                // the year, where the local birth date check shows too.
+                decoration: InputDecoration(
+                  labelText: 'Birth year',
+                  errorText: _fieldErrors['birthMonthYear'],
+                ),
                 items: [
                   for (var i = 0; i < _yearCount; i++)
                     DropdownMenuItem(
@@ -251,6 +310,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   setState(() {
                     _birthYear = value;
                   });
+                  _clearFieldError('birthMonthYear');
                 },
                 validator: _validateBirthYear,
               ),
