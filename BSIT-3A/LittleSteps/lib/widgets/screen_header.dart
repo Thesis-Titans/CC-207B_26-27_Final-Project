@@ -4,9 +4,10 @@ import '../theme/app_tokens.dart';
 
 /// Consistent top header for primary screen views.
 ///
-/// Renders the page title in standard typography hierarchy, accompanied by a
-/// contextual subtitle and an optional non-diagnostic advisory toggle button.
+/// Renders the page title, an optional contextual subtitle, and an optional
+/// non-diagnostic advisory link.
 class ScreenHeader extends StatelessWidget {
+  /// Creates a [ScreenHeader].
   const ScreenHeader({
     super.key,
     required this.title,
@@ -15,21 +16,22 @@ class ScreenHeader extends StatelessWidget {
     this.advisoryLabel = 'Not a diagnostic tool',
   });
 
-  /// Main page title (H1, sentence case, 26px Bold).
+  /// Main page title.
   final String title;
 
-  /// Explanatory subtitle (14px Regular, calm non-diagnostic voice).
+  /// Optional subtitle displayed beneath [title].
   final String? subtitle;
 
-  /// Optional callback to open the non-diagnostic advisory modal or toggle banner.
+  /// Optional callback invoked when the advisory link is tapped.
   final VoidCallback? onAdvisoryTap;
 
-  /// Label for the advisory button.
+  /// Visible and semantic label for the advisory link.
   final String advisoryLabel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final subtitleText = subtitle;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,10 +44,10 @@ class ScreenHeader extends StatelessWidget {
             color: AppColors.textPrimary,
           ),
         ),
-        if (subtitle != null) ...[
+        if (subtitleText != null) ...[
           const SizedBox(height: AppSpacing.space4),
           Text(
-            subtitle!,
+            subtitleText,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondary,
             ),

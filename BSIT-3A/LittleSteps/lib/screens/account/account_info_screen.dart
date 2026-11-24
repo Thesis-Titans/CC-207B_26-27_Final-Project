@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_tokens.dart';
+import '../../utils/url_helper.dart';
 
-enum AccountInfoPage { privacy, about, help }
+/// Describes the account information page to display.
+enum AccountInfoPage {
+  /// Data collection, retention, and caregiver choices notice.
+  privacy,
+
+  /// Product overview, non-diagnostic notice, and clinical framework sources.
+  about,
+
+  /// Usage guidance, concern escalation, and project support channels.
+  help,
+}
 
 /// Privacy, about, and help screens.
 class AccountInfoScreen extends StatelessWidget {
+  /// Creates an [AccountInfoScreen] for [page].
   const AccountInfoScreen({super.key, required this.page});
 
   final AccountInfoPage page;
@@ -111,8 +123,8 @@ class AccountInfoScreen extends StatelessWidget {
       ),
       _InfoSection(
         'Contact us',
-        'For help with LittleSteps, contact the project team through your '
-            'course or project support channel.',
+        'For help or feedback with LittleSteps, reach the Thesis Titans team '
+            'at https://github.com/Thesis-Titans.',
       ),
     ],
   };
@@ -121,12 +133,18 @@ class AccountInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_title)),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        itemCount: _sections.length,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.space12),
-        itemBuilder: (context, index) =>
-            _InfoSectionCard(section: _sections[index]),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(AppSpacing.space16),
+            itemCount: _sections.length,
+            separatorBuilder: (_, _) =>
+                const SizedBox(height: AppSpacing.space12),
+            itemBuilder: (context, index) =>
+                _InfoSectionCard(section: _sections[index]),
+          ),
+        ),
       ),
     );
   }
@@ -146,15 +164,35 @@ class _InfoSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final lines = section.body.split('\n');
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.space16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(section.title, style: Theme.of(context).textTheme.titleMedium),
+            Text(section.title, style: theme.textTheme.titleMedium),
             const SizedBox(height: AppSpacing.space8),
-            Text(section.body, style: Theme.of(context).textTheme.bodyMedium),
+            for (final line in lines)
+              if (line.trim().startsWith('https://'))
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: InkWell(
+                    onTap: () => openExternalUrl(context, line.trim()),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    child: Text(
+                      line,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.forest,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Text(line, style: theme.textTheme.bodyMedium),
           ],
         ),
       ),

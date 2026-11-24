@@ -5,6 +5,7 @@ import '../theme/app_tokens.dart';
 
 /// Account actions and child switching bottom sheet.
 class AccountMenuSheet extends StatelessWidget {
+  /// Creates an [AccountMenuSheet].
   const AccountMenuSheet({
     super.key,
     this.email,

@@ -13,6 +13,7 @@ import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/url_helper.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
@@ -74,6 +75,7 @@ String _childAgeLabel(Child child) {
 
 /// Browse provisional learning activities and add one to today's plan.
 class ExploreScreen extends StatefulWidget {
+  /// Creates an [ExploreScreen].
   const ExploreScreen({
     super.key,
     this.catalogService,
@@ -273,15 +275,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
     Navigator.pop(sheetContext);
   }
 
-  void _openChildContext() {
-    final session = AuthScope.maybeOf(context);
-    if (session == null || !session.isAuthenticated) {
-      Navigator.pushNamed(context, '/sign-in');
-    } else {
-      Navigator.pushNamed(context, '/children');
-    }
-  }
-
   Future<void> _addToPlan(Activity activity) async {
     final session = AuthScope.maybeOf(context);
     if (session == null || !session.isAuthenticated) {
@@ -341,290 +334,449 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ? 'Language'
         : 'Language: ${_languages[_language] ?? _language}';
 
+    final childLabel = activeChild == null
+        ? 'Choose a child'
+        : 'For ${activeChild.nickname} · ${_childAgeLabel(activeChild)}';
+
     return RefreshIndicator(
       onRefresh: _loadActivities,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space16,
-              AppSpacing.space16,
-              AppSpacing.space16,
-              0,
-            ),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                const ScreenHeader(
-                  title: 'Explore',
-                  subtitle: 'Simple ideas with things you already have.',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWideLayout = constraints.maxWidth >= 860;
+          final mainColumn = _buildExploreColumn(
+            context: context,
+            activities: activities,
+            activeChild: activeChild,
+            childLabel: childLabel,
+            resultMessage: resultMessage,
+            languageFilterLabel: languageFilterLabel,
+            showInlineIdeaHelper: !isWideLayout,
+          );
+
+          if (!isWideLayout) {
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: AppSizes.wideContentMaxWidth,
                 ),
-                const SizedBox(height: AppSpacing.space8),
-                _ChildContextButton(
-                  child: activeChild,
-                  onPressed: _openChildContext,
-                ),
-                const SizedBox(height: AppSpacing.space16),
-                _ExploreSections(
-                  storybooksSelected: _storybooksSelected,
-                  selectedShelf: _selectedBookshelf,
-                  savedBookCount: _savedBookCount,
-                  onActivities: () =>
-                      setState(() => _storybooksSelected = false),
-                  onStorybooks: () => setState(() {
-                    _storybooksSelected = true;
-                    _selectedBookshelf = BookshelfShelf.openLibrary;
-                  }),
-                  onBookshelf: () => setState(() {
-                    _storybooksSelected = true;
-                    _selectedBookshelf = BookshelfShelf.ourBookshelf;
-                  }),
-                  onRhymes: () => setState(() {
-                    _storybooksSelected = true;
-                    _selectedBookshelf = BookshelfShelf.rhymes;
-                  }),
-                ),
-                if (!_storybooksSelected) ...[
-                  const SizedBox(height: AppSpacing.space16),
-                  TextField(
-                    key: const ValueKey('materials-search'),
-                    controller: _searchController,
-                    onChanged: (value) => setState(() => _searchQuery = value),
-                    decoration: const InputDecoration(
-                      hintText: 'Search activities or materials',
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                  DropdownButtonFormField<String?>(
-                    key: ValueKey('age-$_ageBand'),
-                    initialValue: _ageBand,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: "Child's age"),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('All age bands'),
-                      ),
-                      ..._ageBands.entries.map(
-                        (entry) => DropdownMenuItem<String?>(
-                          value: entry.key,
-                          child: Text(entry.value),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) => _changeFilter(
-                      ageBand: value,
-                      domain: _domain,
-                      language: _language,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space16),
-                ],
-              ]),
-            ),
-          ),
-          if (!_storybooksSelected)
-            SliverToBoxAdapter(
-              child: _DomainFilters(
-                selectedDomain: _domain,
-                onSelected: (domain) => _changeFilter(
-                  ageBand: _ageBand,
-                  domain: domain,
-                  language: _language,
-                ),
+                child: mainColumn,
               ),
-            ),
-          if (!_storybooksSelected)
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space16,
+            );
+          }
+
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppSizes.wideContentMaxWidth,
               ),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  SizedBox(
-                    height: AppSizes.touchTarget,
-                    child: TextButton(
-                      key: const ValueKey('more-filters'),
-                      onPressed: _openMoreFilters,
-                      style: TextButton.styleFrom(
-                        alignment: Alignment.centerLeft,
-                        padding: EdgeInsets.zero,
-                        foregroundColor: Theme.of(context).colorScheme.primary,
-                      ),
-                      child: Text(
-                        'More filters · $languageFilterLabel',
-                        maxLines: 2,
-                      ),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(AppSpacing.space16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const ScreenHeader(
+                      title: 'Explore',
+                      subtitle: 'Simple ideas with things you already have.',
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.space8),
-                  if (_offline) const _OfflineCatalogNotice(),
-                  if (_errorMessage != null) ...[
-                    Semantics(
-                      liveRegion: true,
-                      child: _CatalogErrorNotice(
-                        message: _errorMessage!,
-                        onRetry: _loadActivities,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.space8),
-                  ],
-                  if (!_storybooksSelected &&
-                      !_loading &&
-                      _errorMessage == null)
-                    Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        resultMessage,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  if (_loading && !_storybooksSelected) ...[
-                    const SizedBox(height: AppSpacing.space8),
-                    Semantics(
-                      liveRegion: true,
-                      label: 'Loading activities',
-                      child: Text('Loading activities…'),
-                    ),
-                    const SizedBox(height: AppSpacing.space8),
-                    const _ActivityLoadingSkeleton(),
-                    const _ActivityLoadingSkeleton(),
-                  ],
-                  if (!_loading &&
-                      _errorMessage == null &&
-                      activities.isEmpty &&
-                      !_storybooksSelected)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.space16),
-                      child: EmptyStateView(
-                        title: 'No activities found matching your filters',
-                        message: _activities.isEmpty
-                            ? 'Try another age band or filter. New catalog activities will appear here when available.'
-                            : 'Try another activity or material search.',
-                        icon: Icons.search_off_outlined,
-                        actionLabel: 'Clear filters',
-                        announce: true,
-                        onAction: () {
-                          _searchController.clear();
-                          setState(() {
-                            _ageBand = _catalogAgeBand(activeChild?.ageBand);
-                            _domain = null;
-                            _language = null;
-                            _searchQuery = '';
-                          });
-                          unawaited(_loadActivities());
-                        },
-                      ),
-                    ),
-                  if (!_loading &&
-                      _errorMessage == null &&
-                      !_storybooksSelected)
-                    ...activities.indexed.expand((entry) {
-                      final index = entry.$1;
-                      final activity = entry.$2;
-                      return <Widget>[
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            top: AppSpacing.space12,
-                            bottom: AppSpacing.space4,
-                          ),
-                          child: _ActivityResultCard(
-                            activity: activity,
-                            onAdd: () => _addToPlan(activity),
+                    const SizedBox(height: AppSpacing.space16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildExploreMainSections(
+                            context: context,
+                            activities: activities,
+                            activeChild: activeChild,
+                            resultMessage: resultMessage,
+                            languageFilterLabel: languageFilterLabel,
+                            showInlineIdeaHelper: false,
                           ),
                         ),
-                        if (index == 1) ...[
-                          const SizedBox(height: AppSpacing.space12),
-                          _IdeaHelperEntryCard(
-                            onTap: () =>
-                                Navigator.pushNamed(context, '/ai-suggest'),
+                        if (!_storybooksSelected) ...[
+                          const SizedBox(width: AppSpacing.space24),
+                          SizedBox(
+                            width: 340,
+                            child: _IdeaHelperEntryCard(
+                              onTap: () =>
+                                  Navigator.pushNamed(context, '/ai-suggest'),
+                            ),
                           ),
                         ],
-                      ];
-                    }),
-                  if (!_loading &&
-                      _errorMessage == null &&
-                      !_storybooksSelected &&
-                      activities.length < 2) ...[
-                    const SizedBox(height: AppSpacing.space12),
-                    _IdeaHelperEntryCard(
-                      onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
+                      ],
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.space24),
-                ]),
+                ),
               ),
             ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.space16,
-              AppSpacing.space8,
-              AppSpacing.space16,
-              AppSpacing.space24,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildExploreColumn({
+    required BuildContext context,
+    required List<Activity> activities,
+    required Child? activeChild,
+    required String childLabel,
+    required String resultMessage,
+    required String languageFilterLabel,
+    required bool showInlineIdeaHelper,
+  }) {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space16,
+            AppSpacing.space16,
+            AppSpacing.space16,
+            0,
+          ),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              const ScreenHeader(
+                title: 'Explore',
+                subtitle: 'Simple ideas with things you already have.',
+              ),
+              const SizedBox(height: AppSpacing.space16),
+              _ExploreSections(
+                storybooksSelected: _storybooksSelected,
+                selectedShelf: _selectedBookshelf,
+                savedBookCount: _savedBookCount,
+                onActivities: () => setState(() => _storybooksSelected = false),
+                onStorybooks: () => setState(() {
+                  _storybooksSelected = true;
+                  _selectedBookshelf = BookshelfShelf.openLibrary;
+                }),
+                onBookshelf: () => setState(() {
+                  _storybooksSelected = true;
+                  _selectedBookshelf = BookshelfShelf.ourBookshelf;
+                }),
+                onRhymes: () => setState(() {
+                  _storybooksSelected = true;
+                  _selectedBookshelf = BookshelfShelf.rhymes;
+                }),
+              ),
+              if (!_storybooksSelected) ...[
+                const SizedBox(height: AppSpacing.space16),
+                _buildSearchAndAgeRow(),
+                const SizedBox(height: AppSpacing.space16),
+              ],
+            ]),
+          ),
+        ),
+        if (!_storybooksSelected) ...[
+          SliverToBoxAdapter(
+            child: _DomainFilters(
+              selectedDomain: _domain,
+              onSelected: (domain) => _changeFilter(
+                ageBand: _ageBand,
+                domain: domain,
+                language: _language,
+              ),
             ),
-            sliver: SliverToBoxAdapter(
-              child: Visibility(
-                visible: _storybooksSelected,
-                maintainState: true,
-                child: StorybooksSection(
-                  booksService: BooksService(
-                    apiClient: _catalogService.apiClient,
-                  ),
-                  aiService: AiService(apiClient: _catalogService.apiClient),
-                  planService: _planService,
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate(
+                _buildResultsChildren(
+                  context: context,
+                  activities: activities,
                   activeChild: activeChild,
-                  selectedShelf: _selectedBookshelf,
-                  isOffline: _offline,
-                  onShelfSelected: (shelf) =>
-                      setState(() => _selectedBookshelf = shelf),
-                  onSavedCountChanged: (count) =>
-                      setState(() => _savedBookCount = count),
-                  onPlanActivity: _addToPlan,
+                  resultMessage: resultMessage,
+                  languageFilterLabel: languageFilterLabel,
+                  showInlineIdeaHelper: showInlineIdeaHelper,
                 ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ChildContextButton extends StatelessWidget {
-  const _ChildContextButton({required this.child, required this.onPressed});
-
-  final Child? child;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = child == null
-        ? 'Choose a child'
-        : 'For ${child!.nickname} · ${_childAgeLabel(child!)}';
-    return Semantics(
-      button: true,
-      label: label,
-      child: OutlinedButton(
-        key: const ValueKey('child-context'),
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.control),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space16,
+            AppSpacing.space8,
+            AppSpacing.space16,
+            AppSpacing.space24,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Visibility(
+              visible: _storybooksSelected,
+              maintainState: true,
+              child: StorybooksSection(
+                booksService: BooksService(
+                  apiClient: _catalogService.apiClient,
+                ),
+                aiService: AiService(apiClient: _catalogService.apiClient),
+                planService: _planService,
+                activeChild: activeChild,
+                selectedShelf: _selectedBookshelf,
+                isOffline: _offline,
+                onShelfSelected: (shelf) =>
+                    setState(() => _selectedBookshelf = shelf),
+                onSavedCountChanged: (count) =>
+                    setState(() => _savedBookCount = count),
+                onPlanActivity: _addToPlan,
+              ),
+            ),
           ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+      ],
+    );
+  }
+
+  Widget _buildExploreMainSections({
+    required BuildContext context,
+    required List<Activity> activities,
+    required Child? activeChild,
+    required String resultMessage,
+    required String languageFilterLabel,
+    required bool showInlineIdeaHelper,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ExploreSections(
+          storybooksSelected: _storybooksSelected,
+          selectedShelf: _selectedBookshelf,
+          savedBookCount: _savedBookCount,
+          onActivities: () => setState(() => _storybooksSelected = false),
+          onStorybooks: () => setState(() {
+            _storybooksSelected = true;
+            _selectedBookshelf = BookshelfShelf.openLibrary;
+          }),
+          onBookshelf: () => setState(() {
+            _storybooksSelected = true;
+            _selectedBookshelf = BookshelfShelf.ourBookshelf;
+          }),
+          onRhymes: () => setState(() {
+            _storybooksSelected = true;
+            _selectedBookshelf = BookshelfShelf.rhymes;
+          }),
+        ),
+        if (!_storybooksSelected) ...[
+          const SizedBox(height: AppSpacing.space16),
+          _buildSearchAndAgeRow(),
+          const SizedBox(height: AppSpacing.space16),
+          _DomainFilters(
+            selectedDomain: _domain,
+            horizontalPadding: 0,
+            onSelected: (domain) => _changeFilter(
+              ageBand: _ageBand,
+              domain: domain,
+              language: _language,
             ),
-            const Icon(Icons.keyboard_arrow_down),
+          ),
+          ..._buildResultsChildren(
+            context: context,
+            activities: activities,
+            activeChild: activeChild,
+            resultMessage: resultMessage,
+            languageFilterLabel: languageFilterLabel,
+            showInlineIdeaHelper: showInlineIdeaHelper,
+          ),
+        ] else ...[
+          const SizedBox(height: AppSpacing.space16),
+          StorybooksSection(
+            booksService: BooksService(apiClient: _catalogService.apiClient),
+            aiService: AiService(apiClient: _catalogService.apiClient),
+            planService: _planService,
+            activeChild: activeChild,
+            selectedShelf: _selectedBookshelf,
+            isOffline: _offline,
+            onShelfSelected: (shelf) =>
+                setState(() => _selectedBookshelf = shelf),
+            onSavedCountChanged: (count) =>
+                setState(() => _savedBookCount = count),
+            onPlanActivity: _addToPlan,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSearchAndAgeRow() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final searchField = TextField(
+          key: const ValueKey('materials-search'),
+          controller: _searchController,
+          onChanged: (value) => setState(() => _searchQuery = value),
+          decoration: const InputDecoration(
+            hintText: 'Search activities or materials',
+            prefixIcon: Icon(Icons.search),
+          ),
+        );
+        final ageDropdown = DropdownButtonFormField<String?>(
+          key: ValueKey('age-$_ageBand'),
+          initialValue: _ageBand,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: "Child's age"),
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('All age bands'),
+            ),
+            ..._ageBands.entries.map(
+              (entry) => DropdownMenuItem<String?>(
+                value: entry.key,
+                child: Text(entry.value),
+              ),
+            ),
           ],
+          onChanged: (value) => _changeFilter(
+            ageBand: value,
+            domain: _domain,
+            language: _language,
+          ),
+        );
+
+        if (constraints.maxWidth >= 520) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: searchField),
+              const SizedBox(width: AppSpacing.space12),
+              Expanded(flex: 2, child: ageDropdown),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            searchField,
+            const SizedBox(height: AppSpacing.space12),
+            ageDropdown,
+          ],
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildResultsChildren({
+    required BuildContext context,
+    required List<Activity> activities,
+    required Child? activeChild,
+    required String resultMessage,
+    required String languageFilterLabel,
+    required bool showInlineIdeaHelper,
+  }) {
+    return [
+      SizedBox(
+        height: AppSizes.touchTarget,
+        child: TextButton(
+          key: const ValueKey('more-filters'),
+          onPressed: _openMoreFilters,
+          style: TextButton.styleFrom(
+            alignment: Alignment.centerLeft,
+            padding: EdgeInsets.zero,
+            foregroundColor: Theme.of(context).colorScheme.primary,
+          ),
+          child: Text('More filters · $languageFilterLabel', maxLines: 2),
         ),
       ),
-    );
+      const SizedBox(height: AppSpacing.space8),
+      if (_offline) const _OfflineCatalogNotice(),
+      if (_errorMessage != null) ...[
+        Semantics(
+          liveRegion: true,
+          child: _CatalogErrorNotice(
+            message: _errorMessage!,
+            onRetry: _loadActivities,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+      ],
+      if (!_storybooksSelected && !_loading && _errorMessage == null)
+        Semantics(
+          liveRegion: true,
+          child: Text(
+            resultMessage,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      if (_loading && !_storybooksSelected) ...[
+        const SizedBox(height: AppSpacing.space8),
+        Semantics(
+          liveRegion: true,
+          label: 'Loading activities',
+          child: const Text('Loading activities…'),
+        ),
+        const SizedBox(height: AppSpacing.space8),
+        const _ActivityLoadingSkeleton(),
+        const _ActivityLoadingSkeleton(),
+      ],
+      if (!_loading &&
+          _errorMessage == null &&
+          activities.isEmpty &&
+          !_storybooksSelected)
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.space16),
+          child: EmptyStateView(
+            title: 'No activities found matching your filters',
+            message: _activities.isEmpty
+                ? 'Try another age band or filter. New catalog activities will appear here when available.'
+                : 'Try another activity or material search.',
+            icon: Icons.search_off_outlined,
+            actionLabel: 'Clear filters',
+            announce: true,
+            onAction: () {
+              _searchController.clear();
+              setState(() {
+                _ageBand = _catalogAgeBand(activeChild?.ageBand);
+                _domain = null;
+                _language = null;
+                _searchQuery = '';
+              });
+              unawaited(_loadActivities());
+            },
+          ),
+        ),
+      if (_storybooksSelected)
+        const EmptyStateView(
+          title: 'Storybooks',
+          message: 'Browse and save family storybooks here.',
+          icon: Icons.menu_book_outlined,
+        ),
+      if (!_loading && _errorMessage == null && !_storybooksSelected)
+        ...activities.indexed.expand((entry) {
+          final index = entry.$1;
+          final activity = entry.$2;
+          return <Widget>[
+            Padding(
+              padding: const EdgeInsets.only(
+                top: AppSpacing.space12,
+                bottom: AppSpacing.space4,
+              ),
+              child: _ActivityResultCard(
+                activity: activity,
+                onAdd: () => _addToPlan(activity),
+              ),
+            ),
+            if (showInlineIdeaHelper && index == 1) ...[
+              const SizedBox(height: AppSpacing.space12),
+              _IdeaHelperEntryCard(
+                onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
+              ),
+            ],
+          ];
+        }),
+      if (showInlineIdeaHelper &&
+          !_loading &&
+          _errorMessage == null &&
+          !_storybooksSelected &&
+          activities.length < 2) ...[
+        const SizedBox(height: AppSpacing.space12),
+        _IdeaHelperEntryCard(
+          onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
+        ),
+      ],
+      const SizedBox(height: AppSpacing.space24),
+    ];
   }
 }
 
@@ -757,10 +909,12 @@ class _DomainFilters extends StatelessWidget {
   const _DomainFilters({
     required this.selectedDomain,
     required this.onSelected,
+    this.horizontalPadding = AppSpacing.space16,
   });
 
   final String? selectedDomain;
   final ValueChanged<String?> onSelected;
+  final double horizontalPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -773,7 +927,7 @@ class _DomainFilters extends StatelessWidget {
       child: ListView.separated(
         key: const ValueKey('domain-filters'),
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space16),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
         itemCount: filters.length,
         separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space8),
         itemBuilder: (context, index) {
@@ -836,63 +990,83 @@ class _ActivityResultCard extends StatelessWidget {
     final meta = '${activity.durationEstimate} · $domainLabel · $setting';
 
     return Card.outlined(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.control),
-              child: AspectRatio(
-                aspectRatio: 250 / 72,
-                child: Image.asset(
-                  'assets/images/catalog_cover.png',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWideCard = constraints.maxWidth >= 520;
+          return Padding(
+            padding: EdgeInsets.all(
+              isWideCard ? AppSpacing.space20 : AppSpacing.space16,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 112,
                   width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
-                  semanticLabel: '',
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    border: Border.all(color: AppColors.borderSubtle),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.asset(
+                    'assets/images/catalog_cover.png',
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    semanticLabel: '',
+                  ),
                 ),
-              ),
+                const SizedBox(height: AppSpacing.space12),
+                Text(activity.title, style: theme.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.space4),
+                Text(
+                  meta,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space12),
+                Text(
+                  activity.instructions.join(' '),
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.space12),
+                Wrap(
+                  spacing: AppSpacing.space8,
+                  runSpacing: AppSpacing.space4,
+                  children: activity.materials
+                      .map((material) => _MaterialPill(label: material))
+                      .toList(),
+                ),
+                const SizedBox(height: AppSpacing.space12),
+                _ReviewBadge(
+                  reviewed: isReviewed,
+                  source: activity.provenanceSource,
+                  limitations: activity.limitations,
+                ),
+                const SizedBox(height: AppSpacing.space16),
+                if (isWideCard)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FilledButton.icon(
+                      onPressed: onAdd,
+                      icon: const Icon(Icons.add),
+                      label: const Text("Add to today's plan"),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: onAdd,
+                      icon: const Icon(Icons.add),
+                      label: const Text("Add to today's plan"),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.space8),
-            Text(activity.title, style: theme.textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.space4),
-            Text(
-              meta,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            Text(
-              activity.instructions.join(' '),
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            Wrap(
-              spacing: AppSpacing.space8,
-              runSpacing: AppSpacing.space4,
-              children: activity.materials
-                  .map((material) => _MaterialPill(label: material))
-                  .toList(),
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            _ReviewBadge(
-              reviewed: isReviewed,
-              source: activity.provenanceSource,
-              limitations: activity.limitations,
-            ),
-            const SizedBox(height: AppSpacing.space8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add),
-                label: const Text("Add to today's plan"),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -930,50 +1104,146 @@ class _ReviewBadge extends StatelessWidget {
   final String source;
   final String limitations;
 
-  @override
-  Widget build(BuildContext context) {
-    final statusColors = Theme.of(context).extension<AppStatusColors>()!;
-    final label = reviewed
-        ? 'Source: $source · reviewed'
-        : 'Provisional Academic Reference — Pending Review';
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 36),
-      padding: const EdgeInsets.all(AppSpacing.space8),
-      decoration: BoxDecoration(
-        color: reviewed
-            ? statusColors.infoBackground
-            : statusColors.cautionBackground,
-        borderRadius: BorderRadius.circular(AppRadius.chip),
+  void _showSourceDetails(BuildContext context) {
+    String? sourceUrl;
+    String portalName = 'Official Source';
+    if (source.contains('ECCD')) {
+      sourceUrl = 'https://eccdcouncil.gov.ph';
+      portalName = 'ECCD Council Portal (eccdcouncil.gov.ph)';
+    } else if (source.contains('CDC')) {
+      sourceUrl = 'https://www.cdc.gov/ncbddd/actearly/milestones/';
+      portalName = 'CDC Milestones Portal (cdc.gov)';
+    } else if (source.contains('WHO')) {
+      sourceUrl = 'https://nurturing-care.org';
+      portalName = 'WHO Nurturing Care Portal (nurturing-care.org)';
+    } else if (source.contains('AAP')) {
+      sourceUrl = 'https://www.healthychildren.org';
+      portalName = 'HealthyChildren.org (AAP)';
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.card),
+        ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            reviewed ? Icons.verified_outlined : Icons.circle,
-            size: 16,
-            color: reviewed
-                ? statusColors.infoForeground
-                : statusColors.cautionForeground,
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          Expanded(
-            child: Semantics(
-              label: '$label. Source: $source. $limitations',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: Theme.of(context).textTheme.bodySmall),
-                  if (source.isNotEmpty)
-                    Text(
-                      'Source: $source',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                ],
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.space24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.verified_outlined,
+                  color: AppColors.forest,
+                  size: 22,
+                ),
+                const SizedBox(width: AppSpacing.space8),
+                Text(
+                  'Educational Play Citation',
+                  style: Theme.of(sheetContext).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space12),
+            Text(
+              source,
+              style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.space8),
+            Text(
+              'This activity is adapted from published early learning guidelines and clinical developmental standards.',
+              style: Theme.of(sheetContext).textTheme.bodySmall
+                  ?.copyWith(color: AppColors.textSecondary),
+            ),
+            if (sourceUrl != null) ...[
+              const SizedBox(height: AppSpacing.space16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    openExternalUrl(context, sourceUrl!);
+                  },
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: Text(portalName),
+                ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.space8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final statusColors = theme.extension<AppStatusColors>()!;
+    const subtitle = 'Educational play reference';
+    return InkWell(
+      onTap: () => _showSourceDetails(context),
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 36),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.space12,
+          vertical: AppSpacing.space8,
+        ),
+        decoration: BoxDecoration(
+          color: statusColors.infoBackground,
+          border: Border.all(color: AppColors.borderSubtle),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(
+                reviewed ? Icons.verified_outlined : Icons.menu_book_outlined,
+                size: 16,
+                color: statusColors.infoForeground,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space8),
+            Expanded(
+              child: Semantics(
+                label: source.isNotEmpty
+                    ? 'Source: $source. $subtitle.'
+                    : '$subtitle.',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (source.isNotEmpty)
+                      Text(
+                        'Source: $source',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'api_client.dart';
 
 /// Service for retrieving weekly progress summaries.
 class SummaryService {
+  /// Creates a [SummaryService].
   SummaryService({required this.apiClient});
 
   /// The client used for API requests.

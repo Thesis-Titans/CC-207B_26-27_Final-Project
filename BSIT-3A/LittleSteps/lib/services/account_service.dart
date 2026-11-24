@@ -2,6 +2,7 @@ import 'api_client.dart';
 
 /// Caregiver data export and account deletion operations.
 class AccountService {
+  /// Creates an [AccountService].
   AccountService({required this.apiClient});
 
   final ApiClient apiClient;

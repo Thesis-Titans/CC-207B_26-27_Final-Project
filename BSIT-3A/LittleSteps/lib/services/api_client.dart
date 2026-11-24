@@ -5,11 +5,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/app_config.dart';
 import 'local_cache.dart';
 
-// Base exception thrown when an HTTP or API request fails.
+/// Base exception thrown when an HTTP or backend API request fails.
 class ApiException implements Exception {
-  // Creates an [ApiException] with status code, error code, message and details.
+  /// Creates an [ApiException] with [statusCode], [code], [message], and [details].
   ApiException({
     required this.statusCode,
     required this.code,
@@ -17,41 +18,41 @@ class ApiException implements Exception {
     this.details = const [],
   });
 
-  // HTTP status code returned by the server.
+  /// HTTP status code returned by the server, or `0` for transport errors.
   final int statusCode;
 
-  // Error code identifying the failure reason.
+  /// Machine-readable error code identifying the failure reason.
   final String code;
 
-  // Human-readable error description.
+  /// Human-readable error description.
   final String message;
 
-  // Additional error detail objects.
+  /// Structured validation or diagnostic detail objects.
   final List<Map<String, dynamic>> details;
 
   @override
   String toString() => 'ApiException($statusCode $code: $message)';
 }
 
-// Exception thrown when an HTTP request exceeds its allowed timeout duration.
+/// Exception thrown when an HTTP request exceeds its allowed timeout duration.
 class TimeoutApiException extends ApiException {
-  // Creates a [TimeoutApiException] with default timeout code and message.
+  /// Creates a [TimeoutApiException] with a default timeout code and [message].
   TimeoutApiException({
     super.message = 'The request timed out. Please try again.',
   }) : super(statusCode: 408, code: 'TIMEOUT');
 }
 
-// Exception thrown when a socket failure or loss of network connectivity occurs.
+/// Exception thrown when a socket failure or loss of network connectivity occurs.
 class NoConnectionApiException extends ApiException {
-  // Creates a [NoConnectionApiException] representing offline or unreachable network.
+  /// Creates a [NoConnectionApiException] for offline or unreachable networks.
   NoConnectionApiException({
     super.message = 'No network connection. Working offline.',
   }) : super(statusCode: 0, code: 'NO_CONNECTION');
 }
 
-// Exception thrown when an API request fails authentication or permission checks (401/403).
+/// Exception thrown when an API request fails authentication or authorization.
 class AuthApiException extends ApiException {
-  // Creates an [AuthApiException] with status 401 or 403.
+  /// Creates an [AuthApiException] for HTTP 401 or 403 responses.
   AuthApiException({
     required super.statusCode,
     required super.code,
@@ -60,9 +61,9 @@ class AuthApiException extends ApiException {
   });
 }
 
-// Exception thrown when an endpoint or resource returns HTTP 404 Not Found.
+/// Exception thrown when an endpoint or resource returns HTTP 404 Not Found.
 class NotFoundApiException extends ApiException {
-  // Creates a [NotFoundApiException] for missing catalog items or endpoints.
+  /// Creates a [NotFoundApiException] for missing resources or endpoints.
   NotFoundApiException({
     required super.code,
     required super.message,
@@ -70,9 +71,9 @@ class NotFoundApiException extends ApiException {
   }) : super(statusCode: 404);
 }
 
-// Exception thrown when the backend server fails with a 5xx status code.
+/// Exception thrown when the backend server fails with a 5xx status code.
 class ServerApiException extends ApiException {
-  // Creates a [ServerApiException] for backend internal errors.
+  /// Creates a [ServerApiException] for backend server errors.
   ServerApiException({
     required super.statusCode,
     required super.code,
@@ -81,15 +82,15 @@ class ServerApiException extends ApiException {
   });
 }
 
-// Exception thrown when write operations are attempted while offline without queueing.
+/// Exception thrown when a write operation is attempted while offline.
 class OfflineWriteApiException extends NoConnectionApiException {
-  // Creates an [OfflineWriteApiException] enforcing the required offline write rejection copy.
+  /// Creates an [OfflineWriteApiException] with standard reconnect guidance.
   OfflineWriteApiException({super.message = 'Reconnect to save changes'});
 }
 
-// HTTP client for interacting with the backend API with offline caching and connectivity resilience.
+/// HTTP client for the LittleSteps API with token refresh and offline read cache.
 class ApiClient {
-  // Creates an [ApiClient] with optional authentication hooks, local cache, and client injection.
+  /// Creates an [ApiClient] with optional authentication hooks and [cache].
   ApiClient({
     String? baseUrl,
     String? host,
@@ -105,37 +106,36 @@ class ApiClient {
 
   final http.Client _httpClient;
 
-  // Base URL endpoint for all API requests.
+  /// Base URL endpoint for all API requests.
   final String baseUrl;
 
-  // Local offline cache storing whitelisted read datasets.
+  /// Local offline cache storing whitelisted read datasets.
   final LocalDataCache cache;
 
-  // Request timeout duration for network operations.
+  /// Request timeout duration for network operations.
   final Duration requestTimeout;
 
   String? _authToken;
   bool _isOffline = false;
 
-  // Listenable notifier alerting UI subscribers when offline status changes.
+  /// Notifier that alerts UI listeners when [isOffline] changes.
   final ValueNotifier<bool> isOfflineNotifier = ValueNotifier<bool>(false);
 
-  // Optional provider function returning the active authentication token.
+  /// Optional callback returning the active Firebase ID token.
   final String? Function()? tokenProvider;
 
-  // Optional callback invoked when a request returns 401 to refresh the token.
+  /// Optional callback invoked on HTTP 401 responses to refresh the ID token.
   final Future<String?> Function()? onRefreshToken;
 
-  // Optional callback invoked when a session has unrecoverably expired.
+  /// Optional callback invoked when token refresh fails and the session expires.
   final VoidCallback? onSessionExpired;
 
-  // Current active authorization token.
+  /// Active bearer token used for authenticated requests.
   String? get authToken => tokenProvider?.call() ?? _authToken;
 
-  // Whether the client is currently in offline mode.
+  /// Whether the client is currently operating in offline mode.
   bool get isOffline => _isOffline;
 
-  // Manually sets the offline mode flag and notifies listeners.
   set isOffline(bool value) {
     if (_isOffline != value) {
       _isOffline = value;
@@ -143,32 +143,30 @@ class ApiClient {
     }
   }
 
-  // Sets the bearer token for authenticated requests.
+  /// Sets an explicit bearer [token] for authenticated requests.
   void setAuthToken(String? token) {
     _authToken = token;
   }
 
-  // Clears the local offline data cache (e.g., during sign out or session expiration).
+  /// Clears all entries in [cache] on sign-out or session expiration.
   void clearCache() {
     cache.clear();
   }
 
-  // Returns the default host based on runtime platform (10.0.2.2 for Android emulator).
-  static String get defaultHost {
-    if (kIsWeb) return 'localhost';
-    try {
-      if (Platform.isAndroid) return '10.0.2.2';
-    } catch (_) {}
-    return 'localhost';
-  }
+  /// Returns the default host based on [AppConfig] or runtime platform.
+  static String get defaultHost => AppConfig.emulatorHost;
 
-  // Computes default base URL with an optional configurable [host].
+  /// Computes the default base URL with an optional configurable [host].
   static String defaultBaseUrl({String? host}) {
+    if (host == null && AppConfig.configuredApiBaseUrl.isNotEmpty) {
+      return AppConfig.configuredApiBaseUrl;
+    }
     final selectedHost = host ?? defaultHost;
     return 'http://$selectedHost:5001/demo-littlesteps/asia-southeast1/api';
   }
 
   // Determines whether an endpoint [path] is protected by authentication.
+  /// Returns whether [path] requires an authenticated bearer token.
   static bool isProtectedPath(String path) {
     if (path.contains('/catalog/activities') ||
         path.contains('/catalog/books') ||
@@ -214,7 +212,7 @@ class ApiClient {
     return response;
   }
 
-  // Sends a GET request and transparently returns cached data when offline.
+  /// Sends a GET request to [path] and returns cached data when offline.
   Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
     final cacheKey = cache.generateKey(path, queryParams);
 
@@ -264,7 +262,7 @@ class ApiClient {
     }
   }
 
-  // Sends a POST request, rejecting offline writes with a clear notification.
+  /// Sends a POST request to [path], rejecting writes when offline.
   Future<dynamic> post(String path, {Object? body}) async {
     if (_isOffline) {
       throw OfflineWriteApiException();
@@ -298,7 +296,7 @@ class ApiClient {
     }
   }
 
-  // Sends a PATCH request, rejecting offline writes with a clear notification.
+  /// Sends a PATCH request to [path], rejecting writes when offline.
   Future<dynamic> patch(String path, {Object? body}) async {
     if (_isOffline) {
       throw OfflineWriteApiException();
@@ -332,7 +330,7 @@ class ApiClient {
     }
   }
 
-  // Sends a DELETE request, rejecting offline writes with a clear notification.
+  /// Sends a DELETE request to [path], rejecting writes when offline.
   Future<dynamic> delete(String path) async {
     if (_isOffline) {
       throw OfflineWriteApiException();

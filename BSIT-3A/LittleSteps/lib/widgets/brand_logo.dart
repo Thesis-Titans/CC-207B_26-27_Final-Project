@@ -7,6 +7,7 @@ import '../theme/app_tokens.dart';
 ///
 /// Loads the vector asset from [assetPath] using [SvgPicture.asset].
 class GrowthSymbol extends StatelessWidget {
+  /// Creates a [GrowthSymbol].
   const GrowthSymbol({
     super.key,
     this.size = 28.0,
@@ -29,6 +30,7 @@ class GrowthSymbol extends StatelessWidget {
 ///
 /// Supports an optional tagline and tap gesture callback for navigation.
 class BrandLogo extends StatelessWidget {
+  /// Creates a [BrandLogo].
   const BrandLogo({
     super.key,
     this.symbolSize = 26.0,
@@ -100,6 +102,7 @@ class BrandLogo extends StatelessWidget {
 ///
 /// Used in welcome screens, authentication cards, and onboarding states.
 class ParentChildIllustration extends StatelessWidget {
+  /// Creates a [ParentChildIllustration].
   const ParentChildIllustration({
     super.key,
     this.width,

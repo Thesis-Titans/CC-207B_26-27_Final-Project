@@ -157,7 +157,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Build a Cup Tower'), findsOneWidget);
-      expect(find.text('Item ID: act-cups-tower'), findsOneWidget);
+      expect(find.text('15 mins · Indoor'), findsOneWidget);
+      expect(find.textContaining('Item ID:'), findsNothing);
       expect(
         find.text(
           'Why this fits: Matches your available cups and encourages fine motor stacking.',

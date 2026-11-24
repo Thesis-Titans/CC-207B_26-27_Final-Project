@@ -1,5 +1,6 @@
 /// A book returned by the catalog.
 class BookItem {
+  /// Creates a [BookItem].
   const BookItem({
     required this.id,
     required this.title,
@@ -8,12 +9,22 @@ class BookItem {
     required this.subjects,
   });
 
+  /// Unique catalog identifier for the book.
   final String id;
+
+  /// Display title of the book.
   final String title;
+
+  /// Author names credited on the book.
   final List<String> authors;
+
+  /// Optional URL for the book cover image.
   final String? coverUrl;
+
+  /// Thematic subject tags associated with the book.
   final List<String> subjects;
 
+  /// Creates a [BookItem] from a decoded JSON object.
   factory BookItem.fromJson(Map<String, dynamic> json) {
     return BookItem(
       id: json['id'] as String,
@@ -24,6 +35,7 @@ class BookItem {
     );
   }
 
+  /// Serializes this [BookItem] to a JSON map.
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
@@ -33,8 +45,9 @@ class BookItem {
   };
 }
 
-/// Catalog book kept for the existing service API.
+/// Catalog book kept for compatibility with existing service API.
 class Book extends BookItem {
+  /// Creates a [Book].
   const Book({
     required super.id,
     required super.title,
@@ -43,6 +56,7 @@ class Book extends BookItem {
     required super.subjects,
   });
 
+  /// Creates a [Book] from a decoded JSON object.
   factory Book.fromJson(Map<String, dynamic> json) {
     final item = BookItem.fromJson(json);
     return Book(
@@ -57,6 +71,7 @@ class Book extends BookItem {
 
 /// A book saved to a child's bookshelf.
 class SavedBook extends BookItem {
+  /// Creates a [SavedBook].
   const SavedBook({
     required super.id,
     required this.childId,
@@ -68,10 +83,16 @@ class SavedBook extends BookItem {
     required this.updatedAt,
   });
 
+  /// Child profile identifier owning this saved book record.
   final String childId;
+
+  /// Timestamp when the book was saved to the shelf.
   final DateTime createdAt;
+
+  /// Timestamp when the saved book record was last updated.
   final DateTime updatedAt;
 
+  /// Creates a [SavedBook] from a decoded JSON object.
   factory SavedBook.fromJson(Map<String, dynamic> json) {
     final item = BookItem.fromJson(json);
     return SavedBook(
@@ -86,6 +107,7 @@ class SavedBook extends BookItem {
     );
   }
 
+  /// Converts this [SavedBook] back to a base [BookItem].
   BookItem toBook() => BookItem(
     id: id,
     title: title,
