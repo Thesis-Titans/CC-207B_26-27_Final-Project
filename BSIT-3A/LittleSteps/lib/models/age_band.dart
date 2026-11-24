@@ -55,3 +55,14 @@ AgeBand? ageBandForMonths(int months) {
   }
   return null;
 }
+
+/// Returns the band whose API code is [code], such as '12-23m', or null
+/// if no band has that code.
+AgeBand? ageBandForCode(String code) {
+  for (final band in ageBands) {
+    if (band.code == code) {
+      return band;
+    }
+  }
+  return null;
+}
