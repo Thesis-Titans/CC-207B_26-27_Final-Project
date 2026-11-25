@@ -1019,15 +1019,19 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       (sum, item) => sum + (item.activity?.durationMinutes ?? 10),
     );
     final count = suggestions.length;
+    final hasCustom = suggestions.any((item) => item.isCustom);
     final saveable = suggestions.where((item) => !item.isCustom).toList();
     final allAdded =
         saveable.isNotEmpty &&
         saveable.every((item) => _addedActivityIds.contains(item.activityId));
+    final itemLabel = hasCustom
+        ? (count == 1 ? 'play idea' : 'play ideas')
+        : (count == 1 ? 'reviewed activity' : 'reviewed activities');
     final pacingSummary = totalMinutes < _timeMinutes
-        ? '$count short reviewed ${count == 1 ? 'activity' : 'activities'} '
+        ? '$count short $itemLabel '
               '(~$totalMinutes mins total) · repeat favorites or mix in free '
               'play to fill $_timeMinutes min.'
-        : '$count short reviewed ${count == 1 ? 'activity' : 'activities'} '
+        : '$count short $itemLabel '
               '(~$totalMinutes mins total) paced for young attention spans.';
 
     return Container(
