@@ -862,9 +862,41 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
         if (isAi) ...[
           const SizedBox(height: AppSpacing.space4),
           Text(
-            'Matched from reviewed LittleSteps activities for your inputs.',
+            (response?.isCustomGenerated ?? false)
+                ? 'Custom idea tailored to your materials; not from the reviewed catalog.'
+                : 'Matched from reviewed LittleSteps activities for your inputs.',
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
+        if (response?.materialNote != null &&
+            response!.materialNote!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.space12),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.space12),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAdvisory,
+              borderRadius: BorderRadius.circular(AppRadius.chip),
+              border: Border.all(color: AppColors.borderAdvisory),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.health_and_safety_outlined,
+                  size: 18,
+                  color: AppColors.textPrimary,
+                ),
+                const SizedBox(width: AppSpacing.space8),
+                Expanded(
+                  child: Text(
+                    response.materialNote!,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: AppColors.textPrimary),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
         const SizedBox(height: AppSpacing.space8),
@@ -987,9 +1019,10 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       (sum, item) => sum + (item.activity?.durationMinutes ?? 10),
     );
     final count = suggestions.length;
-    final allAdded = suggestions.every(
-      (item) => _addedActivityIds.contains(item.activityId),
-    );
+    final saveable = suggestions.where((item) => !item.isCustom).toList();
+    final allAdded =
+        saveable.isNotEmpty &&
+        saveable.every((item) => _addedActivityIds.contains(item.activityId));
     final pacingSummary = totalMinutes < _timeMinutes
         ? '$count short reviewed ${count == 1 ? 'activity' : 'activities'} '
               '(~$totalMinutes mins total) · repeat favorites or mix in free '
@@ -1032,12 +1065,12 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: AppColors.textPrimary),
           ),
-          if (count >= 2 && _effectiveChild != null) ...[
+          if (saveable.length >= 2 && _effectiveChild != null) ...[
             const SizedBox(height: AppSpacing.space12),
             OutlinedButton.icon(
               onPressed: (allAdded || _isAddingAll)
                   ? null
-                  : () => _addAllToPlan(suggestions),
+                  : () => _addAllToPlan(saveable),
               icon: Icon(allAdded ? Icons.check : Icons.playlist_add, size: 18),
               label: Text(
                 allAdded
@@ -1095,6 +1128,25 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: AppColors.textSecondary),
                   ),
+                  if (suggestion.isCustom)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space8,
+                        vertical: AppSpacing.space4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceAdvisory,
+                        borderRadius: BorderRadius.circular(AppRadius.chip),
+                        border: Border.all(color: AppColors.borderAdvisory),
+                      ),
+                      child: Text(
+                        'Material adaptation',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             const SizedBox(height: AppSpacing.space8),
@@ -1180,39 +1232,63 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
               ],
             ],
 
-            if (_effectiveChild == null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+            if (suggestion.isCustom &&
+                activity != null &&
+                activity.limitations.isNotEmpty) ...[
+              Text(
+                'Safety note: ${activity.limitations}',
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.space12),
+            ],
+
+            if (suggestion.isCustom)
+              Align(
+                alignment: Alignment.centerRight,
                 child: Text(
-                  'Choose a child to add this to a plan.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
+                  'Custom idea · try it now',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              )
+            else ...[
+              if (_effectiveChild == null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+                  child: Text(
+                    'Choose a child to add this to a plan.',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: AppColors.textSecondary),
+                  ),
+                ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Builder(
+                  builder: (context) {
+                    final alreadyAdded = _addedActivityIds.contains(
+                      suggestion.activityId,
+                    );
+                    return FilledButton.icon(
+                      onPressed: (_effectiveChild == null || alreadyAdded)
+                          ? null
+                          : () => _addToPlan(suggestion),
+                      icon: Icon(
+                        alreadyAdded ? Icons.check : Icons.add,
+                        size: 18,
+                      ),
+                      label: Text(
+                        alreadyAdded
+                            ? "Added to today's plan"
+                            : "Add to today's plan",
+                      ),
+                    );
+                  },
                 ),
               ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Builder(
-                builder: (context) {
-                  final alreadyAdded = _addedActivityIds.contains(
-                    suggestion.activityId,
-                  );
-                  return FilledButton.icon(
-                    onPressed: (_effectiveChild == null || alreadyAdded)
-                        ? null
-                        : () => _addToPlan(suggestion),
-                    icon: Icon(
-                      alreadyAdded ? Icons.check : Icons.add,
-                      size: 18,
-                    ),
-                    label: Text(
-                      alreadyAdded
-                          ? "Added to today's plan"
-                          : "Add to today's plan",
-                    ),
-                  );
-                },
-              ),
-            ),
+            ],
           ],
         ),
       ),

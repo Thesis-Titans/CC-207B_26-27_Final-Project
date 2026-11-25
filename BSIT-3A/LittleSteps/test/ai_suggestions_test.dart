@@ -647,4 +647,96 @@ void main() {
       expect(find.text('Try again'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'renders Hybrid ai_custom suggestion with materialNote, Material adaptation badge, and no catalog plan CTA',
+    (tester) async {
+      configureViewport(tester);
+
+      final customResponse = {
+        'source': 'ai_custom',
+        'tier': 1,
+        'materialNote': 'Using banana for safe supervised play; skipped shampoo because it is not safe for toddlers to mouth.',
+        'provenance': {
+          'badge': 'Suggested by AI',
+          'label': 'Material adaptation',
+          'disclaimer': 'Observational play suggestion only. Not developmental assessment.',
+          'model': 'gemini-3.5-flash-lite',
+          'reviewed': false,
+        },
+        'suggestions': [
+          {
+            'activityId': 'custom-1',
+            'title': 'Banana Peel and Squish Play',
+            'whyPicked':
+                'Uses your banana for gentle supervised indoor sensory play.',
+            'isCustom': true,
+            'activity': {
+              'id': 'custom-1',
+              'title': 'Banana Peel and Squish Play',
+              'type': 'activity',
+              'language': 'en',
+              'domain': 'motor',
+              'ageBand': '12-23m',
+              'durationMinutes': 10,
+              'durationEstimate': '10 mins',
+              'setting': 'indoor',
+              'materials': ['banana'],
+              'instructions': [
+                'Peel a ripe banana together on a clean plate.',
+                'Let your toddler squish soft slices with fingers.',
+              ],
+              'limitations':
+                  'Stay close and slice banana into soft bite-sized pieces.',
+              'status': 'synthetic_fixture',
+              'provenanceSource': '',
+            },
+          },
+        ],
+      };
+
+      final client = MockClient((request) async {
+        if (request.url.path.contains('/api/v1/ai/recommendations')) {
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          expect(body['allowCustom'], isTrue);
+          return http.Response(jsonEncode(customResponse), 200);
+        }
+        return http.Response(jsonEncode({}), 200);
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AiSuggestionsScreen(
+            apiClient: ApiClient(baseUrl: 'http://test', httpClient: client),
+            initialChild: testChild,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField), 'banana, shampoo');
+      await tester.ensureVisible(find.text('Find play ideas'));
+      await tester.tap(find.text('Find play ideas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Suggested by AI'), findsOneWidget);
+      expect(
+        find.text(
+          'Custom idea tailored to your materials; not from the reviewed catalog.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('skipped shampoo'), findsOneWidget);
+      expect(find.text('Material adaptation'), findsOneWidget);
+      expect(find.text('Banana Peel and Squish Play'), findsOneWidget);
+      expect(
+        find.text(
+          'Safety note: Stay close and slice banana into soft bite-sized pieces.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Custom idea · try it now'), findsOneWidget);
+      expect(find.text("Add to today's plan"), findsNothing);
+    },
+  );
 }

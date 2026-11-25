@@ -21,6 +21,7 @@ class AiService {
     List<String> materials = const [],
     String language = 'en',
     int count = 3,
+    bool allowCustom = true,
   }) async {
     final body = <String, dynamic>{
       'ageBand': ageBand,
@@ -29,6 +30,7 @@ class AiService {
       'materials': materials,
       'language': language,
       'count': count,
+      'allowCustom': allowCustom,
     };
     if (domain != null) {
       body['domain'] = domain;
