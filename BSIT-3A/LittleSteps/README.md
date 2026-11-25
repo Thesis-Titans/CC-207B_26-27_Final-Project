@@ -24,7 +24,7 @@ The app talks to the shared [LittleSteps API](https://github.com/Thesis-Titans/l
 4. **Milestone prompts:** record what the child has been seen doing. These are observations, not a diagnosis.
 5. **Journal:** private notes per child.
 6. **Storybooks:** search picture books and keep a family bookshelf.
-7. **AI play ideas & weather hints:** suggests activities for the child's age, time and household materials, with optional Open-Meteo city weather hints and a deterministic catalog fallback when the AI is unavailable.
+7. **AI play ideas & weather hints:** catalog-first play suggestions matched to the child's age, time, and household materials, with opt-in guardrailed custom material adaptations (`Material adaptation` badge + safety notes for incompatible items), weather-aware indoor filtering via Open-Meteo, and deterministic catalog fallback when AI is unavailable.
 
 "This week" summarizes completed activities and observations.
 
