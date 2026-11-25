@@ -135,6 +135,7 @@ class TodayScreen extends StatefulWidget {
     this.initialDate,
     this.isOffline = false,
     this.onNavigateTab,
+    this.onOpenIndoorIdeas,
     this.planRefreshKey = 0,
   });
 
@@ -167,6 +168,10 @@ class TodayScreen extends StatefulWidget {
 
   /// Optional callback invoked to switch to another tab in the app shell.
   final ValueChanged<int>? onNavigateTab;
+
+  /// Optional callback invoked when the caregiver taps the weather hint CTA
+  /// to browse indoor activities in Explore.
+  final VoidCallback? onOpenIndoorIdeas;
 
   /// Incremented when another tab adds a plan item.
   final int planRefreshKey;
@@ -1166,10 +1171,22 @@ class _TodayScreenState extends State<TodayScreen> {
     final showIndoorAction =
         hint.suggestedSetting == 'indoor' ||
         (hint.hint?.contains('Indoor') ?? false);
+    // Strip trailing action suffix when the banner already renders an explicit
+    // indoor action button so the label is not repeated twice.
+    final rawHint = hint.hint!;
+    final displayHint = showIndoorAction
+        ? rawHint.replaceFirst(
+            RegExp(r'\s*·\s*Indoor ideas$', caseSensitive: false),
+            '',
+          )
+        : rawHint;
+    final indoorActionLabel = _plans.isEmpty
+        ? 'Find indoor ideas'
+        : 'Filter indoor';
 
     return Semantics(
       liveRegion: true,
-      label: 'Weather guidance: ${hint.hint}',
+      label: 'Weather guidance: $displayHint',
       child: Container(
         margin: const EdgeInsets.only(bottom: AppSpacing.space16),
         padding: const EdgeInsets.symmetric(
@@ -1195,7 +1212,7 @@ class _TodayScreenState extends State<TodayScreen> {
                 const SizedBox(width: AppSpacing.space8),
                 Expanded(
                   child: Text(
-                    hint.hint!,
+                    displayHint,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                       color: AppColors.textPrimary,
@@ -1226,12 +1243,17 @@ class _TodayScreenState extends State<TodayScreen> {
                 InkWell(
                   onTap: () =>
                       openExternalUrl(context, 'https://open-meteo.com'),
-                  child: Text(
-                    hint.attribution,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      decoration: TextDecoration.underline,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.space8,
+                    ),
+                    child: Text(
+                      hint.attribution,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        decoration: TextDecoration.underline,
+                      ),
                     ),
                   ),
                 ),
@@ -1241,24 +1263,27 @@ class _TodayScreenState extends State<TodayScreen> {
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.space8,
                       ),
-                      minimumSize: const Size(0, 36),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: const Size(0, AppSizes.touchTarget),
                     ),
                     onPressed: () {
                       setState(() {
                         _filterIndoor = true;
                       });
-                      if (_plans.isEmpty && widget.onNavigateTab != null) {
-                        widget.onNavigateTab!(1);
+                      if (_plans.isEmpty) {
+                        if (widget.onOpenIndoorIdeas != null) {
+                          widget.onOpenIndoorIdeas!();
+                        } else if (widget.onNavigateTab != null) {
+                          widget.onNavigateTab!(1);
+                        }
                         _announce(
-                          'Navigating to Explore for indoor play ideas',
+                          'Opening Explore filtered to indoor play ideas',
                         );
                       } else {
                         _announce('Indoor filter applied from weather hint');
                       }
                     },
-                    icon: const Icon(Icons.arrow_forward, size: 14),
-                    label: const Text('Indoor ideas'),
+                    icon: const Icon(Icons.arrow_forward, size: 16),
+                    label: Text(indoorActionLabel),
                   ),
               ],
             ),
