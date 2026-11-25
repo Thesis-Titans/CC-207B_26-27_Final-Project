@@ -1,7 +1,59 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:littlesteps/models/auth_user.dart';
+import 'package:littlesteps/models/child.dart';
 import 'package:littlesteps/models/summary.dart';
 import 'package:littlesteps/screens/reflection/weekly_summary_screen.dart';
+import 'package:littlesteps/services/api_client.dart';
+import 'package:littlesteps/services/auth_service.dart';
+import 'package:littlesteps/services/auth_session_state.dart';
+import 'package:littlesteps/services/summary_service.dart';
+import 'package:littlesteps/widgets/auth_scope.dart';
+
+class _FakeAuthService implements AuthService {
+  @override
+  Future<AuthUser> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    return const AuthUser(
+      id: 'u1',
+      email: 'caregiver@example.com',
+      idToken: 'token',
+      refreshToken: 'refresh',
+    );
+  }
+
+  @override
+  Future<AuthUser> signUpWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    return const AuthUser(
+      id: 'u1',
+      email: 'caregiver@example.com',
+      idToken: 'token',
+      refreshToken: 'refresh',
+    );
+  }
+
+  @override
+  Future<AuthUser> refreshToken(String refreshToken) async {
+    return const AuthUser(
+      id: 'u1',
+      email: 'caregiver@example.com',
+      idToken: 'token',
+      refreshToken: 'refresh',
+    );
+  }
+
+  @override
+  Future<void> signOut() async {}
+}
 
 void main() {
   Widget createTestWidget({
@@ -148,6 +200,87 @@ void main() {
           );
         }
       }
+    });
+
+    testWidgets('clears cached summaries and selected week on child switch', (
+      tester,
+    ) async {
+      final childMaya = Child(
+        id: 'child-maya',
+        nickname: 'Maya',
+        ageBand: '12-23m',
+        birthMonthYear: '2025-05',
+        createdAt: DateTime(2025, 5, 1),
+        updatedAt: DateTime(2025, 5, 1),
+      );
+      final childLeo = Child(
+        id: 'child-leo',
+        nickname: 'Leo',
+        ageBand: '6-11m',
+        birthMonthYear: '2026-05',
+        createdAt: DateTime(2026, 5, 1),
+        updatedAt: DateTime(2026, 5, 1),
+      );
+
+      final mockClient = MockClient((request) async {
+        if (request.url.path.contains('/summary/weekly')) {
+          final isMaya = request.url.path.contains('child-maya');
+          return http.Response(
+            jsonEncode({
+              'id': '2026-W43',
+              'weekStartDate': '2026-10-19',
+              'weekEndDate': '2026-10-25',
+              'completedActivityCount': isMaya ? 4 : 2,
+              'observedMilestoneCount': 1,
+              'totalPlannedActivities': isMaya ? 6 : 2,
+              'domainDistribution': {'language': isMaya ? 2 : 1},
+              'topActivityIds': ['act-1'],
+              'reflectionPrompt': isMaya
+                  ? 'Maya enjoyed talking games this week.'
+                  : 'Leo enjoyed exploring tummy time.',
+              'generatedAt': '2026-10-25T18:00:00.000Z',
+            }),
+            200,
+          );
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      final apiClient = ApiClient(
+        baseUrl: 'http://test',
+        httpClient: mockClient,
+      );
+      final summaryService = SummaryService(apiClient: apiClient);
+      final sessionState = AuthSessionState(authService: _FakeAuthService());
+      sessionState.setActiveChild(childMaya);
+
+      await tester.pumpWidget(
+        AuthScope(
+          sessionState: sessionState,
+          apiClient: apiClient,
+          child: MaterialApp(
+            home: WeeklySummaryScreen(summaryService: summaryService),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('For Maya · 12-23 months'), findsOneWidget);
+      expect(find.text('4'), findsOneWidget);
+      expect(
+        find.text('Maya enjoyed talking games this week.'),
+        findsOneWidget,
+      );
+
+      // Switch active child to Leo
+      sessionState.setActiveChild(childLeo);
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('For Leo · 6-11 months'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('Leo enjoyed exploring tummy time.'), findsOneWidget);
+      expect(find.text('Maya enjoyed talking games this week.'), findsNothing);
     });
   });
 }

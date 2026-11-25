@@ -211,6 +211,11 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
     if (!_initialLoadStarted || childChanged) {
       _initialLoadStarted = true;
       _lastChildId = childId;
+      if (childChanged) {
+        _summaries = {};
+        _selectedWeekId = '';
+        _currentState = WeeklySummaryViewState.loading;
+      }
       _loadWeeklySummary(null, childId);
     }
   }
@@ -261,6 +266,8 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
           }
         }
       } catch (_) {}
+
+      if (!mounted || targetChildId != _lastChildId) return;
 
       final sortedKeys = updatedSummaries.keys.toList()
         ..sort((a, b) => b.compareTo(a));

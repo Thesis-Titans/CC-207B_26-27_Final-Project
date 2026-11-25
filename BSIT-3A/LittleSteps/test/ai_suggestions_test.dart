@@ -152,7 +152,7 @@ void main() {
       expect(find.text('Suggested by AI'), findsOneWidget);
       expect(
         find.text(
-          'AI Suggestion — Always adapt to your child and ensure adult supervision.',
+          'Suggested by AI: always adapt activities to your child and ensure adult supervision.',
         ),
         findsOneWidget,
       );
@@ -279,10 +279,11 @@ void main() {
       await tester.tap(find.text('Find play ideas'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Catalog picks · not AI'), findsWidgets);
+      expect(find.text('Using our activity list'), findsOneWidget);
+      expect(find.text('Catalog picks · not AI'), findsOneWidget);
       expect(
         find.text(
-          "The idea helper isn't working right now. Here are a few favorites for this age from our activity list.",
+          'AI suggestions are unavailable right now. Here are reviewed play ideas for this age.',
         ),
         findsOneWidget,
       );
@@ -540,6 +541,110 @@ void main() {
       // Only act-003 should be posted since act-008 was already on today's plan.
       expect(addedIds, ['act-003']);
       expect(find.text("All added to today's plan"), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'HTTP 200 empty fallback response automatically populates catalog picks',
+    (tester) async {
+      configureViewport(tester);
+
+      final emptyFallbackResponse = {
+        'isAiGenerated': false,
+        'suggestions': [],
+        'disclaimer':
+            'Observational play suggestion only. Not developmental assessment.',
+      };
+
+      final client = MockClient((request) async {
+        if (request.url.path.contains('/api/v1/ai/recommendations')) {
+          return http.Response(jsonEncode(emptyFallbackResponse), 200);
+        }
+        if (request.url.path.contains('/catalog/activities')) {
+          return http.Response(
+            jsonEncode({
+              'items': [
+                (sampleAiSuccessResponse['suggestions'] as List)
+                    .first['activity'],
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response(jsonEncode({}), 200);
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AiSuggestionsScreen(
+            apiClient: ApiClient(baseUrl: 'http://test', httpClient: client),
+            initialChild: testChild,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Find play ideas'));
+      await tester.tap(find.text('Find play ideas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Using our activity list'), findsOneWidget);
+      expect(find.text('Catalog picks · not AI'), findsOneWidget);
+      expect(
+        find.text(
+          'AI suggestions are unavailable right now. Here are reviewed play ideas for this age.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Build a Cup Tower'), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Total empty fallback renders clean empty recovery message when catalog is empty',
+    (tester) async {
+      configureViewport(tester);
+
+      final client = MockClient((request) async {
+        if (request.url.path.contains('/api/v1/ai/recommendations')) {
+          return http.Response('Server Error', 500);
+        }
+        if (request.url.path.contains('/catalog/activities')) {
+          return http.Response(jsonEncode({'items': []}), 200);
+        }
+        return http.Response(jsonEncode({}), 200);
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AiSuggestionsScreen(
+            apiClient: ApiClient(baseUrl: 'http://test', httpClient: client),
+            initialChild: testChild,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Find play ideas'));
+      await tester.tap(find.text('Find play ideas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Using our activity list'), findsOneWidget);
+      expect(
+        find.text(
+          'AI suggestions are unavailable right now, and no matching activities could be loaded.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('No matching play ideas yet'), findsOneWidget);
+      expect(
+        find.text(
+          'Try changing the time, setting, or language, or tap Try again once your connection is ready.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Try again'), findsOneWidget);
     },
   );
 }
