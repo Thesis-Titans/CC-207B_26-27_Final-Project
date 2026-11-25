@@ -649,10 +649,11 @@ void main() {
   );
 
   testWidgets(
-    'renders Hybrid ai_custom suggestion with materialNote, Material adaptation badge, and no catalog plan CTA',
+    'renders Hybrid ai_custom suggestion with materialNote, Material adaptation badge, and schedulable custom plan CTA',
     (tester) async {
       configureViewport(tester);
 
+      Map<String, dynamic>? postedPlanBody;
       final customResponse = {
         'source': 'ai_custom',
         'tier': 1,
@@ -701,6 +702,26 @@ void main() {
           expect(body['allowCustom'], isTrue);
           return http.Response(jsonEncode(customResponse), 200);
         }
+        if (request.url.path.contains('/plans') && request.method == 'POST') {
+          postedPlanBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(
+            jsonEncode({
+              'id': 'plan-custom-1',
+              'childId': testChild.id,
+              'activityId': postedPlanBody!['activityId'],
+              'scheduledDate': postedPlanBody!['scheduledDate'],
+              'status': 'planned',
+              'durationMinutes': postedPlanBody!['durationMinutes'],
+              'customActivity': postedPlanBody!['customActivity'],
+              'createdAt': '2026-11-25T09:00:00Z',
+              'updatedAt': '2026-11-25T09:00:00Z',
+            }),
+            201,
+          );
+        }
+        if (request.url.path.contains('/plans') && request.method == 'GET') {
+          return http.Response(jsonEncode([]), 200);
+        }
         return http.Response(jsonEncode({}), 200);
       });
 
@@ -739,8 +760,27 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('Custom idea · try it now'), findsOneWidget);
-      expect(find.text("Add to today's plan"), findsNothing);
+      expect(find.text("Add to today's plan"), findsOneWidget);
+
+      await tester.ensureVisible(find.text("Add to today's plan"));
+      await tester.tap(find.text("Add to today's plan"));
+      await tester.pumpAndSettle();
+
+      expect(postedPlanBody, isNotNull);
+      expect(
+        postedPlanBody!['activityId'],
+        'custom-banana-peel-and-squish-play',
+      );
+      expect(
+        (postedPlanBody!['customActivity'] as Map<String, dynamic>)['title'],
+        'Banana Peel and Squish Play',
+      );
+      expect(
+        (postedPlanBody!['customActivity']
+            as Map<String, dynamic>)['sourceLabel'],
+        'Material adaptation',
+      );
+      expect(find.text("Added to today's plan"), findsOneWidget);
     },
   );
 }

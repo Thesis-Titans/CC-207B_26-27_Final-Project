@@ -1,10 +1,175 @@
-/// @docImport 'activity.dart';
-library;
+import 'activity.dart';
+
+/// Inline snapshot of a custom, storybook, or rhyme activity stored on a plan.
+class CustomPlanActivity {
+  /// Creates a [CustomPlanActivity].
+  const CustomPlanActivity({
+    required this.title,
+    required this.domain,
+    required this.durationMinutes,
+    required this.setting,
+    required this.materials,
+    required this.instructions,
+    this.safetyNotice,
+    this.sourceLabel,
+  });
+
+  /// Caregiver-facing activity title.
+  final String title;
+
+  /// Developmental domain key (`cognitive`, `motor`, `language`, `socioEmotional`).
+  final String domain;
+
+  /// Estimated play duration in minutes.
+  final int durationMinutes;
+
+  /// Play setting (`indoor`, `outdoor`, or `either`).
+  final String setting;
+
+  /// Household materials used during the activity.
+  final List<String> materials;
+
+  /// Ordered caregiver play instructions.
+  final List<String> instructions;
+
+  /// Optional supervision or safety reminder.
+  final String? safetyNotice;
+
+  /// Optional provenance label such as `Material adaptation` or `Storybook companion`.
+  final String? sourceLabel;
+
+  /// Normalizes a domain key to one of the four API-supported values.
+  static String normalizeDomain(String raw) {
+    switch (raw.toLowerCase()) {
+      case 'cognitive':
+        return 'cognitive';
+      case 'motor':
+        return 'motor';
+      case 'language':
+        return 'language';
+      case 'socioemotional':
+      case 'socio_emotional':
+      case 'socio-emotional':
+        return 'socioEmotional';
+      default:
+        return 'language';
+    }
+  }
+
+  /// Normalizes a setting key to `indoor`, `outdoor`, or `either`.
+  static String normalizeSetting(String raw) {
+    switch (raw.toLowerCase()) {
+      case 'indoor':
+        return 'indoor';
+      case 'outdoor':
+        return 'outdoor';
+      case 'either':
+        return 'either';
+      default:
+        return 'indoor';
+    }
+  }
+
+  /// Builds a [CustomPlanActivity] from an in-memory [Activity].
+  factory CustomPlanActivity.fromActivity(
+    Activity activity, {
+    String? sourceLabel,
+  }) {
+    final cleanMaterials = activity.materials
+        .map((m) => m.trim())
+        .where((m) => m.isNotEmpty)
+        .take(10)
+        .map((m) => m.length > 60 ? m.substring(0, 60) : m)
+        .toList();
+    final cleanInstructions = activity.instructions
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .take(6)
+        .map((s) => s.length > 300 ? s.substring(0, 300) : s)
+        .toList();
+    final rawSafety = activity.limitations.trim();
+    final safeNotice = rawSafety.isEmpty
+        ? null
+        : (rawSafety.length > 200 ? rawSafety.substring(0, 200) : rawSafety);
+    final cleanTitle = activity.title.trim();
+    return CustomPlanActivity(
+      title: cleanTitle.length > 120
+          ? cleanTitle.substring(0, 120)
+          : (cleanTitle.isEmpty ? 'Custom play idea' : cleanTitle),
+      domain: normalizeDomain(activity.domain),
+      durationMinutes: activity.durationMinutes.clamp(1, 180),
+      setting: normalizeSetting(activity.setting),
+      materials: cleanMaterials,
+      instructions: cleanInstructions.isNotEmpty
+          ? cleanInstructions
+          : const [
+              'Play together at your child\'s pace with adult supervision.',
+            ],
+      safetyNotice: safeNotice,
+      sourceLabel: sourceLabel,
+    );
+  }
+
+  /// Creates a [CustomPlanActivity] from a decoded JSON object.
+  factory CustomPlanActivity.fromJson(Map<String, dynamic> json) {
+    return CustomPlanActivity(
+      title: json['title'] as String,
+      domain: json['domain'] as String,
+      durationMinutes: json['durationMinutes'] as int,
+      setting: json['setting'] as String,
+      materials: (json['materials'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+      instructions: (json['instructions'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+      safetyNotice: json['safetyNotice'] as String?,
+      sourceLabel: json['sourceLabel'] as String?,
+    );
+  }
+
+  /// Serializes this snapshot to a JSON map for `POST /plans`.
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'domain': domain,
+      'durationMinutes': durationMinutes,
+      'setting': setting,
+      'materials': materials,
+      'instructions': instructions,
+      if (safetyNotice != null && safetyNotice!.isNotEmpty)
+        'safetyNotice': safetyNotice,
+      if (sourceLabel != null && sourceLabel!.isNotEmpty)
+        'sourceLabel': sourceLabel,
+    };
+  }
+
+  /// Converts this snapshot into an [Activity] for display on Today cards.
+  Activity toActivity(String activityId) {
+    return Activity(
+      id: activityId,
+      title: title,
+      type: 'custom',
+      language: 'en',
+      domain: domain,
+      ageBand: 'all',
+      durationMinutes: durationMinutes,
+      durationEstimate: '$durationMinutes mins',
+      setting: setting,
+      materials: materials,
+      instructions: instructions,
+      limitations: safetyNotice ?? '',
+      status: 'custom_snapshot',
+      provenanceSource: '',
+    );
+  }
+}
 
 /// A planned activity for a child on a given date.
 ///
-/// Mirrors the API `PublicPlan`. Title and domain are not stored on the plan;
-/// look them up from the catalog [Activity] by [activityId].
+/// Mirrors the API `PublicPlan`. Catalog plans resolve details from [Activity]
+/// by [activityId], while custom, storybook, and rhyme plans carry an inline
+/// [customActivity] snapshot.
 class PlanItem {
   /// Creates a [PlanItem].
   const PlanItem({
@@ -16,6 +181,7 @@ class PlanItem {
     this.completedAt,
     this.durationMinutes,
     this.feedbackNote,
+    this.customActivity,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -26,7 +192,7 @@ class PlanItem {
   /// Identifier of the child profile this plan belongs to.
   final String childId;
 
-  /// Identifier of the scheduled catalog [Activity].
+  /// Identifier of the scheduled catalog or custom [Activity].
   final String activityId;
 
   /// Local calendar date in `YYYY-MM-DD` form.
@@ -44,6 +210,9 @@ class PlanItem {
   /// Optional caregiver feedback note on the session.
   final String? feedbackNote;
 
+  /// Optional inline snapshot for non-catalog play activities.
+  final CustomPlanActivity? customActivity;
+
   /// Timestamp when the plan record was created.
   final DateTime createdAt;
 
@@ -55,6 +224,7 @@ class PlanItem {
 
   /// Creates a [PlanItem] from a decoded JSON object.
   factory PlanItem.fromJson(Map<String, dynamic> json) {
+    final rawCustom = json['customActivity'];
     return PlanItem(
       id: json['id'] as String,
       childId: json['childId'] as String,
@@ -66,6 +236,9 @@ class PlanItem {
           : null,
       durationMinutes: json['durationMinutes'] as int?,
       feedbackNote: json['feedbackNote'] as String?,
+      customActivity: rawCustom is Map<String, dynamic>
+          ? CustomPlanActivity.fromJson(rawCustom)
+          : null,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );

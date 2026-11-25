@@ -1,3 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:flutter/material.dart';
 
 import 'routing/app_router.dart';
@@ -6,6 +8,20 @@ import 'services/auth_service.dart';
 import 'services/auth_session_state.dart';
 import 'theme/app_theme.dart';
 import 'widgets/auth_scope.dart';
+
+/// Scroll behavior enabling touch, mouse, trackpad, and stylus drag gestures.
+class AppScrollBehavior extends MaterialScrollBehavior {
+  /// Creates an [AppScrollBehavior].
+  const AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+  };
+}
 
 void main() {
   runApp(const LittleStepsApp());
@@ -68,6 +84,7 @@ class _LittleStepsAppState extends State<LittleStepsApp> {
         navigatorKey: _navigatorKey,
         title: 'LittleSteps',
         theme: AppTheme.light(),
+        scrollBehavior: const AppScrollBehavior(),
         initialRoute: AppRouter.initialRoute,
         onGenerateRoute: AppRouter.onGenerateRoute,
         debugShowCheckedModeBanner: false,

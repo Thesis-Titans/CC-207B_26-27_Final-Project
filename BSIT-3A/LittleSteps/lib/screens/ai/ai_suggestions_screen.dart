@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../models/child.dart';
+import '../../models/plan.dart';
 import '../../models/recommendation.dart';
 import '../../models/weather.dart';
 import '../../services/ai_service.dart';
@@ -349,21 +350,45 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     }
   }
 
+  String _planActivityId(Recommendation item) {
+    if (!item.isCustom) return item.activityId;
+    final slug = item.title
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+    if (slug.isEmpty) return 'custom-play-idea';
+    final full = 'custom-$slug';
+    return full.length <= 64
+        ? full
+        : full.substring(0, 64).replaceAll(RegExp(r'-+$'), '');
+  }
+
+  CustomPlanActivity? _customSnapshotFor(Recommendation item) {
+    if (!item.isCustom || item.activity == null) return null;
+    return CustomPlanActivity.fromActivity(
+      item.activity!,
+      sourceLabel: 'Material adaptation',
+    );
+  }
+
   Future<void> _addToPlan(Recommendation item) async {
     final childId = _effectiveChild?.id ?? widget.initialChild?.id;
-    if (childId == null || _addedActivityIds.contains(item.activityId)) return;
+    final planActivityId = _planActivityId(item);
+    if (childId == null || _addedActivityIds.contains(planActivityId)) return;
     final today = DateTime.now().toIso8601String().substring(0, 10);
 
     try {
       await _resolvePlanService().addActivityToPlan(
         childId: childId,
-        activityId: item.activityId,
+        activityId: planActivityId,
         scheduledDate: today,
         durationMinutes: item.activity?.durationMinutes,
+        customActivity: _customSnapshotFor(item),
       );
       if (!mounted) return;
       setState(() {
-        _addedActivityIds.add(item.activityId);
+        _addedActivityIds.add(planActivityId);
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -388,7 +413,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     final childId = _effectiveChild?.id ?? widget.initialChild?.id;
     if (childId == null || _isAddingAll) return;
     final pending = suggestions
-        .where((item) => !_addedActivityIds.contains(item.activityId))
+        .where((item) => !_addedActivityIds.contains(_planActivityId(item)))
         .toList();
     if (pending.isEmpty) return;
 
@@ -398,17 +423,19 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     var addedCount = 0;
 
     for (final item in pending) {
+      final planActivityId = _planActivityId(item);
       try {
         await service.addActivityToPlan(
           childId: childId,
-          activityId: item.activityId,
+          activityId: planActivityId,
           scheduledDate: today,
           durationMinutes: item.activity?.durationMinutes,
+          customActivity: _customSnapshotFor(item),
         );
         addedCount++;
         if (mounted) {
           setState(() {
-            _addedActivityIds.add(item.activityId);
+            _addedActivityIds.add(planActivityId);
           });
         }
       } catch (_) {
@@ -1020,10 +1047,12 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     );
     final count = suggestions.length;
     final hasCustom = suggestions.any((item) => item.isCustom);
-    final saveable = suggestions.where((item) => !item.isCustom).toList();
+    final saveable = suggestions;
     final allAdded =
         saveable.isNotEmpty &&
-        saveable.every((item) => _addedActivityIds.contains(item.activityId));
+        saveable.every(
+          (item) => _addedActivityIds.contains(_planActivityId(item)),
+        );
     final itemLabel = hasCustom
         ? (count == 1 ? 'play idea' : 'play ideas')
         : (count == 1 ? 'reviewed activity' : 'reviewed activities');
@@ -1247,52 +1276,39 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
               const SizedBox(height: AppSpacing.space12),
             ],
 
-            if (suggestion.isCustom)
-              Align(
-                alignment: Alignment.centerRight,
+            if (_effectiveChild == null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.space8),
                 child: Text(
-                  'Custom idea · try it now',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              )
-            else ...[
-              if (_effectiveChild == null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-                  child: Text(
-                    'Choose a child to add this to a plan.',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: AppColors.textSecondary),
-                  ),
-                ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Builder(
-                  builder: (context) {
-                    final alreadyAdded = _addedActivityIds.contains(
-                      suggestion.activityId,
-                    );
-                    return FilledButton.icon(
-                      onPressed: (_effectiveChild == null || alreadyAdded)
-                          ? null
-                          : () => _addToPlan(suggestion),
-                      icon: Icon(
-                        alreadyAdded ? Icons.check : Icons.add,
-                        size: 18,
-                      ),
-                      label: Text(
-                        alreadyAdded
-                            ? "Added to today's plan"
-                            : "Add to today's plan",
-                      ),
-                    );
-                  },
+                  'Choose a child to add this to a plan.',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
                 ),
               ),
-            ],
+            Align(
+              alignment: Alignment.centerRight,
+              child: Builder(
+                builder: (context) {
+                  final alreadyAdded = _addedActivityIds.contains(
+                    _planActivityId(suggestion),
+                  );
+                  return FilledButton.icon(
+                    onPressed: (_effectiveChild == null || alreadyAdded)
+                        ? null
+                        : () => _addToPlan(suggestion),
+                    icon: Icon(
+                      alreadyAdded ? Icons.check : Icons.add,
+                      size: 18,
+                    ),
+                    label: Text(
+                      alreadyAdded
+                          ? "Added to today's plan"
+                          : "Add to today's plan",
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

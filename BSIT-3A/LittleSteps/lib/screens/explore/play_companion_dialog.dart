@@ -81,8 +81,8 @@ class PlayCompanionDialog extends StatelessWidget {
         instructions,
         'Talk about what happens in the pictures and celebrate every effort.',
       ],
-      provenanceSource: 'Open Library · Play Companion',
-      status: 'reviewed_approved',
+      provenanceSource: '',
+      status: 'custom_snapshot',
       limitations: safetyNotice,
     );
   }
@@ -164,6 +164,7 @@ class PlayCompanionDialog extends StatelessWidget {
               const SizedBox(height: AppSpacing.space8),
 
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -188,7 +189,7 @@ class PlayCompanionDialog extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Companion to ${book.title}',
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,

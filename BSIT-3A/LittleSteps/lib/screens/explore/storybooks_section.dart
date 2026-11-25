@@ -6,6 +6,7 @@ import '../../data/philippine_rhymes.dart';
 import '../../models/activity.dart';
 import '../../models/book.dart';
 import '../../models/child.dart';
+import '../../models/plan.dart';
 import '../../services/ai_service.dart';
 import '../../services/api_client.dart';
 import '../../services/books_service.dart';
@@ -444,6 +445,11 @@ class _StorybooksSectionState extends State<StorybooksSection> {
         childId: childId,
         activityId: activity.id,
         scheduledDate: DateTime.now().toIso8601String().substring(0, 10),
+        durationMinutes: activity.durationMinutes,
+        customActivity: CustomPlanActivity.fromActivity(
+          activity,
+          sourceLabel: 'Storybook companion',
+        ),
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -486,6 +492,11 @@ class _StorybooksSectionState extends State<StorybooksSection> {
         childId: childId,
         activityId: activity.id,
         scheduledDate: DateTime.now().toIso8601String().substring(0, 10),
+        durationMinutes: activity.durationMinutes,
+        customActivity: CustomPlanActivity.fromActivity(
+          activity,
+          sourceLabel: 'Read & Sing Together',
+        ),
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -601,6 +612,8 @@ class _StorybooksSectionState extends State<StorybooksSection> {
         if (_searchQuery.isEmpty) ...[
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.only(right: AppSpacing.space24),
             child: Row(
               children: [
                 _buildSubjectChip('All books', null),
