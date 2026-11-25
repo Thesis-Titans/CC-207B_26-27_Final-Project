@@ -42,6 +42,8 @@ const _languages = <String, String>{
   'hil': 'Hiligaynon',
 };
 
+const _settings = <String, String>{'indoor': 'Indoor', 'outdoor': 'Outdoor'};
+
 String? _catalogAgeBand(String? ageBand) {
   if (ageBand == null || _ageBands.containsKey(ageBand)) return ageBand;
   final monthMatch = RegExp(r'^(\d{1,2})m$').firstMatch(ageBand);
@@ -81,6 +83,8 @@ class ExploreScreen extends StatefulWidget {
     this.catalogService,
     this.planService,
     this.onPlanAdded,
+    this.initialSetting,
+    this.settingTriggerKey = 0,
   });
 
   /// Optional catalog service used by tests or a containing feature.
@@ -91,6 +95,13 @@ class ExploreScreen extends StatefulWidget {
 
   /// Called when an item is added to today's plan.
   final ValueChanged<Activity>? onPlanAdded;
+
+  /// Optional play-space filter (`indoor` or `outdoor`) applied when opening
+  /// Explore from a contextual prompt such as Today's weather hint.
+  final String? initialSetting;
+
+  /// Incremented by the shell to re-apply [initialSetting] on demand.
+  final int settingTriggerKey;
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -110,10 +121,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String? _ageBand;
   String? _domain;
   String? _language;
+  String? _setting;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   int _requestNumber = 0;
   String? _lastChildId;
+
+  @override
+  void initState() {
+    super.initState();
+    _setting = widget.initialSetting;
+  }
+
+  @override
+  void didUpdateWidget(covariant ExploreScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.settingTriggerKey != oldWidget.settingTriggerKey &&
+        widget.initialSetting != null) {
+      setState(() {
+        _storybooksSelected = false;
+        _setting = widget.initialSetting;
+      });
+      unawaited(_loadActivities());
+    }
+  }
 
   @override
   void dispose() {
@@ -158,6 +189,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ageBand: _ageBand,
         domain: _domain,
         language: _language,
+        setting: _setting,
       );
       if (!mounted || requestNumber != _requestNumber) return;
       setState(() {
@@ -194,11 +226,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }).toList();
   }
 
-  void _changeFilter({String? ageBand, String? domain, String? language}) {
+  void _changeFilter({
+    String? ageBand,
+    String? domain,
+    String? language,
+    String? setting,
+    bool updateSetting = false,
+  }) {
     setState(() {
       _ageBand = ageBand;
       _domain = domain;
       _language = language;
+      if (updateSetting) {
+        _setting = setting;
+      }
     });
     unawaited(_loadActivities());
   }
@@ -217,7 +258,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
           final hasCustomFilters =
-              _ageBand != defaultAgeBand || _language != null;
+              _ageBand != defaultAgeBand ||
+              _language != null ||
+              _setting != null;
           return SizedBox(
             width: double.infinity,
             child: SafeArea(
@@ -247,6 +290,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 ageBand: defaultAgeBand,
                                 domain: _domain,
                                 language: null,
+                                setting: null,
+                                updateSetting: true,
                               );
                               Navigator.pop(sheetContext);
                             },
@@ -313,6 +358,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: AppSpacing.space20),
+                    Text(
+                      'Play space',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.space8),
+                    Wrap(
+                      spacing: AppSpacing.space8,
+                      runSpacing: AppSpacing.space8,
+                      children: [
+                        _LanguageChip(
+                          label: 'Any space',
+                          selected: _setting == null,
+                          onSelected: () => _selectSetting(sheetContext, null),
+                        ),
+                        ..._settings.entries.map(
+                          (entry) => _LanguageChip(
+                            label: entry.value,
+                            selected: _setting == entry.key,
+                            onSelected: () =>
+                                _selectSetting(sheetContext, entry.key),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: AppSpacing.space16),
                     Text(
                       'Defaults to your active child\'s age range. Adjust anytime to browse other ages or languages.',
@@ -330,6 +400,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _selectLanguage(BuildContext sheetContext, String? language) {
     _changeFilter(ageBand: _ageBand, domain: _domain, language: language);
+    Navigator.pop(sheetContext);
+  }
+
+  void _selectSetting(BuildContext sheetContext, String? setting) {
+    _changeFilter(
+      ageBand: _ageBand,
+      domain: _domain,
+      language: _language,
+      setting: setting,
+      updateSetting: true,
+    );
     Navigator.pop(sheetContext);
   }
 
@@ -659,7 +740,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _buildSearchAndFilterRow(Child? activeChild) {
     final defaultAgeBand = _catalogAgeBand(activeChild?.ageBand);
     final activeFilterCount =
-        (_ageBand != defaultAgeBand ? 1 : 0) + (_language != null ? 1 : 0);
+        (_ageBand != defaultAgeBand ? 1 : 0) +
+        (_language != null ? 1 : 0) +
+        (_setting != null ? 1 : 0);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -725,11 +808,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final hasCustomFilter =
         _ageBand != defaultAgeBand ||
         _language != null ||
+        _setting != null ||
         _domain != null ||
         _searchQuery.trim().isNotEmpty;
-    final activeSummary = _language == null
-        ? resultMessage
-        : '$resultMessage · ${_languages[_language] ?? _language}';
+    final summaryParts = <String>[
+      resultMessage,
+      if (_language != null) _languages[_language] ?? _language!,
+      if (_setting != null) _settings[_setting] ?? _setting!,
+    ];
+    final activeSummary = summaryParts.join(' · ');
 
     return [
       const SizedBox(height: AppSpacing.space8),
@@ -764,6 +851,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     _ageBand = defaultAgeBand;
                     _domain = null;
                     _language = null;
+                    _setting = null;
                     _searchQuery = '';
                   });
                   unawaited(_loadActivities());

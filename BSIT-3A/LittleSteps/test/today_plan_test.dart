@@ -577,14 +577,11 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(
-          find.text('Rain likely this afternoon · Indoor ideas'),
-          findsOneWidget,
-        );
+        expect(find.text('Rain likely this afternoon'), findsOneWidget);
         expect(find.text('Weather data by Open-Meteo.com'), findsOneWidget);
-        expect(find.text('Indoor ideas'), findsOneWidget);
+        expect(find.text('Filter indoor'), findsOneWidget);
 
-        await tester.tap(find.text('Indoor ideas'));
+        await tester.tap(find.text('Filter indoor'));
         await tester.pumpAndSettle();
 
         expect(find.text('Finger puppets song'), findsOneWidget);
@@ -593,10 +590,42 @@ void main() {
         await tester.tap(find.byTooltip('Dismiss weather hint'));
         await tester.pumpAndSettle();
 
-        expect(
-          find.text('Rain likely this afternoon · Indoor ideas'),
-          findsNothing,
+        expect(find.text('Rain likely this afternoon'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'invokes onOpenIndoorIdeas when Today has no plans and CTA is tapped',
+      (tester) async {
+        var openedIndoorIdeas = false;
+        const weather = WeatherHint(
+          condition: 'rain',
+          rainChance: 85,
+          heatFlag: false,
+          suggestedSetting: 'indoor',
+          hint: 'Rain likely this afternoon · Indoor ideas',
+          attribution: 'Weather data by Open-Meteo.com',
         );
+
+        await tester.pumpWidget(
+          buildTestApp(
+            TodayScreen(
+              initialState: TodayViewState.empty,
+              initialPlans: const [],
+              initialWeatherHint: weather,
+              onOpenIndoorIdeas: () => openedIndoorIdeas = true,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Rain likely this afternoon'), findsOneWidget);
+        expect(find.text('Find indoor ideas'), findsOneWidget);
+
+        await tester.tap(find.text('Find indoor ideas'));
+        await tester.pumpAndSettle();
+
+        expect(openedIndoorIdeas, isTrue);
       },
     );
 

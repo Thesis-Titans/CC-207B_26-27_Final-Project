@@ -93,6 +93,8 @@ class _ShellScreenState extends State<ShellScreen> {
 
   int _currentIndex = 0;
   int _todayPlanRefreshKey = 0;
+  String? _exploreSettingFilter;
+  int _exploreSettingFilterKey = 0;
   List<Child> _children = [];
   Map<String, Activity> _scheduledActivityDetails = {};
   bool _isLoadingChildren = false;
@@ -171,6 +173,14 @@ class _ShellScreenState extends State<ShellScreen> {
     });
   }
 
+  void _openExploreWithSetting(String setting) {
+    setState(() {
+      _exploreSettingFilter = setting;
+      _exploreSettingFilterKey++;
+      _currentIndex = 1;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final compactHeader = MediaQuery.sizeOf(context).width < 380;
@@ -202,6 +212,7 @@ class _ShellScreenState extends State<ShellScreen> {
           ? (activeChild != null
                 ? TodayScreen(
                     onNavigateTab: onDestinationSelected,
+                    onOpenIndoorIdeas: () => _openExploreWithSetting('indoor'),
                     planRefreshKey: _todayPlanRefreshKey,
                     initialActivities: _scheduledActivityDetails,
                   )
@@ -215,9 +226,17 @@ class _ShellScreenState extends State<ShellScreen> {
             ),
       isAuthenticated
           ? (activeChild != null
-                ? ExploreScreen(onPlanAdded: _handlePlanAdded)
+                ? ExploreScreen(
+                    onPlanAdded: _handlePlanAdded,
+                    initialSetting: _exploreSettingFilter,
+                    settingTriggerKey: _exploreSettingFilterKey,
+                  )
                 : noChildView)
-          : ExploreScreen(onPlanAdded: _handlePlanAdded),
+          : ExploreScreen(
+              onPlanAdded: _handlePlanAdded,
+              initialSetting: _exploreSettingFilter,
+              settingTriggerKey: _exploreSettingFilterKey,
+            ),
       isAuthenticated
           ? (activeChild != null ? const MilestonesScreen() : noChildView)
           : EmptyStateView(
