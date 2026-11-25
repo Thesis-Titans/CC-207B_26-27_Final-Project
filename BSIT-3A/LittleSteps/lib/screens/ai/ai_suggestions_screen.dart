@@ -215,11 +215,21 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
           .timeout(const Duration(seconds: 8));
 
       if (!mounted) return;
+      var resolved = result;
+      if (!resolved.isAiGenerated && resolved.suggestions.isEmpty) {
+        final picks = await _catalogPicks();
+        if (!mounted) return;
+        if (picks.isNotEmpty) {
+          resolved = _fallbackResponse(picks);
+        }
+      }
       setState(() {
-        _response = result;
+        _response = resolved;
         _isLoading = false;
-        if (!result.isAiGenerated) {
-          _fallbackNotice = "The idea helper isn't working right now. Here are a few favorites for this age from our activity list.";
+        if (!resolved.isAiGenerated) {
+          _fallbackNotice = resolved.suggestions.isNotEmpty
+              ? 'AI suggestions are unavailable right now. Here are reviewed play ideas for this age.'
+              : 'AI suggestions are unavailable right now, and no matching activities could be loaded.';
         }
       });
       unawaited(_syncTodayPlannedIds());
@@ -251,7 +261,9 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     if (!mounted) return;
     setState(() {
       _isLoading = false;
-      _fallbackNotice = "The idea helper isn't working right now. Here are a few favorites for this age from our activity list.";
+      _fallbackNotice = picks.isNotEmpty
+          ? 'AI suggestions are unavailable right now. Here are reviewed play ideas for this age.'
+          : 'AI suggestions are unavailable right now, and no matching activities could be loaded.';
       _response = _fallbackResponse(picks);
     });
   }
@@ -267,20 +279,47 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     );
   }
 
-  // Fetches real catalog activities for the selected age band so fallback
-  // cards always reference valid activity IDs when added to today's plan.
+  // Fetches real catalog activities constrained by age band, setting, and time
+  // first, progressively relaxing constraints only when no matches exist.
   Future<List<Recommendation>> _catalogPicks() async {
     try {
-      final activities = await _resolveCatalogService().getActivities(
-        ageBand: _ageBand,
-      );
-      return activities
+      final catalog = _resolveCatalogService();
+      final ageActivities = await catalog.getActivities(ageBand: _ageBand);
+      var pool = ageActivities;
+
+      if (pool.isEmpty) {
+        pool = await catalog.getActivities();
+      }
+      if (pool.isEmpty) {
+        return const [];
+      }
+
+      bool matchesSetting(String itemSetting) {
+        return _setting == 'either' ||
+            itemSetting == _setting ||
+            itemSetting == 'either';
+      }
+
+      var filtered = pool
+          .where(
+            (a) =>
+                matchesSetting(a.setting) && a.durationMinutes <= _timeMinutes,
+          )
+          .toList();
+      if (filtered.isEmpty) {
+        filtered = pool.where((a) => matchesSetting(a.setting)).toList();
+      }
+      if (filtered.isEmpty) {
+        filtered = pool;
+      }
+
+      return filtered
           .take(3)
           .map(
             (a) => Recommendation(
               activityId: a.id,
               title: a.title,
-              whyPicked: 'A popular pick for this age from our activity list.',
+              whyPicked: 'A reviewed pick for this age from our activity list.',
               activity: a,
             ),
           )
@@ -759,7 +798,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Catalog picks · not AI',
+                        'Using our activity list',
                         style: Theme.of(context).textTheme.titleSmall
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
@@ -848,7 +887,9 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'AI Suggestion — Always adapt to your child and ensure adult supervision.',
+                isAi
+                    ? 'Suggested by AI: always adapt activities to your child and ensure adult supervision.'
+                    : 'Always adapt activities to your child and ensure adult supervision.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
@@ -865,7 +906,41 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
         ),
         const SizedBox(height: AppSpacing.space16),
 
-        if (response != null)
+        if (response != null && response.suggestions.isEmpty)
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              side: const BorderSide(color: AppColors.borderSubtle),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.space20),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.search_off_outlined,
+                    size: 36,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(height: AppSpacing.space12),
+                  Text(
+                    'No matching play ideas yet',
+                    style: Theme.of(context).textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  Text(
+                    'Try changing the time, setting, or language, or tap Try again once your connection is ready.',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          )
+        else if (response != null)
           ...response.suggestions.map((suggestion) {
             return _buildSuggestionCard(suggestion);
           }),
@@ -876,7 +951,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             Expanded(
               child: OutlinedButton(
                 onPressed: _submitRequest,
-                child: const Text('Generate another'),
+                child: Text(isAi ? 'Generate another' : 'Try again'),
               ),
             ),
             const SizedBox(width: AppSpacing.space12),

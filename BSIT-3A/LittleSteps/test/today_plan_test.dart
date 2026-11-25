@@ -677,5 +677,154 @@ void main() {
       expect(find.text('Building block tower'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'formats tag badges cleanly for domain, setting, and material counts',
+      (tester) async {
+        const socioEitherActivity = Activity(
+          id: 'act-socio',
+          title: 'Emotion faces in mirror',
+          type: 'activity',
+          language: 'en',
+          domain: 'socioEmotional',
+          ageBand: '12-23m',
+          durationMinutes: 10,
+          durationEstimate: '10 mins',
+          setting: 'either',
+          materials: ['small mirror'],
+          instructions: ['Make faces in mirror.'],
+          limitations: 'Supervise with glass.',
+          status: 'synthetic_fixture',
+          provenanceSource: 'LittleSteps',
+        );
+
+        final plan = createTestPlan(
+          id: 'p-socio',
+          activityId: socioEitherActivity.id,
+        );
+        final lookup = {socioEitherActivity.id: socioEitherActivity};
+
+        await tester.pumpWidget(
+          buildTestApp(
+            TodayScreen(
+              initialState: TodayViewState.ready,
+              initialPlans: [plan],
+              initialActivities: lookup,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Socio-emotional'), findsOneWidget);
+        expect(find.text('Indoor or outdoor'), findsOneWidget);
+        expect(find.text('1 material'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'switching active child reloads plans and resets quick filters',
+      (tester) async {
+        final childMaya = createTestChild(id: 'child-maya', nickname: 'Maya');
+        final childLeo = createTestChild(id: 'child-leo', nickname: 'Leo');
+
+        final mockClient = MockClient((request) async {
+          if (request.url.path.contains('/plans')) {
+            if (request.url.path.contains('child-maya')) {
+              return http.Response(
+                jsonEncode([
+                  {
+                    'id': 'p-maya',
+                    'childId': 'child-maya',
+                    'activityId': testActivityShortIndoor.id,
+                    'scheduledDate': '2026-11-24',
+                    'status': 'planned',
+                    'createdAt': '2026-11-24T00:00:00.000Z',
+                    'updatedAt': '2026-11-24T00:00:00.000Z',
+                  },
+                ]),
+                200,
+              );
+            } else if (request.url.path.contains('child-leo')) {
+              return http.Response(
+                jsonEncode([
+                  {
+                    'id': 'p-leo',
+                    'childId': 'child-leo',
+                    'activityId': testActivityOutdoor.id,
+                    'scheduledDate': '2026-11-24',
+                    'status': 'planned',
+                    'createdAt': '2026-11-24T00:00:00.000Z',
+                    'updatedAt': '2026-11-24T00:00:00.000Z',
+                  },
+                ]),
+                200,
+              );
+            }
+            return http.Response(jsonEncode([]), 200);
+          }
+          if (request.url.path.contains('/catalog/activities/')) {
+            final id = request.url.pathSegments.last;
+            if (id == testActivityShortIndoor.id) {
+              return http.Response(
+                jsonEncode(testActivityShortIndoor.toJson()),
+                200,
+              );
+            }
+            if (id == testActivityOutdoor.id) {
+              return http.Response(
+                jsonEncode(testActivityOutdoor.toJson()),
+                200,
+              );
+            }
+          }
+          if (request.url.path.contains('/catalog/activities')) {
+            return http.Response(
+              jsonEncode({
+                'items': [
+                  testActivityShortIndoor.toJson(),
+                  testActivityOutdoor.toJson(),
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response(jsonEncode({}), 200);
+        });
+
+        final apiClient = ApiClient(
+          baseUrl: 'http://test',
+          httpClient: mockClient,
+        );
+        final planService = PlanService(apiClient: apiClient);
+        final catalogService = CatalogService(apiClient: apiClient);
+
+        Widget buildScreen(Child child) {
+          return buildTestApp(
+            TodayScreen(
+              planService: planService,
+              catalogService: catalogService,
+              activeChild: child,
+            ),
+          );
+        }
+
+        await tester.pumpWidget(buildScreen(childMaya));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Finger puppets song'), findsOneWidget);
+        expect(find.text('Leaves and breeze walk'), findsNothing);
+
+        // Tap Under 10 mins quick filter
+        await tester.tap(find.text('Under 10 mins'));
+        await tester.pumpAndSettle();
+
+        // Switch active child to Leo
+        await tester.pumpWidget(buildScreen(childLeo));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Leaves and breeze walk'), findsOneWidget);
+        expect(find.text('Finger puppets song'), findsNothing);
+      },
+    );
   });
 }

@@ -191,13 +191,25 @@ class _TodayScreenState extends State<TodayScreen> {
   bool _filterIndoor = false;
   bool _advisorySeen = false;
   bool _weatherDismissed = false;
+  bool _initialLoadStarted = false;
+  String? _loadedChildId;
 
   // Active child profile resolved from widget injection or session state.
   Child? get _resolvedChild =>
       widget.activeChild ?? AuthScope.maybeOf(context)?.activeChild;
 
+  // Child identifier used for plan requests, or null when a signed-in session
+  // has no active child profile (e.g., after deleting the last child).
+  String? get _activeChildIdOrNull {
+    final resolved = _resolvedChild;
+    if (resolved != null) return resolved.id;
+    // Preserve standalone widget-test fallback when no AuthScope is mounted.
+    if (AuthScope.maybeOf(context) == null) return 'c-maya-default';
+    return null;
+  }
+
   // Safe accessor for the child identifier used for plan requests.
-  String get _effectiveChildId => _resolvedChild?.id ?? 'c-maya-default';
+  String get _effectiveChildId => _activeChildIdOrNull ?? 'c-maya-default';
 
   // Display name of the active child profile.
   String get _childName => _resolvedChild?.nickname ?? 'Maya';
@@ -304,9 +316,6 @@ class _TodayScreenState extends State<TodayScreen> {
       _viewState = _plans.isEmpty ? TodayViewState.empty : TodayViewState.ready;
     } else {
       _viewState = _isOffline ? TodayViewState.offline : TodayViewState.loading;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadTodayPlan();
-      });
     }
   }
 
@@ -314,6 +323,7 @@ class _TodayScreenState extends State<TodayScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _advisorySeen = TodayAdvisoryStorage.hasSeen(_advisoryKey);
+    _syncActiveChildIfNeeded();
   }
 
   @override
@@ -322,9 +332,42 @@ class _TodayScreenState extends State<TodayScreen> {
     if (oldWidget.initialActivities != widget.initialActivities) {
       _activityLookup.addAll(widget.initialActivities ?? const {});
     }
+    if (oldWidget.activeChild?.id != widget.activeChild?.id) {
+      _advisorySeen = TodayAdvisoryStorage.hasSeen(_advisoryKey);
+      _syncActiveChildIfNeeded();
+    }
     if (oldWidget.planRefreshKey != widget.planRefreshKey) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _loadTodayPlan();
+      });
+    }
+  }
+
+  // Single entry point for initial load and child switches so IndexedStack
+  // refreshes plans whenever the active child changes or is removed.
+  void _syncActiveChildIfNeeded() {
+    if (widget.initialPlans != null || widget.initialState != null) {
+      return;
+    }
+    final nextChildId = _activeChildIdOrNull;
+    final childChanged = nextChildId != _loadedChildId;
+    if (!_initialLoadStarted || childChanged) {
+      _initialLoadStarted = true;
+      _loadedChildId = nextChildId;
+      if (childChanged) {
+        _plans = [];
+        _filterUnder10Mins = false;
+        _filterNoMaterials = false;
+        _filterIndoor = false;
+      }
+      if (nextChildId == null) {
+        _viewState = TodayViewState.empty;
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _loadedChildId == nextChildId) {
+          _loadTodayPlan(childIdOverride: nextChildId);
+        }
       });
     }
   }
@@ -372,7 +415,18 @@ class _TodayScreenState extends State<TodayScreen> {
   }
 
   // Loads today's planned activities and optional weather hint from the backend services.
-  Future<void> _loadTodayPlan() async {
+  Future<void> _loadTodayPlan({String? childIdOverride}) async {
+    final targetChildId = childIdOverride ?? _activeChildIdOrNull;
+    if (targetChildId == null) {
+      if (!mounted) return;
+      setState(() {
+        _plans = [];
+        _viewState = TodayViewState.empty;
+      });
+      return;
+    }
+    _loadedChildId = targetChildId;
+
     if (_isOffline) {
       setState(() {
         _viewState = TodayViewState.offline;
@@ -396,7 +450,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
     try {
       final results = await Future.wait([
-        planService.getPlans(_effectiveChildId, date: dateString),
+        planService.getPlans(targetChildId, date: dateString),
         if (weatherLocation != null)
           catalogService.getWeather(
             latitude: weatherLocation.latitude,
@@ -418,7 +472,8 @@ class _TodayScreenState extends State<TodayScreen> {
         }
       }
 
-      if (!mounted) return;
+      // Discard stale responses if the caregiver switched children mid-request.
+      if (!mounted || targetChildId != _loadedChildId) return;
 
       final isClientOffline = _resolveApiClient().isOffline;
 
@@ -431,14 +486,14 @@ class _TodayScreenState extends State<TodayScreen> {
             : TodayViewState.ready;
       });
     } on NoConnectionApiException {
-      if (!mounted) return;
+      if (!mounted || targetChildId != _loadedChildId) return;
       setState(() {
         _viewState = TodayViewState.offline;
         _isOffline = true;
       });
       _announce('Working offline. Planned activities for today.');
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || targetChildId != _loadedChildId) return;
       setState(() {
         _viewState = TodayViewState.error;
         if (e.statusCode == 404 ||
@@ -1322,6 +1377,37 @@ class _TodayActivityCard extends StatelessWidget {
   // Callback invoked when the caregiver toggles completion.
   final VoidCallback onCompleteToggle;
 
+  String _formatDomain(String domain) {
+    switch (domain.toLowerCase()) {
+      case 'socioemotional':
+      case 'socio-emotional':
+        return 'Socio-emotional';
+      case 'cognitive':
+        return 'Cognitive';
+      case 'motor':
+        return 'Motor';
+      case 'language':
+        return 'Language';
+      default:
+        return domain.isEmpty
+            ? domain
+            : '${domain[0].toUpperCase()}${domain.substring(1)}';
+    }
+  }
+
+  String _formatSetting(String setting) {
+    switch (setting.toLowerCase()) {
+      case 'indoor':
+        return 'Indoor';
+      case 'outdoor':
+        return 'Outdoor';
+      case 'either':
+        return 'Indoor or outdoor';
+      default:
+        return setting;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1358,9 +1444,9 @@ class _TodayActivityCard extends StatelessWidget {
                         spacing: AppSpacing.space8,
                         runSpacing: AppSpacing.space4,
                         children: [
-                          _TagBadge(label: activity.domain),
+                          _TagBadge(label: _formatDomain(activity.domain)),
                           _TagBadge(label: '${activity.durationMinutes} mins'),
-                          _TagBadge(label: activity.setting),
+                          _TagBadge(label: _formatSetting(activity.setting)),
                           if (activity.materials.isEmpty ||
                               activity.materials.every(
                                 (m) => m.toLowerCase() == 'none',
@@ -1368,7 +1454,8 @@ class _TodayActivityCard extends StatelessWidget {
                             const _TagBadge(label: 'No materials')
                           else
                             _TagBadge(
-                              label: '${activity.materials.length} materials',
+                              label:
+                                  '${activity.materials.length} ${activity.materials.length == 1 ? 'material' : 'materials'}',
                             ),
                         ],
                       ),
