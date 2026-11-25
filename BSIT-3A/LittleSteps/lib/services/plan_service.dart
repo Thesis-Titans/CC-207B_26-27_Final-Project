@@ -26,12 +26,13 @@ class PlanService {
         .toList();
   }
 
-  /// Adds a catalog activity to the child's plan on [scheduledDate].
+  /// Adds a catalog or custom activity to the child's plan on [scheduledDate].
   Future<PlanItem> addActivityToPlan({
     required String childId,
     required String activityId,
     required String scheduledDate,
     int? durationMinutes,
+    CustomPlanActivity? customActivity,
   }) async {
     final data = await apiClient.post(
       _base(childId),
@@ -39,6 +40,7 @@ class PlanService {
         'activityId': activityId,
         'scheduledDate': scheduledDate,
         'durationMinutes': ?durationMinutes,
+        if (customActivity != null) 'customActivity': customActivity.toJson(),
       },
     ) as Map<String, dynamic>;
     return PlanItem.fromJson(data);

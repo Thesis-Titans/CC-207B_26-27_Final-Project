@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../../models/activity.dart';
 import '../../models/child.dart';
+import '../../models/plan.dart';
 import '../../services/api_client.dart';
 import '../../services/ai_service.dart';
 import '../../services/books_service.dart';
@@ -429,12 +430,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final now = DateTime.now();
     final date =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final isCustomNonCatalog =
+        activity.type == 'story' ||
+        activity.type == 'rhyme' ||
+        activity.type == 'custom' ||
+        activity.id.startsWith('story-') ||
+        activity.id.startsWith('rhyme-') ||
+        activity.id.startsWith('custom-');
+    final customSnapshot = isCustomNonCatalog
+        ? CustomPlanActivity.fromActivity(
+            activity,
+            sourceLabel: activity.type == 'story'
+                ? 'Storybook companion'
+                : activity.type == 'rhyme'
+                ? 'Read & Sing Together'
+                : 'Material adaptation',
+          )
+        : null;
     try {
       await _planService.addActivityToPlan(
         childId: child.id,
         activityId: activity.id,
         scheduledDate: date,
         durationMinutes: activity.durationMinutes,
+        customActivity: customSnapshot,
       );
       if (!mounted) return;
       widget.onPlanAdded?.call(activity);
@@ -959,7 +978,8 @@ class _ExploreSections extends StatelessWidget {
   Widget build(BuildContext context) => _HorizontalScrollFade(
     child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.only(right: AppSpacing.space20),
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.only(right: AppSpacing.space24),
       child: Row(
         children: [
           _SectionButton(
@@ -1088,6 +1108,7 @@ class _DomainFilters extends StatelessWidget {
         child: ListView.separated(
           key: const ValueKey('domain-filters'),
           scrollDirection: Axis.horizontal,
+          physics: const ClampingScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             horizontalPadding,
             0,

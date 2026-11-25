@@ -469,6 +469,12 @@ class _TodayScreenState extends State<TodayScreen> {
       final fetchedWeather = results[1] as WeatherHint?;
 
       for (final plan in fetchedPlans) {
+        if (plan.customActivity != null) {
+          _activityLookup[plan.activityId] = plan.customActivity!.toActivity(
+            plan.activityId,
+          );
+          continue;
+        }
         if (!_activityLookup.containsKey(plan.activityId)) {
           try {
             final act = await catalogService.getActivityById(plan.activityId);
@@ -850,6 +856,7 @@ class _TodayScreenState extends State<TodayScreen> {
                 else
                   ...filteredPlans.map((plan) {
                     final activity =
+                        plan.customActivity?.toActivity(plan.activityId) ??
                         _activityLookup[plan.activityId] ??
                         Activity(
                           id: plan.activityId,
@@ -1297,6 +1304,8 @@ class _TodayScreenState extends State<TodayScreen> {
   Widget _buildFilterChips() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.only(right: AppSpacing.space16),
       child: Row(
         children: [
           FilterChip(
@@ -1433,99 +1442,260 @@ class _TodayActivityCard extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _showActivityDetails(BuildContext context) {
     final theme = Theme.of(context);
-    final isCompleted = plan.isCompleted;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      color: AppColors.surfaceCard,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        side: const BorderSide(color: AppColors.borderSubtle),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
+    final sourceLabel = plan.customActivity?.sourceLabel;
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      constraints: const BoxConstraints(maxWidth: 600),
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.space24,
+            AppSpacing.space8,
+            AppSpacing.space24,
+            AppSpacing.space24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (sourceLabel != null && sourceLabel.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space8,
+                    vertical: AppSpacing.space4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAdvisory,
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
+                    border: Border.all(color: AppColors.borderAdvisory),
+                  ),
+                  child: Text(
+                    sourceLabel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space8),
+              ],
+              Text(
+                activity.title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.space8),
+              Wrap(
+                spacing: AppSpacing.space8,
+                runSpacing: AppSpacing.space4,
+                children: [
+                  _TagBadge(label: _formatDomain(activity.domain)),
+                  _TagBadge(label: '${activity.durationMinutes} mins'),
+                  _TagBadge(label: _formatSetting(activity.setting)),
+                ],
+              ),
+              if (activity.materials.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space16),
+                Text(
+                  'Materials needed',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space4),
+                Text(
+                  activity.materials.join(', '),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+              if (activity.instructions.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space16),
+                Text(
+                  'Steps to play',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space8),
+                ...activity.instructions.asMap().entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${entry.key + 1}. ',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            entry.value,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              if (activity.limitations.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space12),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.space12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAdvisory,
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
+                    border: Border.all(color: AppColors.borderAdvisory),
+                  ),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        activity.title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
+                      const Icon(
+                        Icons.shield_outlined,
+                        size: 18,
+                        color: AppColors.artworkForest,
                       ),
-                      const SizedBox(height: AppSpacing.space4),
-                      Wrap(
-                        spacing: AppSpacing.space8,
-                        runSpacing: AppSpacing.space4,
-                        children: [
-                          _TagBadge(label: _formatDomain(activity.domain)),
-                          _TagBadge(label: '${activity.durationMinutes} mins'),
-                          _TagBadge(label: _formatSetting(activity.setting)),
-                          if (activity.materials.isEmpty ||
-                              activity.materials.every(
-                                (m) => m.toLowerCase() == 'none',
-                              ))
-                            const _TagBadge(label: 'No materials')
-                          else
-                            _TagBadge(
-                              label:
-                                  '${activity.materials.length} ${activity.materials.length == 1 ? 'material' : 'materials'}',
-                            ),
-                        ],
+                      const SizedBox(width: AppSpacing.space8),
+                      Expanded(
+                        child: Text(
+                          activity.limitations,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.space8),
-                _buildCompletionAction(context),
               ],
-            ),
-            if (isCompleted) ...[
-              const SizedBox(height: AppSpacing.space12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space12,
-                  vertical: AppSpacing.space4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.softGreen,
-                  borderRadius: BorderRadius.circular(AppRadius.chip),
-                  border: Border.all(
-                    color: AppColors.forest.withValues(alpha: 0.2),
+              if (activity.provenanceSource.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space12),
+                Text(
+                  'Source: ${activity.provenanceSource}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      size: 16,
-                      color: AppColors.forest,
-                    ),
-                    const SizedBox(width: AppSpacing.space4),
-                    Text(
-                      'Completed today',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.forest,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ],
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isCompleted = plan.isCompleted;
+    final hasDetails = activity.instructions.isNotEmpty;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+      color: AppColors.surfaceCard,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        side: const BorderSide(color: AppColors.borderSubtle),
+      ),
+      child: InkWell(
+        onTap: hasDetails ? () => _showActivityDetails(context) : null,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          activity.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.space4),
+                        Wrap(
+                          spacing: AppSpacing.space8,
+                          runSpacing: AppSpacing.space4,
+                          children: [
+                            _TagBadge(label: _formatDomain(activity.domain)),
+                            _TagBadge(
+                              label: '${activity.durationMinutes} mins',
+                            ),
+                            _TagBadge(label: _formatSetting(activity.setting)),
+                            if (activity.materials.isEmpty ||
+                                activity.materials.every(
+                                  (m) => m.toLowerCase() == 'none',
+                                ))
+                              const _TagBadge(label: 'No materials')
+                            else
+                              _TagBadge(
+                                label:
+                                    '${activity.materials.length} ${activity.materials.length == 1 ? 'material' : 'materials'}',
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.space8),
+                  _buildCompletionAction(context),
+                ],
+              ),
+              if (isCompleted) ...[
+                const SizedBox(height: AppSpacing.space12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.space12,
+                    vertical: AppSpacing.space4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.softGreen,
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
+                    border: Border.all(
+                      color: AppColors.forest.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: AppColors.forest,
+                      ),
+                      const SizedBox(width: AppSpacing.space4),
+                      Text(
+                        'Completed today',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.forest,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
