@@ -714,6 +714,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.tap(find.text('30 min'));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField), 'banana, shampoo');
       await tester.ensureVisible(find.text('Find play ideas'));
       await tester.tap(find.text('Find play ideas'));
@@ -726,6 +728,8 @@ void main() {
         ),
         findsOneWidget,
       );
+      expect(find.textContaining('1 short play idea'), findsOneWidget);
+      expect(find.textContaining('reviewed activity'), findsNothing);
       expect(find.textContaining('skipped shampoo'), findsOneWidget);
       expect(find.text('Material adaptation'), findsOneWidget);
       expect(find.text('Banana Peel and Squish Play'), findsOneWidget);
