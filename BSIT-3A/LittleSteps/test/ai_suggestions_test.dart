@@ -783,4 +783,45 @@ void main() {
       expect(find.text("Added to today's plan"), findsOneWidget);
     },
   );
+
+  testWidgets('shows connection-specific SnackBar when offline add fails', (
+    tester,
+  ) async {
+    configureViewport(tester);
+
+    final client = MockClient((request) async {
+      if (request.url.path.contains('/api/v1/ai/recommendations')) {
+        return http.Response(jsonEncode(sampleAiSuccessResponse), 200);
+      }
+      if (request.url.path.contains('/plans') && request.method == 'POST') {
+        throw http.ClientException('Network unavailable');
+      }
+      return http.Response(jsonEncode({}), 200);
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AiSuggestionsScreen(
+          apiClient: ApiClient(baseUrl: 'http://test', httpClient: client),
+          initialChild: testChild,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Find play ideas'));
+    await tester.tap(find.text('Find play ideas'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text("Add to today's plan").first);
+    await tester.tap(find.text("Add to today's plan").first);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        "Could not add this to today's plan. Check your connection and try again.",
+      ),
+      findsOneWidget,
+    );
+  });
 }
