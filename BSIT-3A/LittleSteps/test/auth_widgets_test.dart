@@ -154,11 +154,13 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Focused header, single primary CTA, and lightweight account footer
+        // Focused header with tagline, single primary CTA, and lightweight account footer
         expect(find.text('LittleSteps'), findsOneWidget);
+        expect(find.text('Small steps. Brighter tomorrows.'), findsOneWidget);
         expect(find.text('Sign in to your caregiver account'), findsOneWidget);
         expect(find.text('New to LittleSteps?'), findsOneWidget);
         expect(find.text('Create account'), findsOneWidget);
+        expect(find.text('Welcome back'), findsNothing);
 
         // Fits within a standard mobile viewport with no scroll extent
         final scrollable = tester.state<ScrollableState>(
@@ -340,6 +342,32 @@ void main() {
 
         // Verify that SignInScreen renders without throwing any FlutterError or overflow
         expect(find.text('Sign in'), findsWidgets);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'SignInScreen switches to two-pane split layout on wide desktop viewports',
+      (tester) async {
+        tester.view.physicalSize = const Size(1280, 800);
+        tester.view.devicePixelRatio = 1.0;
+
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          createTestApp(sessionState: sessionState, home: const SignInScreen()),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('LittleSteps'), findsOneWidget);
+        expect(find.text('Small steps. Brighter tomorrows.'), findsOneWidget);
+        expect(find.text('Welcome back'), findsOneWidget);
+        expect(find.text('Plan play and note what you can.'), findsOneWidget);
+        expect(find.text('Sign in to your caregiver account'), findsOneWidget);
+        expect(find.text('Create account'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
