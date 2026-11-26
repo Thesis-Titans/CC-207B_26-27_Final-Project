@@ -140,20 +140,36 @@ void main() {
     );
 
     testWidgets(
-      'SignInScreen shows brand promises, autofill hints, and toggles password',
+      'SignInScreen fits compact mobile viewport without scrolling and toggles password',
       (tester) async {
+        tester.view.physicalSize = const Size(393 * 2, 852 * 2);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
         await tester.pumpWidget(
           createTestApp(sessionState: sessionState, home: const SignInScreen()),
         );
         await tester.pumpAndSettle();
 
-        // Brand promises
-        expect(find.text('Plan play and note what you can.'), findsOneWidget);
-        expect(find.text('Your journal stays private.'), findsOneWidget);
-        expect(
-          find.text('Every activity shows where it comes from.'),
-          findsOneWidget,
+        // Focused header, single primary CTA, and lightweight account footer
+        expect(find.text('LittleSteps'), findsOneWidget);
+        expect(find.text('Sign in to your caregiver account'), findsOneWidget);
+        expect(find.text('New to LittleSteps?'), findsOneWidget);
+        expect(find.text('Create account'), findsOneWidget);
+
+        // Fits within a standard mobile viewport with no scroll extent
+        final scrollable = tester.state<ScrollableState>(
+          find
+              .descendant(
+                of: find.byType(SingleChildScrollView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
         );
+        expect(scrollable.position.maxScrollExtent, 0.0);
 
         // Password visibility toggle
         final passwordFieldFinder = find.descendant(
