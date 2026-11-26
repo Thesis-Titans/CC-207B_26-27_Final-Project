@@ -57,25 +57,27 @@ class BrandLogo extends StatelessWidget {
           GrowthSymbol(size: symbolSize),
           const SizedBox(width: AppSpacing.space8),
         ],
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'LittleSteps',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.forest,
-                letterSpacing: -0.3,
-              ),
-            ),
-            if (showTagline)
+        Flexible(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'Small steps. Brighter tomorrows.',
-                style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(color: AppColors.textSecondary),
+                'LittleSteps',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.forest,
+                  letterSpacing: -0.3,
+                ),
               ),
-          ],
+              if (showTagline)
+                Text(
+                  'Small steps. Brighter tomorrows.',
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+            ],
+          ),
         ),
       ],
     );
