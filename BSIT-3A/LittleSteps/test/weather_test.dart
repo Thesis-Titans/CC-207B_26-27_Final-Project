@@ -5,6 +5,7 @@ import 'package:littlesteps/models/auth_user.dart';
 import 'package:littlesteps/models/weather.dart';
 import 'package:littlesteps/screens/account/settings_screen.dart';
 import 'package:littlesteps/screens/ai/ai_suggestions_screen.dart';
+import 'package:littlesteps/screens/today/today_screen.dart';
 import 'package:littlesteps/services/api_client.dart';
 import 'package:littlesteps/services/auth_service.dart';
 import 'package:littlesteps/services/auth_session_state.dart';
@@ -223,5 +224,65 @@ void main() {
       expect(catalog.callCount, 0);
       expect(find.textContaining('Open-Meteo.com'), findsNothing);
     });
+  });
+
+  group('TodayScreen weather location refresh', () {
+    testWidgets(
+      'refreshes weather hint when Settings city changes and clears when off',
+      (tester) async {
+        final session = AuthSessionState(authService: _NoopAuthService());
+        final catalog = _CapturingCatalogService(
+          hint: const WeatherHint(
+            condition: 'clear',
+            rainChance: 10,
+            heatFlag: false,
+            suggestedSetting: 'outdoor',
+            hint: 'Good weather for outdoor play · Outdoor ideas',
+            attribution: 'Weather data by Open-Meteo.com',
+          ),
+        );
+
+        await tester.pumpWidget(
+          AuthScope(
+            sessionState: session,
+            apiClient: ApiClient(),
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: Scaffold(
+                body: TodayScreen(
+                  initialState: TodayViewState.empty,
+                  initialPlans: const [],
+                  catalogService: catalog,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(catalog.callCount, 0);
+        expect(find.textContaining('Outdoor ideas'), findsNothing);
+
+        session.setWeatherLocation(WeatherLocation.byName('Manila'));
+        await tester.pumpAndSettle();
+
+        expect(catalog.callCount, 1);
+        expect(catalog.lastLatitude, closeTo(14.5995, 0.001));
+        expect(catalog.lastLongitude, closeTo(120.9842, 0.001));
+        expect(
+          find.text('Good weather for outdoor play · Outdoor ideas'),
+          findsOneWidget,
+        );
+
+        session.setWeatherLocation(null);
+        await tester.pumpAndSettle();
+
+        expect(catalog.callCount, 1);
+        expect(
+          find.text('Good weather for outdoor play · Outdoor ideas'),
+          findsNothing,
+        );
+      },
+    );
   });
 }

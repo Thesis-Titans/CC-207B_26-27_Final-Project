@@ -198,6 +198,7 @@ class _TodayScreenState extends State<TodayScreen> {
   bool _weatherDismissed = false;
   bool _initialLoadStarted = false;
   String? _loadedChildId;
+  String? _loadedWeatherCityKey;
 
   // Active child profile resolved from widget injection or session state.
   Child? get _resolvedChild =>
@@ -329,6 +330,7 @@ class _TodayScreenState extends State<TodayScreen> {
     super.didChangeDependencies();
     _advisorySeen = TodayAdvisoryStorage.hasSeen(_advisoryKey);
     _syncActiveChildIfNeeded();
+    _syncWeatherLocationIfNeeded();
   }
 
   @override
@@ -374,6 +376,51 @@ class _TodayScreenState extends State<TodayScreen> {
           _loadTodayPlan(childIdOverride: nextChildId);
         }
       });
+    }
+  }
+
+  // Refreshes only the weather hint when the caregiver changes the Settings
+  // city or toggles weather hints off, without reloading the Today plan list.
+  void _syncWeatherLocationIfNeeded() {
+    final session = AuthScope.maybeOf(context);
+    if (session == null) return;
+    final weatherLocation = session.weatherLocation;
+    final nextKey = weatherLocation?.name ?? '__off__';
+    if (_loadedWeatherCityKey == null) {
+      _loadedWeatherCityKey = nextKey;
+      return;
+    }
+    if (_loadedWeatherCityKey == nextKey) return;
+
+    _loadedWeatherCityKey = nextKey;
+    _weatherDismissed = false;
+    if (weatherLocation == null) {
+      _weatherHint = null;
+      return;
+    }
+    final targetLocation = weatherLocation;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _loadedWeatherCityKey == nextKey) {
+        _refreshWeatherHint(targetLocation, expectedCityKey: nextKey);
+      }
+    });
+  }
+
+  Future<void> _refreshWeatherHint(
+    WeatherLocation location, {
+    required String expectedCityKey,
+  }) async {
+    try {
+      final hint = await _resolveCatalogService().getWeather(
+        latitude: location.latitude,
+        longitude: location.longitude,
+      );
+      if (!mounted || _loadedWeatherCityKey != expectedCityKey) return;
+      setState(() {
+        _weatherHint = hint;
+      });
+    } catch (_) {
+      // Keep the Today plan usable when an optional weather refresh fails.
     }
   }
 
@@ -452,6 +499,8 @@ class _TodayScreenState extends State<TodayScreen> {
     final weatherLocation = session != null
         ? session.weatherLocation
         : WeatherLocation.iloiloCity;
+    final requestedWeatherKey = weatherLocation?.name ?? '__off__';
+    _loadedWeatherCityKey = requestedWeatherKey;
 
     try {
       final results = await Future.wait([
@@ -490,7 +539,9 @@ class _TodayScreenState extends State<TodayScreen> {
 
       setState(() {
         _plans = fetchedPlans;
-        _weatherHint = fetchedWeather;
+        if (_loadedWeatherCityKey == requestedWeatherKey) {
+          _weatherHint = fetchedWeather;
+        }
         _isOffline = _isOffline || isClientOffline;
         _viewState = fetchedPlans.isEmpty
             ? TodayViewState.empty

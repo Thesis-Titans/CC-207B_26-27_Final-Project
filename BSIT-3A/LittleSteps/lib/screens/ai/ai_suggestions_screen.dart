@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../../models/child.dart';
 import '../../models/plan.dart';
@@ -372,6 +374,22 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     );
   }
 
+  String _addToPlanErrorMessage(Object error, {required bool isBatch}) {
+    final subject = isBatch ? 'activities' : 'this';
+    return switch (error) {
+      ApiException(code: 'SERVICE_UNAVAILABLE') =>
+        'The plan service is temporarily unavailable. Try again in a moment.',
+      NoConnectionApiException() ||
+      TimeoutApiException() ||
+      SocketException() ||
+      http.ClientException() =>
+        'Could not add $subject to today\'s plan. Check your connection and try again.',
+      NotFoundApiException() => 'The child or activity was not found. Check that the child profile is saved to your account.',
+      AuthApiException() => 'Sign in again before adding an activity.',
+      _ => 'Could not add $subject to today\'s plan. Please try again.',
+    };
+  }
+
   Future<void> _addToPlan(Recommendation item) async {
     final childId = _effectiveChild?.id ?? widget.initialChild?.id;
     final planActivityId = _planActivityId(item);
@@ -396,14 +414,12 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
           duration: const Duration(seconds: 4),
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not add this to today\'s plan. Please try again.',
-          ),
-          duration: Duration(seconds: 4),
+        SnackBar(
+          content: Text(_addToPlanErrorMessage(error, isBatch: false)),
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -421,6 +437,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     final today = DateTime.now().toIso8601String().substring(0, 10);
     final service = _resolvePlanService();
     var addedCount = 0;
+    Object? lastError;
 
     for (final item in pending) {
       final planActivityId = _planActivityId(item);
@@ -438,7 +455,8 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             _addedActivityIds.add(planActivityId);
           });
         }
-      } catch (_) {
+      } catch (error) {
+        lastError = error;
         // Continue attempting remaining items so partial success is preserved.
       }
     }
@@ -447,6 +465,8 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     setState(() => _isAddingAll = false);
     final message = addedCount > 0
         ? 'Added $addedCount ${addedCount == 1 ? 'activity' : 'activities'} to today\'s plan'
+        : lastError != null
+        ? _addToPlanErrorMessage(lastError, isBatch: true)
         : 'Could not add activities to today\'s plan. Please try again.';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
