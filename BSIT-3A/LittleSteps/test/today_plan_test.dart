@@ -609,11 +609,11 @@ void main() {
         );
 
         await tester.pumpWidget(
-          MaterialApp(
+          const MaterialApp(
             onGenerateRoute: AppRouter.onGenerateRoute,
             home: TodayScreen(
               initialState: TodayViewState.empty,
-              initialPlans: const [],
+              initialPlans: [],
               initialWeatherHint: weather,
             ),
           ),
