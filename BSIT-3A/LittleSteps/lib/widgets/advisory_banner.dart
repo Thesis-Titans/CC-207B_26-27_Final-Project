@@ -7,22 +7,33 @@ class AdvisoryBanner extends StatelessWidget {
   /// Creates an [AdvisoryBanner].
   const AdvisoryBanner({
     super.key,
+    this.title,
     this.message = 'Not a diagnostic tool. Observational play suggestions only. You know your child best.',
+    this.onDismiss,
+    this.margin,
   });
+
+  /// Optional bold heading displayed above [message].
+  final String? title;
 
   /// The text message displayed in the banner.
   final String message;
 
+  /// Optional callback rendering a close button when provided.
+  final VoidCallback? onDismiss;
+
+  /// Optional outer margin around the banner container.
+  final EdgeInsetsGeometry? margin;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final heading = title;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space12,
-      ),
+      margin: margin,
+      padding: const EdgeInsets.all(AppSpacing.space12),
       decoration: BoxDecoration(
         color: AppColors.surfaceAdvisory,
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -36,15 +47,38 @@ class AdvisoryBanner extends StatelessWidget {
             size: 20,
             color: AppColors.textPrimary,
           ),
-          const SizedBox(width: AppSpacing.space12),
+          const SizedBox(width: AppSpacing.space8),
           Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textPrimary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (heading != null) ...[
+                  Text(
+                    heading,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                ],
+                Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ),
           ),
+          if (onDismiss != null)
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: onDismiss,
+            ),
         ],
       ),
     );

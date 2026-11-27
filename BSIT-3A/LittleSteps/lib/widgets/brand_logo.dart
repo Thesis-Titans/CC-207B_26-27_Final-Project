@@ -44,7 +44,7 @@ class BrandLogo extends StatelessWidget {
   /// Whether to render the tagline beneath the wordmark.
   final bool showTagline;
 
-  /// Optional tap handler (e.g. to return to Today tab).
+  /// Optional tap handler (for example, to return to the Today tab).
   final VoidCallback? onTap;
 
   @override

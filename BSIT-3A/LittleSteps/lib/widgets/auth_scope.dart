@@ -23,7 +23,7 @@ class AuthScope extends InheritedNotifier<AuthSessionState> {
     return scope!.notifier!;
   }
 
-  /// Returns the nearest [AuthSessionState] from [context], or null if not found.
+  /// Returns the nearest [AuthSessionState] from [context], or `null` if not found.
   static AuthSessionState? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<AuthScope>()?.notifier;
   }

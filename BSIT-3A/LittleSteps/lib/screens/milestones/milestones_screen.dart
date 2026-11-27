@@ -5,8 +5,10 @@ import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
 import '../../services/milestones_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../widgets/advisory_banner.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
+import '../../widgets/state_views.dart';
 import 'observation_form_sheet.dart';
 import 'widgets/milestone_prompt_card.dart';
 
@@ -528,93 +530,13 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     );
   }
 
-  Widget _buildErrorState() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceError,
-        border: Border.all(color: AppColors.borderError),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.info_outline, color: AppColors.textError, size: 20),
-              SizedBox(width: AppSpacing.space8),
-              Text(
-                "We couldn't load this right now",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textError,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space4),
-          const Text(
-            'Try again in a moment.',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.space16),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.borderInput),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.control),
-              ),
-            ),
-            onPressed: _retryLoad,
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildErrorState() => InlineErrorCard(onRetry: _retryLoad);
 
   Widget _buildOfflineBanner() {
-    return Container(
+    return OfflineStatusCard(
       margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOffline,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.wifi_off, color: AppColors.textOffline, size: 20),
-              SizedBox(width: AppSpacing.space8),
-              Text(
-                "You're offline",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textOffline,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space4),
-          const Text(
-            "Your note wasn't saved. Keep this screen open and tap Retry when you're back online.",
-            style: TextStyle(color: AppColors.textOffline, fontSize: 13),
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.control),
-              ),
-            ),
-            onPressed: _retryLoad,
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
+      message: "Your note wasn't saved. Keep this screen open and tap Retry when you're back online.",
+      onRetry: _retryLoad,
     );
   }
 
@@ -656,51 +578,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   }
 
   Widget _buildAdvisoryBanner() {
-    return Container(
+    return AdvisoryBanner(
       margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      padding: const EdgeInsets.all(AppSpacing.space12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAdvisory,
-        border: Border.all(color: AppColors.borderAdvisory),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline,
-            size: 20,
-            color: AppColors.textPrimary,
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'LittleSteps is not a diagnostic tool',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  "LittleSteps shares play ideas and things to look for. It's not a test. Children develop at different rates. Talk to a health professional, like your pediatrician or barangay health worker, if you have concerns.",
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textPrimary, height: 1.3),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.close, size: 18),
-            onPressed: () => setState(() => _showAdvisory = false),
-          ),
-        ],
-      ),
+      title: 'LittleSteps is not a diagnostic tool',
+      message: "LittleSteps shares play ideas and things to look for. It's not a test. Children develop at different rates. Talk to a health professional, like your pediatrician or barangay health worker, if you have concerns.",
+      onDismiss: () => setState(() => _showAdvisory = false),
     );
   }
 

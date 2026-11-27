@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_tokens.dart';
+import '../../../widgets/state_views.dart';
 
 /// Empty-state card displayed when no activities or observations exist in a week.
 class WeeklySummaryEmptyCard extends StatelessWidget {
@@ -145,48 +146,7 @@ class WeeklySummaryErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceError,
-        border: Border.all(color: AppColors.borderError),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.info_outline, color: AppColors.textError, size: 20),
-              SizedBox(width: AppSpacing.space8),
-              Text(
-                "We couldn't load this right now",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textError,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space4),
-          const Text(
-            'Try again in a moment.',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.space16),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.borderInput),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.control),
-              ),
-            ),
-            onPressed: onRetry,
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
+    return InlineErrorCard(onRetry: onRetry);
   }
 }
 
@@ -200,47 +160,10 @@ class WeeklySummaryOfflineBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return OfflineStatusCard(
       margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOffline,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.wifi_off, color: AppColors.textOffline, size: 20),
-              SizedBox(width: AppSpacing.space8),
-              Text(
-                "You're offline",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textOffline,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space4),
-          const Text(
-            'Showing previously recorded moments. Connect to the internet to sync updates.',
-            style: TextStyle(color: AppColors.textOffline, fontSize: 13),
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.control),
-              ),
-            ),
-            onPressed: onRetry,
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
+      message: 'Showing previously recorded moments. Connect to the internet to sync updates.',
+      onRetry: onRetry,
     );
   }
 }

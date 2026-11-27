@@ -89,8 +89,8 @@ class BookCard extends StatelessWidget {
                       customBorder: const CircleBorder(),
                       onTap: isSaving ? null : onToggleSave,
                       child: Container(
-                        width: 48,
-                        height: 48,
+                        width: AppSizes.touchTarget,
+                        height: AppSizes.touchTarget,
                         alignment: Alignment.center,
                         child: isSaving
                             ? const SizedBox(
@@ -168,7 +168,9 @@ class BookCard extends StatelessWidget {
                             AppRadius.control,
                           ),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space8,
+                        ),
                       ),
                       child: const Text(
                         'Get a play idea',
