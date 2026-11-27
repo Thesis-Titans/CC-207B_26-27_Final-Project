@@ -24,6 +24,9 @@ class AgeBand {
   final int maxMonths;
 }
 
+/// Default catalog age-band wire code used when no child profile is selected.
+const String defaultAgeBandCode = '12-23m';
+
 /// Supported developmental age bands ordered from youngest to oldest.
 const List<AgeBand> ageBands = [
   AgeBand(code: '0-5m', label: '0-5 months', minMonths: 0, maxMonths: 5),

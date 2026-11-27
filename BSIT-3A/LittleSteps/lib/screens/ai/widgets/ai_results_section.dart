@@ -19,7 +19,7 @@ class AiResultsSection extends StatelessWidget {
     required this.onAddToPlan,
     required this.onAddAll,
     required this.onRetry,
-    required this.onChangeAnswers,
+    required this.onEditPreferences,
     required this.onBackToActivities,
     this.rateLimitMessage,
     this.fallbackNotice,
@@ -50,7 +50,7 @@ class AiResultsSection extends StatelessWidget {
   final VoidCallback onRetry;
 
   /// Callback invoked when returning to the Idea Helper input form.
-  final VoidCallback onChangeAnswers;
+  final VoidCallback onEditPreferences;
 
   /// Callback invoked from the rate-limit notice to return to activities.
   final VoidCallback onBackToActivities;
@@ -168,8 +168,8 @@ class AiResultsSection extends StatelessWidget {
             const SizedBox(width: AppSpacing.space12),
             Expanded(
               child: TextButton(
-                onPressed: onChangeAnswers,
-                child: const Text('Change answers'),
+                onPressed: onEditPreferences,
+                child: const Text('Edit preferences'),
               ),
             ),
           ],

@@ -69,7 +69,7 @@ class _LittleStepsAppState extends State<LittleStepsApp> {
           onSessionExpired: () {
             _sessionState.handleSessionExpired();
             _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-              '/signed-out',
+              AppRoutes.signedOut,
               (route) => false,
               arguments: 'Please sign in again to continue',
             );

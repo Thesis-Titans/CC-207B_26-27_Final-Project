@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/external_links.dart';
+import '../../routing/app_router.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/accessibility.dart';
@@ -97,7 +98,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (!mounted) return;
       _announce('Account created successfully');
-      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.home,
+        (route) => false,
+      );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -203,7 +208,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
             } else {
-              Navigator.pushReplacementNamed(context, '/sign-in');
+              Navigator.pushReplacementNamed(context, AppRoutes.signIn);
             }
           },
         ),

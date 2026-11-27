@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
+import '../../models/age_band.dart';
 import '../../models/child.dart';
 import '../../models/plan.dart';
 import '../../models/recommendation.dart';
@@ -14,6 +13,8 @@ import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/date_formatting.dart';
+import '../../utils/domain_labels.dart';
+import '../../utils/plan_errors.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/state_views.dart';
 import 'widgets/ai_idea_form_card.dart';
@@ -32,6 +33,7 @@ class AiSuggestionsScreen extends StatefulWidget {
     this.catalogService,
     this.planService,
     this.initialChild,
+    this.initialSetting,
   });
 
   /// Optional HTTP client override used for tests.
@@ -49,6 +51,10 @@ class AiSuggestionsScreen extends StatefulWidget {
   /// Optional active child override used when launching outside [AuthScope].
   final Child? initialChild;
 
+  /// Optional preselected play setting (`indoor`, `outdoor`, or `either`)
+  /// passed from contextual entry points such as Today's weather guidance.
+  final String? initialSetting;
+
   @override
   State<AiSuggestionsScreen> createState() => _AiSuggestionsScreenState();
 }
@@ -60,10 +66,11 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   final TextEditingController _materialsController = TextEditingController();
 
   int _timeMinutes = 15;
-  String _setting = PlaySettingOption.either.code;
-  String _language = PlayLanguageOption.english.code;
-  String _ageBand = '12-23m';
+  String _setting = PlaySetting.either;
+  String _language = AppLanguages.english;
+  String _ageBand = defaultAgeBandCode;
   String? _domain;
+  bool _hasExplicitInitialSetting = false;
 
   bool _isLoading = false;
   bool _isAddingAll = false;
@@ -101,6 +108,13 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     final initialChild = widget.initialChild;
     if (initialChild != null) {
       _ageBand = initialChild.ageBand;
+    }
+    final requestedSetting = widget.initialSetting?.toLowerCase();
+    if (requestedSetting == PlaySetting.indoor ||
+        requestedSetting == PlaySetting.outdoor ||
+        requestedSetting == PlaySetting.either) {
+      _setting = requestedSetting!;
+      _hasExplicitInitialSetting = true;
     }
   }
 
@@ -146,8 +160,12 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       if (!mounted) return;
       setState(() {
         _weatherHint = hint;
-        if (hint.suggestedSetting == PlaySettingOption.indoor.code) {
-          _setting = PlaySettingOption.indoor.code;
+        if (!_hasExplicitInitialSetting) {
+          if (hint.isIndoorSuggested) {
+            _setting = PlaySetting.indoor;
+          } else if (hint.isOutdoorSuggested) {
+            _setting = PlaySetting.outdoor;
+          }
         }
       });
     } catch (_) {}
@@ -339,19 +357,10 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   }
 
   String _addToPlanErrorMessage(Object error, {required bool isBatch}) {
-    final subject = isBatch ? 'activities' : 'this';
-    return switch (error) {
-      ApiException(code: 'SERVICE_UNAVAILABLE') =>
-        'The plan service is temporarily unavailable. Try again in a moment.',
-      NoConnectionApiException() ||
-      TimeoutApiException() ||
-      SocketException() ||
-      http.ClientException() =>
-        "Could not add $subject to today's plan. Check your connection and try again.",
-      NotFoundApiException() => 'The child or activity was not found. Check that the child profile is saved to your account.',
-      AuthApiException() => 'Sign in again before adding an activity.',
-      _ => "Could not add $subject to today's plan. Please try again.",
-    };
+    return formatPlanErrorMessage(
+      error,
+      subject: isBatch ? 'activities' : 'this',
+    );
   }
 
   Future<void> _addToPlan(Recommendation item) async {
@@ -480,7 +489,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
                       onAddToPlan: _addToPlan,
                       onAddAll: () => _addAllToPlan(response.suggestions),
                       onRetry: _submitRequest,
-                      onChangeAnswers: _resetToForm,
+                      onEditPreferences: _resetToForm,
                       onBackToActivities: () => Navigator.of(context).pop(),
                     )
                   else

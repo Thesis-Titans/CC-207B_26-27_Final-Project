@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../models/activity.dart';
+import '../../models/age_band.dart';
 import '../../models/book.dart';
 import '../../models/child.dart';
 import '../../models/plan.dart';
@@ -332,7 +333,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
 
   Future<void> _handleGetPlayIdea(BookItem book) async {
     final childNickname = widget.activeChild?.nickname ?? 'your child';
-    final ageBand = widget.activeChild?.ageBand ?? '12-23m';
+    final ageBand = widget.activeChild?.ageBand ?? defaultAgeBandCode;
 
     showDialog<void>(
       context: context,

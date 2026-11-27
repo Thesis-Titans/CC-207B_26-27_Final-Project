@@ -6,6 +6,7 @@ import '../../models/child.dart';
 import '../../models/milestone.dart';
 import '../../models/plan.dart';
 import '../../models/weather.dart';
+import '../../routing/app_router.dart';
 import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
@@ -69,8 +70,7 @@ class TodayScreen extends StatefulWidget {
     this.initialDate,
     this.isOffline = false,
     this.onNavigateTab,
-    this.onOpenIndoorIdeas,
-    this.onOpenOutdoorIdeas,
+    this.onOpenIdeaHelper,
     this.planRefreshKey = 0,
   });
 
@@ -107,13 +107,12 @@ class TodayScreen extends StatefulWidget {
   /// Optional callback invoked to switch to another tab in the app shell.
   final ValueChanged<int>? onNavigateTab;
 
-  /// Optional callback invoked when the caregiver taps the weather hint CTA
-  /// to browse indoor activities in Explore.
-  final VoidCallback? onOpenIndoorIdeas;
-
-  /// Optional callback invoked when the caregiver taps the weather hint CTA
-  /// to browse outdoor activities in Explore.
-  final VoidCallback? onOpenOutdoorIdeas;
+  /// Optional callback invoked with the suggested play setting (`indoor` or
+  /// `outdoor`) when the caregiver taps the weather hint play-idea CTA.
+  ///
+  /// When omitted, [TodayScreen] navigates to [AppRoutes.aiSuggest] with the
+  /// recommended setting preselected.
+  final ValueChanged<String>? onOpenIdeaHelper;
 
   /// Incremented when another tab adds a plan item.
   final int planRefreshKey;
@@ -136,7 +135,6 @@ class _TodayScreenState extends State<TodayScreen> {
   bool _filterUnder10Mins = false;
   bool _filterNoMaterials = false;
   bool _filterIndoor = false;
-  bool _filterOutdoor = false;
   bool _advisorySeen = false;
   bool _weatherDismissed = false;
   bool _initialLoadStarted = false;
@@ -172,7 +170,7 @@ class _TodayScreenState extends State<TodayScreen> {
     if (widget.onNavigateTab != null) {
       widget.onNavigateTab!(1);
     } else {
-      Navigator.pushNamed(context, '/ai-suggest');
+      Navigator.pushNamed(context, AppRoutes.aiSuggest);
     }
   }
 
@@ -251,7 +249,6 @@ class _TodayScreenState extends State<TodayScreen> {
         _filterUnder10Mins = false;
         _filterNoMaterials = false;
         _filterIndoor = false;
-        _filterOutdoor = false;
       }
       if (nextChildId == null) {
         _viewState = TodayViewState.empty;
@@ -595,33 +592,20 @@ class _TodayScreenState extends State<TodayScreen> {
       _filterUnder10Mins = false;
       _filterNoMaterials = false;
       _filterIndoor = false;
-      _filterOutdoor = false;
     });
     _announce('All activity filters cleared');
   }
 
-  void _applyWeatherSettingAction(String setting) {
-    final isIndoor = setting == PlaySetting.indoor;
-    setState(() {
-      _filterIndoor = isIndoor;
-      _filterOutdoor = !isIndoor;
-    });
-    if (_plans.isEmpty) {
-      final openCallback = isIndoor
-          ? widget.onOpenIndoorIdeas
-          : widget.onOpenOutdoorIdeas;
-      if (openCallback != null) {
-        openCallback();
-      } else if (widget.onNavigateTab != null) {
-        widget.onNavigateTab!(1);
-      }
-      _announce(
-        'Opening Explore filtered to ${formatSettingLabel(setting).toLowerCase()} play ideas',
-      );
-    } else {
-      _announce(
-        '${formatSettingLabel(setting)} filter applied from weather hint',
-      );
+  Future<void> _openWeatherIdeaHelper(String setting) async {
+    final settingLabel = formatSettingLabel(setting).toLowerCase();
+    _announce('Opening Idea helper for $settingLabel play ideas');
+    if (widget.onOpenIdeaHelper != null) {
+      widget.onOpenIdeaHelper!(setting);
+      return;
+    }
+    await Navigator.pushNamed(context, AppRoutes.aiSuggest, arguments: setting);
+    if (mounted && widget.initialPlans == null && widget.initialState == null) {
+      await _loadTodayPlan();
     }
   }
 
@@ -647,11 +631,6 @@ class _TodayScreenState extends State<TodayScreen> {
           setting != PlaySetting.either) {
         return false;
       }
-      if (_filterOutdoor &&
-          setting != PlaySetting.outdoor &&
-          setting != PlaySetting.either) {
-        return false;
-      }
 
       return true;
     }).toList();
@@ -673,7 +652,7 @@ class _TodayScreenState extends State<TodayScreen> {
           materials: const [],
           instructions: const [],
           limitations: '',
-          status: 'source_checked',
+          status: Activity.statusSourceChecked,
           provenanceSource: 'LittleSteps',
         );
   }
@@ -717,10 +696,7 @@ class _TodayScreenState extends State<TodayScreen> {
         ? const <PlanItem>[]
         : _getFilteredPlans();
     final hasActiveFilters =
-        _filterUnder10Mins ||
-        _filterNoMaterials ||
-        _filterIndoor ||
-        _filterOutdoor;
+        _filterUnder10Mins || _filterNoMaterials || _filterIndoor;
     final completedCount = isEmptyState
         ? 0
         : _plans.where((plan) => plan.isCompleted).length;
@@ -758,7 +734,6 @@ class _TodayScreenState extends State<TodayScreen> {
             under10Mins: _filterUnder10Mins,
             noMaterials: _filterNoMaterials,
             indoorOnly: _filterIndoor,
-            outdoorOnly: _filterOutdoor,
             onUnder10MinsChanged: (selected) {
               setState(() => _filterUnder10Mins = selected);
               _announce(
@@ -776,25 +751,11 @@ class _TodayScreenState extends State<TodayScreen> {
               );
             },
             onIndoorChanged: (selected) {
-              setState(() {
-                _filterIndoor = selected;
-                if (selected) _filterOutdoor = false;
-              });
+              setState(() => _filterIndoor = selected);
               _announce(
                 selected
                     ? 'Filtered to indoor activities'
                     : 'Indoor filter removed',
-              );
-            },
-            onOutdoorChanged: (selected) {
-              setState(() {
-                _filterOutdoor = selected;
-                if (selected) _filterIndoor = false;
-              });
-              _announce(
-                selected
-                    ? 'Filtered to outdoor activities'
-                    : 'Outdoor filter removed',
               );
             },
           ),
@@ -843,25 +804,21 @@ class _TodayScreenState extends State<TodayScreen> {
               if (showWeather)
                 WeatherHintBanner(
                   hint: hint,
-                  hasPlans: _plans.isNotEmpty,
                   margin: const EdgeInsets.only(bottom: AppSpacing.space16),
                   onDismiss: () => setState(() => _weatherDismissed = true),
-                  onApplyIndoorAction: () =>
-                      _applyWeatherSettingAction(PlaySetting.indoor),
-                  onApplyOutdoorAction: () =>
-                      _applyWeatherSettingAction(PlaySetting.outdoor),
+                  onFindIdeas: _openWeatherIdeaHelper,
                 ),
             ],
           ),
           LayoutBuilder(
             builder: (context, constraints) {
-              if (constraints.maxWidth >= 860) {
+              if (constraints.maxWidth >= AppSizes.twoColumnBreakpoint) {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(child: mainColumn),
                     const SizedBox(width: AppSpacing.space24),
-                    SizedBox(width: 340, child: sideCards),
+                    SizedBox(width: AppSizes.sidePanelWidth, child: sideCards),
                   ],
                 );
               }

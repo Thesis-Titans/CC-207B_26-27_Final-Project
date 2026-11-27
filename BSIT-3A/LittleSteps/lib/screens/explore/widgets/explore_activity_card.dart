@@ -29,7 +29,7 @@ class ExploreActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isReviewed = activity.status == 'reviewed_approved';
+    final isReviewed = activity.status == Activity.statusReviewedApproved;
     final setting = formatSettingLabel(activity.setting);
     final meta = '${activity.durationEstimate} · $domainLabel · $setting';
 

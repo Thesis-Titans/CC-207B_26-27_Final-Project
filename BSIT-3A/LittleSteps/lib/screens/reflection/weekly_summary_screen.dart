@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/age_band.dart';
 import '../../models/summary.dart';
+import '../../routing/app_router.dart';
 import '../../services/api_client.dart';
 import '../../services/milestones_service.dart';
 import '../../services/plan_service.dart';
@@ -334,7 +335,7 @@ class _WeeklySummaryScreenState extends State<WeeklySummaryScreen> {
                 if (widget.onFindIdea != null) {
                   widget.onFindIdea!();
                 } else {
-                  Navigator.pushNamed(context, '/ai-suggest');
+                  Navigator.pushNamed(context, AppRoutes.aiSuggest);
                 }
               },
             )

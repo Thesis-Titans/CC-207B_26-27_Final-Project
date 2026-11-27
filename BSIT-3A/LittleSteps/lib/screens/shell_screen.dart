@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../models/activity.dart';
 import '../models/child.dart';
+import '../routing/app_router.dart';
 import '../services/account_service.dart';
 import '../services/api_client.dart';
 import '../services/auth_session_state.dart';
 import '../services/children_service.dart';
 import '../theme/app_tokens.dart';
-import '../utils/domain_labels.dart';
 import '../widgets/account_menu_sheet.dart';
 import '../widgets/auth_scope.dart';
 import '../widgets/brand_logo.dart';
@@ -106,8 +106,6 @@ class _ShellScreenState extends State<ShellScreen> {
 
   int _currentIndex = 0;
   int _todayPlanRefreshKey = 0;
-  String? _exploreSettingFilter;
-  int _exploreSettingFilterKey = 0;
   List<Child> _children = [];
   Map<String, Activity> _scheduledActivityDetails = {};
   bool _isLoadingChildren = false;
@@ -183,14 +181,6 @@ class _ShellScreenState extends State<ShellScreen> {
     });
   }
 
-  void _openExploreWithSetting(String setting) {
-    setState(() {
-      _exploreSettingFilter = setting;
-      _exploreSettingFilterKey++;
-      _currentIndex = 1;
-    });
-  }
-
   Widget _buildAuthGatedTab({
     required bool isAuthenticated,
     required Child? activeChild,
@@ -206,7 +196,7 @@ class _ShellScreenState extends State<ShellScreen> {
         message: signInMessage,
         icon: signInIcon,
         actionLabel: 'Sign in',
-        onAction: () => Navigator.pushNamed(context, '/sign-in'),
+        onAction: () => Navigator.pushNamed(context, AppRoutes.signIn),
       );
     }
     return activeChild != null ? authenticatedChild : noChildView;
@@ -229,14 +219,10 @@ class _ShellScreenState extends State<ShellScreen> {
 
     final noChildView = NoChildrenView(
       caregiverName: formattedCaregiver,
-      onAddChild: () => Navigator.pushNamed(context, '/children/add'),
+      onAddChild: () => Navigator.pushNamed(context, AppRoutes.childrenAdd),
     );
 
-    final exploreScreen = ExploreScreen(
-      onPlanAdded: _handlePlanAdded,
-      initialSetting: _exploreSettingFilter,
-      settingTriggerKey: _exploreSettingFilterKey,
-    );
+    final exploreScreen = ExploreScreen(onPlanAdded: _handlePlanAdded);
 
     final screens = <Widget>[
       _buildAuthGatedTab(
@@ -245,9 +231,6 @@ class _ShellScreenState extends State<ShellScreen> {
         noChildView: noChildView,
         authenticatedChild: TodayScreen(
           onNavigateTab: _selectDestination,
-          onOpenIndoorIdeas: () => _openExploreWithSetting(PlaySetting.indoor),
-          onOpenOutdoorIdeas: () =>
-              _openExploreWithSetting(PlaySetting.outdoor),
           planRefreshKey: _todayPlanRefreshKey,
           initialActivities: _scheduledActivityDetails,
         ),
@@ -293,11 +276,11 @@ class _ShellScreenState extends State<ShellScreen> {
       if (!isAuthenticated) {
         await Navigator.pushNamed(
           context,
-          '/sign-in',
+          AppRoutes.signIn,
           arguments: 'Please sign in to select or manage child profiles.',
         );
       } else {
-        await Navigator.pushNamed(context, '/children');
+        await Navigator.pushNamed(context, AppRoutes.children);
         if (mounted) {
           await _refreshChildren(force: true);
         }
@@ -420,7 +403,11 @@ class _ShellScreenState extends State<ShellScreen> {
     }
     widget.onSignOut?.call();
     if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, '/sign-in', (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.signIn,
+        (route) => false,
+      );
     }
   }
 

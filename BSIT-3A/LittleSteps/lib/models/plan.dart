@@ -164,7 +164,7 @@ class CustomPlanActivity {
       materials: materials,
       instructions: instructions,
       limitations: safetyNotice ?? '',
-      status: 'custom_snapshot',
+      status: Activity.statusCustomSnapshot,
       provenanceSource: '',
     );
   }

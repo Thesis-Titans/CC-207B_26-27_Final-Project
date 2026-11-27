@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/external_links.dart';
+import '../../routing/app_router.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 
@@ -112,7 +113,7 @@ class AccountScreen extends StatelessWidget {
                       if (context.mounted) {
                         Navigator.pushNamedAndRemoveUntil(
                           context,
-                          '/',
+                          AppRoutes.home,
                           (route) => false,
                         );
                       }
@@ -125,7 +126,7 @@ class AccountScreen extends StatelessWidget {
                   title: const Text('Sign in'),
                   subtitle: const Text('Sign in with your caregiver account.'),
                   onTap: () {
-                    Navigator.pushNamed(context, '/sign-in');
+                    Navigator.pushNamed(context, AppRoutes.signIn);
                   },
                 ),
 
@@ -141,7 +142,7 @@ class AccountScreen extends StatelessWidget {
                 subtitle: const Text('How LittleSteps protects child records.'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  Navigator.pushNamed(context, '/register');
+                  Navigator.pushNamed(context, AppRoutes.register);
                 },
               ),
               ListTile(

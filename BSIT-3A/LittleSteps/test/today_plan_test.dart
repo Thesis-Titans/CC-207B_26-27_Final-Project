@@ -8,6 +8,7 @@ import 'package:littlesteps/models/activity.dart';
 import 'package:littlesteps/models/child.dart';
 import 'package:littlesteps/models/plan.dart';
 import 'package:littlesteps/models/weather.dart';
+import 'package:littlesteps/routing/app_router.dart';
 import 'package:littlesteps/screens/today/today_screen.dart';
 import 'package:littlesteps/services/api_client.dart';
 import 'package:littlesteps/services/catalog_service.dart';
@@ -547,6 +548,7 @@ void main() {
     testWidgets(
       'shows dismissible weather hint with Open-Meteo attribution and indoor filter action',
       (tester) async {
+        String? requestedSetting;
         const weather = WeatherHint(
           condition: 'rain',
           rainChance: 85,
@@ -572,6 +574,7 @@ void main() {
                 testActivityOutdoor.id: testActivityOutdoor,
               },
               initialWeatherHint: weather,
+              onOpenIdeaHelper: (setting) => requestedSetting = setting,
             ),
           ),
         );
@@ -579,13 +582,12 @@ void main() {
 
         expect(find.text('Rain likely this afternoon'), findsOneWidget);
         expect(find.text('Weather data by Open-Meteo.com'), findsOneWidget);
-        expect(find.text('Filter indoor'), findsOneWidget);
+        expect(find.text('Find indoor ideas'), findsOneWidget);
 
-        await tester.tap(find.text('Filter indoor'));
+        await tester.tap(find.text('Find indoor ideas'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Finger puppets song'), findsOneWidget);
-        expect(find.text('Leaves and breeze walk'), findsNothing);
+        expect(requestedSetting, 'indoor');
 
         await tester.tap(find.byTooltip('Dismiss weather hint'));
         await tester.pumpAndSettle();
@@ -595,37 +597,40 @@ void main() {
     );
 
     testWidgets(
-      'invokes onOpenIndoorIdeas when Today has no plans and CTA is tapped',
+      'navigates to Idea Helper with Outdoor preselected when outdoor CTA is tapped',
       (tester) async {
-        var openedIndoorIdeas = false;
         const weather = WeatherHint(
-          condition: 'rain',
-          rainChance: 85,
+          condition: 'clear',
+          rainChance: 5,
           heatFlag: false,
-          suggestedSetting: 'indoor',
-          hint: 'Rain likely this afternoon · Indoor ideas',
+          suggestedSetting: 'outdoor',
+          hint: 'Good weather for outdoor play · Outdoor ideas',
           attribution: 'Weather data by Open-Meteo.com',
         );
 
         await tester.pumpWidget(
-          buildTestApp(
-            TodayScreen(
+          MaterialApp(
+            onGenerateRoute: AppRouter.onGenerateRoute,
+            home: TodayScreen(
               initialState: TodayViewState.empty,
               initialPlans: const [],
               initialWeatherHint: weather,
-              onOpenIndoorIdeas: () => openedIndoorIdeas = true,
             ),
           ),
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Rain likely this afternoon'), findsOneWidget);
-        expect(find.text('Find indoor ideas'), findsOneWidget);
+        expect(find.text('Good weather for outdoor play'), findsOneWidget);
+        expect(find.text('Find outdoor ideas'), findsOneWidget);
 
-        await tester.tap(find.text('Find indoor ideas'));
+        await tester.tap(find.text('Find outdoor ideas'));
         await tester.pumpAndSettle();
 
-        expect(openedIndoorIdeas, isTrue);
+        expect(find.text('Idea helper'), findsWidgets);
+        final outdoorChip = tester.widget<ChoiceChip>(
+          find.widgetWithText(ChoiceChip, 'Outdoor'),
+        );
+        expect(outdoorChip.selected, isTrue);
       },
     );
 

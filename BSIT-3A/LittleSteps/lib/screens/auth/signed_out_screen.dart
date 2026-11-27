@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../routing/app_router.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import 'widgets/auth_widgets.dart';
@@ -112,7 +113,7 @@ class SignedOutScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushReplacementNamed(
                     context,
-                    '/sign-in',
+                    AppRoutes.signIn,
                     arguments: message,
                   );
                 },

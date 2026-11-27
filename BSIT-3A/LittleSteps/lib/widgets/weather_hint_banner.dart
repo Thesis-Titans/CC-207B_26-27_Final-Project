@@ -6,22 +6,21 @@ import '../theme/app_tokens.dart';
 import '../utils/domain_labels.dart';
 import '../utils/url_helper.dart';
 
-/// Weather guidance banner with Open-Meteo attribution and optional actions.
+/// Weather guidance banner with Open-Meteo attribution and optional play-idea
+/// call to action.
 ///
 /// Renders standardized indoor or outdoor play guidance derived from [hint].
 /// Supports an optional dismiss button ([onDismiss]), city attribution
-/// ([cityLabel]), and symmetric indoor/outdoor action callbacks
-/// ([onApplyIndoorAction] and [onApplyOutdoorAction]).
+/// ([cityLabel]), and a unified [onFindIdeas] action passing the recommended
+/// play setting (`indoor` or `outdoor`).
 class WeatherHintBanner extends StatelessWidget {
   /// Creates a [WeatherHintBanner].
   const WeatherHintBanner({
     super.key,
     required this.hint,
     this.cityLabel,
-    this.hasPlans = false,
     this.onDismiss,
-    this.onApplyIndoorAction,
-    this.onApplyOutdoorAction,
+    this.onFindIdeas,
     this.advisoryTone = false,
     this.margin,
   });
@@ -32,17 +31,12 @@ class WeatherHintBanner extends StatelessWidget {
   /// Optional city name prefixed before the Open-Meteo attribution.
   final String? cityLabel;
 
-  /// Whether at least one activity is already scheduled for today.
-  final bool hasPlans;
-
   /// Optional callback invoked when the caregiver dismisses the banner.
   final VoidCallback? onDismiss;
 
-  /// Optional callback invoked when indoor play is suggested and tapped.
-  final VoidCallback? onApplyIndoorAction;
-
-  /// Optional callback invoked when outdoor play is suggested and tapped.
-  final VoidCallback? onApplyOutdoorAction;
+  /// Optional callback invoked with [WeatherHint.suggestedSetting] when the
+  /// caregiver taps the indoor or outdoor play-idea action button.
+  final ValueChanged<String>? onFindIdeas;
 
   /// Whether to use the warm advisory surface instead of soft green.
   final bool advisoryTone;
@@ -56,15 +50,13 @@ class WeatherHintBanner extends StatelessWidget {
     return Icons.wb_sunny_outlined;
   }
 
-  VoidCallback? _resolveAction() {
-    if (hint.isIndoorSuggested) return onApplyIndoorAction;
-    if (hint.isOutdoorSuggested) return onApplyOutdoorAction;
-    return null;
-  }
+  bool get _hasAction =>
+      onFindIdeas != null &&
+      (hint.isIndoorSuggested || hint.isOutdoorSuggested);
 
   String _actionLabel() {
     final settingWord = formatSettingLabel(hint.suggestedSetting).toLowerCase();
-    return hasPlans ? 'Filter $settingWord' : 'Find $settingWord ideas';
+    return 'Find $settingWord ideas';
   }
 
   @override
@@ -74,10 +66,8 @@ class WeatherHintBanner extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
-    final actionCallback = _resolveAction();
-    final displayHint = hint.displayMessage(
-      stripActionSuffix: actionCallback != null,
-    );
+    final showAction = _hasAction;
+    final displayHint = hint.displayMessage(stripActionSuffix: showAction);
     final attributionText = cityLabel != null && cityLabel!.isNotEmpty
         ? '$cityLabel · ${hint.attribution}'
         : hint.attribution;
@@ -173,7 +163,7 @@ class WeatherHintBanner extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (actionCallback != null)
+                if (showAction)
                   TextButton.icon(
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -181,7 +171,7 @@ class WeatherHintBanner extends StatelessWidget {
                       ),
                       minimumSize: const Size(0, AppSizes.touchTarget),
                     ),
-                    onPressed: actionCallback,
+                    onPressed: () => onFindIdeas!(hint.suggestedSetting),
                     icon: const Icon(Icons.arrow_forward, size: 16),
                     label: Text(_actionLabel()),
                   ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../routing/app_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
@@ -77,7 +78,11 @@ class _SignInScreenState extends State<SignInScreen> {
       } catch (_) {}
       if (!mounted) return;
       _announce('Signed in successfully');
-      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.home,
+        (route) => false,
+      );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -190,7 +195,7 @@ class _SignInScreenState extends State<SignInScreen> {
         footer: AuthAccountFooter(
           prompt: 'New to LittleSteps?',
           actionLabel: 'Create account',
-          onPressed: () => Navigator.pushNamed(context, '/register'),
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
         ),
       ),
     );

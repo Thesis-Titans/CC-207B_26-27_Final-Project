@@ -173,11 +173,9 @@ class TodayQuickFilterChips extends StatelessWidget {
     required this.under10Mins,
     required this.noMaterials,
     required this.indoorOnly,
-    required this.outdoorOnly,
     required this.onUnder10MinsChanged,
     required this.onNoMaterialsChanged,
     required this.onIndoorChanged,
-    required this.onOutdoorChanged,
   });
 
   /// Whether the "Under 10 mins" chip is selected.
@@ -189,9 +187,6 @@ class TodayQuickFilterChips extends StatelessWidget {
   /// Whether the indoor setting filter is selected.
   final bool indoorOnly;
 
-  /// Whether the outdoor setting filter is selected.
-  final bool outdoorOnly;
-
   /// Callback invoked when the duration filter changes.
   final ValueChanged<bool> onUnder10MinsChanged;
 
@@ -200,9 +195,6 @@ class TodayQuickFilterChips extends StatelessWidget {
 
   /// Callback invoked when the indoor filter changes.
   final ValueChanged<bool> onIndoorChanged;
-
-  /// Callback invoked when the outdoor filter changes.
-  final ValueChanged<bool> onOutdoorChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -230,14 +222,6 @@ class TodayQuickFilterChips extends StatelessWidget {
               selected: indoorOnly,
               onSelected: onIndoorChanged,
             ),
-            if (outdoorOnly) ...[
-              const SizedBox(width: AppSpacing.space8),
-              FilterChip(
-                label: Text(formatSettingLabel(PlaySetting.outdoor)),
-                selected: outdoorOnly,
-                onSelected: onOutdoorChanged,
-              ),
-            ],
           ],
         ),
       ),

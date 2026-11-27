@@ -115,7 +115,7 @@ class PhilippineRhyme {
         'Pause and invite $name to copy your gestures or sound out favorite words.',
       ],
       provenanceSource: provenanceSource,
-      status: 'source_checked',
+      status: Activity.statusSourceChecked,
       limitations: 'Shared cultural singing and bonding routine.',
     );
   }

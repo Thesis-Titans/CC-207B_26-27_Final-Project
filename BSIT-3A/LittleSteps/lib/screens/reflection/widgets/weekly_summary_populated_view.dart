@@ -135,7 +135,8 @@ class WeeklySummaryPopulatedView extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= 860 && promptCard != null) {
+        if (constraints.maxWidth >= AppSizes.twoColumnBreakpoint &&
+            promptCard != null) {
           return Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.space24),
             child: Row(
@@ -152,7 +153,7 @@ class WeeklySummaryPopulatedView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.space24),
-                SizedBox(width: 340, child: promptCard),
+                SizedBox(width: AppSizes.sidePanelWidth, child: promptCard),
               ],
             ),
           );

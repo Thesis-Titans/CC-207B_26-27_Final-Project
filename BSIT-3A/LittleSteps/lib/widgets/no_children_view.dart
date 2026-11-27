@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../routing/app_router.dart';
 import '../theme/app_tokens.dart';
 import 'brand_logo.dart';
 
@@ -111,7 +112,10 @@ class NoChildrenView extends StatelessWidget {
                       child: FilledButton(
                         onPressed:
                             onAddChild ??
-                            () => Navigator.pushNamed(context, '/children/add'),
+                            () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.childrenAdd,
+                            ),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(
                             AppSizes.touchTarget,

@@ -8,6 +8,7 @@ import '../../models/activity.dart';
 import '../../models/age_band.dart';
 import '../../models/child.dart';
 import '../../models/plan.dart';
+import '../../routing/app_router.dart';
 import '../../services/ai_service.dart';
 import '../../services/api_client.dart';
 import '../../services/books_service.dart';
@@ -16,6 +17,7 @@ import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/date_formatting.dart';
 import '../../utils/domain_labels.dart';
+import '../../utils/plan_errors.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
@@ -250,12 +252,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Future<void> _addToPlan(Activity activity) async {
     final session = AuthScope.maybeOf(context);
     if (session == null || !session.isAuthenticated) {
-      Navigator.pushNamed(context, '/sign-in');
+      Navigator.pushNamed(context, AppRoutes.signIn);
       return;
     }
     final child = session.activeChild;
     if (child == null) {
-      Navigator.pushNamed(context, '/children');
+      Navigator.pushNamed(context, AppRoutes.children);
       return;
     }
 
@@ -290,19 +292,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
           .showSnackBar(const SnackBar(content: Text("Added to today's plan")));
     } catch (error) {
       if (!mounted) return;
-      final message = switch (error) {
-        ApiException(code: 'SERVICE_UNAVAILABLE') =>
-          'The plan service is temporarily unavailable. Try again in a moment.',
-        NoConnectionApiException() ||
-        TimeoutApiException() ||
-        SocketException() ||
-        http.ClientException() => 'The activity could not be added. Check your connection and try again.',
-        NotFoundApiException() => 'The child or activity was not found. Check that the child profile is saved to your account.',
-        AuthApiException() => 'Sign in again before adding an activity.',
-        _ => 'The activity could not be added. Please try again.',
-      };
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(formatPlanErrorMessage(error, subject: 'the activity')),
+        ),
+      );
     }
   }
 
@@ -372,7 +366,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       onRefresh: _loadActivities,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isWideLayout = constraints.maxWidth >= 860;
+          final isWideLayout =
+              constraints.maxWidth >= AppSizes.twoColumnBreakpoint;
           if (!isWideLayout) {
             return Center(
               child: ConstrainedBox(
@@ -445,10 +440,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         if (!_storybooksSelected) ...[
                           const SizedBox(width: AppSpacing.space24),
                           SizedBox(
-                            width: 340,
+                            width: AppSizes.sidePanelWidth,
                             child: IdeaHelperEntryCard(
-                              onTap: () =>
-                                  Navigator.pushNamed(context, '/ai-suggest'),
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.aiSuggest,
+                              ),
                             ),
                           ),
                         ],
@@ -604,7 +601,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (showInlineIdeaHelper && !_loading && _errorMessage == null) ...[
         const SizedBox(height: AppSpacing.space8),
         CompactIdeaHelperBar(
-          onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
+          onTap: () => Navigator.pushNamed(context, AppRoutes.aiSuggest),
         ),
       ],
       if (_loading) ...[

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../routing/app_router.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/brand_logo.dart';
@@ -68,7 +69,10 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     final isAuthenticated =
         AuthScope.maybeOf(context)?.isAuthenticated ?? false;
-    Navigator.pushReplacementNamed(context, isAuthenticated ? '/' : '/sign-in');
+    Navigator.pushReplacementNamed(
+      context,
+      isAuthenticated ? AppRoutes.home : AppRoutes.signIn,
+    );
   }
 
   @override

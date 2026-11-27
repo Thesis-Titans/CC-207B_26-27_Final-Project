@@ -41,6 +41,15 @@ class Activity {
     );
   }
 
+  /// Wire status for formally reviewed and approved catalog activities.
+  static const String statusReviewedApproved = 'reviewed_approved';
+
+  /// Wire status for source-checked catalog entries and rhymes.
+  static const String statusSourceChecked = 'source_checked';
+
+  /// Wire status for custom inline plan snapshots.
+  static const String statusCustomSnapshot = 'custom_snapshot';
+
   /// Unique catalog activity identifier.
   final String id;
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/child.dart';
+import '../../routing/app_router.dart';
 import '../../services/api_client.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
@@ -73,7 +74,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
   }
 
   Future<void> _openAddChild() async {
-    await Navigator.pushNamed(context, '/children/add');
+    await Navigator.pushNamed(context, AppRoutes.childrenAdd);
     if (!mounted) return;
     _load();
   }

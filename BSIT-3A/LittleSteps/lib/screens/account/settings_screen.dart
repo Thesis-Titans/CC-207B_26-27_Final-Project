@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../models/child.dart';
 import '../../models/weather.dart';
+import '../../routing/app_router.dart';
 import '../../services/account_service.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
@@ -86,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await session.signOut();
         if (mounted) {
           Navigator.of(context)
-              .pushNamedAndRemoveUntil('/sign-in', (_) => false);
+              .pushNamedAndRemoveUntil(AppRoutes.signIn, (_) => false);
         }
       };
     }
@@ -198,7 +199,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _SettingsAction(
                     icon: Icons.person_add_alt_1_outlined,
                     title: 'Add a child',
-                    onTap: () => Navigator.pushNamed(context, '/children/add'),
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.childrenAdd),
                   ),
                 ],
               ),
@@ -381,7 +383,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
         if (mounted) {
           Navigator.of(context)
-              .pushNamedAndRemoveUntil('/sign-in', (_) => false);
+              .pushNamedAndRemoveUntil(AppRoutes.signIn, (_) => false);
         }
       }
     } catch (_) {

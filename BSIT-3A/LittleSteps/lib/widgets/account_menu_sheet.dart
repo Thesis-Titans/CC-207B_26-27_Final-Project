@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/child.dart';
+import '../routing/app_router.dart';
 import '../theme/app_tokens.dart';
 
 /// Account actions and child switching bottom sheet.
@@ -98,7 +99,7 @@ class AccountMenuSheet extends StatelessWidget {
               _MenuAction(
                 icon: Icons.person_add_alt_1_outlined,
                 label: 'Add a child',
-                onTap: () => _openRoute(context, '/children/add'),
+                onTap: () => _openRoute(context, AppRoutes.childrenAdd),
               ),
               const Divider(height: AppSpacing.space16),
               _MenuAction(
@@ -106,22 +107,22 @@ class AccountMenuSheet extends StatelessWidget {
                 label: 'Settings',
                 onTap:
                     onOpenSettings ??
-                    () => _openRoute(context, '/account/settings'),
+                    () => _openRoute(context, AppRoutes.accountSettings),
               ),
               _MenuAction(
                 icon: Icons.privacy_tip_outlined,
                 label: 'Privacy notice',
-                onTap: () => _openRoute(context, '/account/privacy'),
+                onTap: () => _openRoute(context, AppRoutes.accountPrivacy),
               ),
               _MenuAction(
                 icon: Icons.info_outline,
                 label: 'About LittleSteps',
-                onTap: () => _openRoute(context, '/account/about'),
+                onTap: () => _openRoute(context, AppRoutes.accountAbout),
               ),
               _MenuAction(
                 icon: Icons.help_outline,
                 label: 'Help and support',
-                onTap: () => _openRoute(context, '/account/help'),
+                onTap: () => _openRoute(context, AppRoutes.accountHelp),
               ),
               const SizedBox(height: AppSpacing.space8),
               if (email != null) ...[
@@ -139,7 +140,7 @@ class AccountMenuSheet extends StatelessWidget {
                 ),
               ] else ...[
                 FilledButton.icon(
-                  onPressed: () => _openRoute(context, '/sign-in'),
+                  onPressed: () => _openRoute(context, AppRoutes.signIn),
                   icon: const Icon(Icons.login),
                   label: const Text('Sign in'),
                 ),

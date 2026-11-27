@@ -69,7 +69,7 @@ class PlayCompanionDialog extends StatelessWidget {
         'Talk about what happens in the pictures and celebrate every effort.',
       ],
       provenanceSource: '',
-      status: 'custom_snapshot',
+      status: Activity.statusCustomSnapshot,
       limitations: safetyNotice,
     );
   }

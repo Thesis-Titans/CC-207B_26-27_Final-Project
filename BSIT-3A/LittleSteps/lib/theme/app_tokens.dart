@@ -166,6 +166,12 @@ abstract final class AppSizes {
 
   /// Minimum viewport width that switches from bottom bar to side navigation.
   static const double wideLayoutBreakpoint = 840;
+
+  /// Minimum content width that switches single-column tabs to two columns.
+  static const double twoColumnBreakpoint = 860;
+
+  /// Standard width of the secondary right-hand card column on wide screens.
+  static const double sidePanelWidth = 340;
 }
 
 /// Animation durations, feedback timers, and curve constants.
