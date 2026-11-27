@@ -553,6 +553,8 @@ class AuthPrivacyNoticeCard extends StatelessWidget {
     required this.points,
     required this.accepted,
     required this.onChanged,
+    this.contactLabel,
+    this.onContactTap,
   });
 
   /// Ordered privacy summary headings and descriptions.
@@ -563,6 +565,12 @@ class AuthPrivacyNoticeCard extends StatelessWidget {
 
   /// Callback invoked when the acceptance checkbox changes.
   final ValueChanged<bool> onChanged;
+
+  /// Optional contact label rendered beneath [points].
+  final String? contactLabel;
+
+  /// Optional callback invoked when the caregiver taps [contactLabel].
+  final VoidCallback? onContactTap;
 
   @override
   Widget build(BuildContext context) {
@@ -615,6 +623,40 @@ class AuthPrivacyNoticeCard extends StatelessWidget {
                     point.value,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (contactLabel != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Contact',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: onContactTap,
+                    borderRadius: BorderRadius.circular(AppRadius.badge),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.space4,
+                      ),
+                      child: Text(
+                        contactLabel!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppColors.forest,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.forest,
+                        ),
+                      ),
                     ),
                   ),
                 ],

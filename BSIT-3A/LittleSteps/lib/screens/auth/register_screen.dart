@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../config/external_links.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/accessibility.dart';
+import '../../utils/url_helper.dart';
 import '../../widgets/auth_scope.dart';
 import 'widgets/auth_widgets.dart';
 
@@ -48,7 +50,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'If something goes wrong',
       'We aim to notify you and the National Privacy Commission within 72 hours.',
     ),
-    MapEntry('Contact', 'privacy@littlesteps.local / Data Protection Officer'),
   ];
 
   final _formKey = GlobalKey<FormState>();
@@ -173,6 +174,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   AuthPrivacyNoticeCard(
                     points: _privacyPoints,
                     accepted: _acceptedPrivacy,
+                    contactLabel: 'Thesis Titans · github.com/Thesis-Titans',
+                    onContactTap: () =>
+                        openExternalUrl(context, AppLinks.githubOrg),
                     onChanged: (accepted) {
                       setState(() {
                         _acceptedPrivacy = accepted;
