@@ -197,19 +197,5 @@ void main() {
       expect(cachedBooks.single.title, 'The Very Hungry Caterpillar');
       expect(requestCount, 1);
     });
-
-    test('filterFallbackBooks returns subject matches or default catalog', () {
-      final bedtimeBooks = BooksService.filterFallbackBooks('bedtime');
-      expect(bedtimeBooks.any((b) => b.title == 'Goodnight Moon'), isTrue);
-
-      final fallback = BooksService.filterFallbackBooks('nonexistent');
-      expect(fallback.isNotEmpty, isTrue);
-
-      final searched = BooksService.filterFallbackBooks(
-        'picture_books',
-        'caterpillar',
-      );
-      expect(searched.single.title, 'The Very Hungry Caterpillar');
-    });
   });
 }

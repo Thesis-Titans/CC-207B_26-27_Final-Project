@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:littlesteps/data/milestone_prompts.dart';
-import 'package:littlesteps/data/philippine_rhymes.dart';
 import 'package:littlesteps/models/milestone.dart';
 import 'package:littlesteps/screens/explore/storybooks_section.dart';
 import 'package:littlesteps/screens/milestones/milestones_screen.dart';
@@ -16,50 +14,24 @@ import 'package:littlesteps/services/local_cache.dart';
 
 void main() {
   group('Catalog milestones and rhymes integration', () {
-    test(
-      'marks milestone and rhyme catalog endpoints public and cacheable',
-      () {
-        expect(
-          ApiClient.isProtectedPath('/api/v1/catalog/milestones'),
-          isFalse,
-        );
-        expect(ApiClient.isProtectedPath('/api/v1/catalog/rhymes'), isFalse);
+    test('marks milestone and rhyme catalog endpoints public and cacheable', () {
+      expect(ApiClient.isProtectedPath('/api/v1/catalog/milestones'), isFalse);
+      expect(ApiClient.isProtectedPath('/api/v1/catalog/rhymes'), isFalse);
 
-        final cache = LocalDataCache();
-        expect(cache.isCacheablePath('/api/v1/catalog/milestones'), isTrue);
-        expect(
-          cache.isCacheablePath(
-            '/api/v1/catalog/milestones?ageBand=60-71%20months',
-          ),
-          isTrue,
-        );
-        expect(cache.isCacheablePath('/api/v1/catalog/rhymes'), isTrue);
-        expect(
-          cache.isCacheablePath('/api/v1/catalog/rhymes?language=hil'),
-          isTrue,
-        );
-      },
-    );
-
-    test(
-      'bundled offline fallbacks include 60-71m prompts and Hiligaynon rhyme',
-      () {
-        expect(defaultMilestonePrompts.length, 25);
-        expect(
-          defaultMilestonePrompts
-              .where((p) => p.ageBand == '60-71 months')
-              .length,
-          4,
-        );
-
-        expect(philippineRhymes.length, 6);
-        final iliIli = philippineRhymes.firstWhere(
-          (r) => r.id == 'rhyme-ili-ili-tulog-anay',
-        );
-        expect(iliIli.language, 'hil');
-        expect(iliIli.toActivity().status, 'source_checked');
-      },
-    );
+      final cache = LocalDataCache();
+      expect(cache.isCacheablePath('/api/v1/catalog/milestones'), isTrue);
+      expect(
+        cache.isCacheablePath(
+          '/api/v1/catalog/milestones?ageBand=60-71%20months',
+        ),
+        isTrue,
+      );
+      expect(cache.isCacheablePath('/api/v1/catalog/rhymes'), isTrue);
+      expect(
+        cache.isCacheablePath('/api/v1/catalog/rhymes?language=hil'),
+        isTrue,
+      );
+    });
 
     test(
       'CatalogService parses milestones and rhymes from API responses',
@@ -134,27 +106,72 @@ void main() {
       },
     );
 
+    testWidgets('MilestonesScreen displays prompts loaded from CatalogService', (
+      tester,
+    ) async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'total': 1,
+            'items': [
+              {
+                'id': 'lan-12-live',
+                'domain': 'language',
+                'title': 'Live API Milestone Prompt',
+                'lookFor': ['Points to a familiar storybook page'],
+                'ageBand': '12-23 months',
+                'provenance': 'Source: ECCD Council NELF (2010)',
+                'status': 'source_checked',
+              },
+            ],
+          }),
+          200,
+        );
+      });
+
+      final catalogService = CatalogService(
+        apiClient: ApiClient(
+          baseUrl: 'https://example.test',
+          httpClient: mockClient,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: MilestonesScreen(catalogService: catalogService)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Live API Milestone Prompt'), findsOneWidget);
+    });
+
+    testWidgets('MilestonesScreen shows error state with Retry on API failure', (
+      tester,
+    ) async {
+      final mockClient = MockClient((request) async {
+        return http.Response('{"error":{"code":"SERVER_ERROR"}}', 500);
+      });
+
+      final catalogService = CatalogService(
+        apiClient: ApiClient(
+          baseUrl: 'https://example.test',
+          httpClient: mockClient,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: MilestonesScreen(catalogService: catalogService)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("We couldn't load this right now"), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Retry'), findsOneWidget);
+    });
+
     testWidgets(
-      'MilestonesScreen displays prompts loaded from CatalogService',
+      'MilestonesScreen shows error state with Retry on API failure',
       (tester) async {
         final mockClient = MockClient((request) async {
-          return http.Response(
-            jsonEncode({
-              'total': 1,
-              'items': [
-                {
-                  'id': 'lan-12-live',
-                  'domain': 'language',
-                  'title': 'Live API Milestone Prompt',
-                  'lookFor': ['Points to a familiar storybook page'],
-                  'ageBand': '12-23 months',
-                  'provenance': 'Source: ECCD Council NELF (2010)',
-                  'status': 'source_checked',
-                },
-              ],
-            }),
-            200,
-          );
+          return http.Response('{"error":{"code":"SERVER_ERROR"}}', 500);
         });
 
         final catalogService = CatalogService(
@@ -169,7 +186,8 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Live API Milestone Prompt'), findsOneWidget);
+        expect(find.text("We couldn't load this right now"), findsOneWidget);
+        expect(find.widgetWithText(OutlinedButton, 'Retry'), findsOneWidget);
       },
     );
 
@@ -233,6 +251,40 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Live API Hiligaynon Song'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'StorybooksSection rhymes shelf shows retry state when API fails',
+      (tester) async {
+        final mockClient = MockClient((request) async {
+          return http.Response('{"error":{"code":"SERVER_ERROR"}}', 500);
+        });
+
+        final apiClient = ApiClient(
+          baseUrl: 'https://example.test',
+          httpClient: mockClient,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: StorybooksSection(
+                  booksService: BooksService(apiClient: apiClient),
+                  catalogService: CatalogService(apiClient: apiClient),
+                  selectedShelf: BookshelfShelf.rhymes,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('Could not load rhymes right now'),
+          findsOneWidget,
+        );
       },
     );
   });

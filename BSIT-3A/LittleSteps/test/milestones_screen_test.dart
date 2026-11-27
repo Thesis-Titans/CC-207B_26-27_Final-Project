@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:littlesteps/data/milestone_prompts.dart';
 import 'package:littlesteps/models/milestone.dart';
 import 'package:littlesteps/screens/milestones/milestones_screen.dart';
+
+import 'fixtures/sample_milestone_prompts.dart';
 
 void main() {
   Widget createTestWidget({
@@ -12,6 +13,7 @@ void main() {
     return MaterialApp(
       home: MilestonesScreen(
         initialState: state,
+        prompts: sampleMilestonePrompts,
         initialObservations: observations,
       ),
     );
@@ -121,7 +123,7 @@ void main() {
         'fail',
       ];
 
-      for (final prompt in defaultMilestonePrompts) {
+      for (final prompt in sampleMilestonePrompts) {
         for (final word in bannedWords) {
           expect(
             prompt.title.toLowerCase().contains(word),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../data/milestone_prompts.dart';
 import '../../models/milestone.dart';
 import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
@@ -35,7 +34,7 @@ class MilestonesScreen extends StatefulWidget {
   const MilestonesScreen({
     super.key,
     this.initialState = MilestonesViewState.ready,
-    this.prompts = defaultMilestonePrompts,
+    this.prompts = const [],
     this.initialObservations = const {},
     this.milestonesService,
     this.catalogService,
@@ -44,7 +43,7 @@ class MilestonesScreen extends StatefulWidget {
   /// Initial view state override for widget tests.
   final MilestonesViewState initialState;
 
-  /// Fallback or injected observational prompts rendered on the screen.
+  /// Optional preloaded observational prompts for tests or previews.
   final List<MilestonePrompt> prompts;
 
   /// Preloaded observations keyed by milestone prompt identifier.
@@ -164,15 +163,42 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   Future<void> _loadCatalogPrompts() async {
     final canFetch =
         widget.catalogService != null || AuthScope.maybeOf(context) != null;
-    if (!canFetch) return;
+    if (!canFetch || widget.prompts.isNotEmpty) return;
+
+    if (_prompts.isEmpty && _currentState == MilestonesViewState.ready) {
+      setState(() => _currentState = MilestonesViewState.loading);
+    }
 
     try {
       final fetched = await _resolveCatalogService().getMilestones();
-      if (!mounted || fetched.isEmpty) return;
-      setState(() => _prompts = fetched);
+      if (!mounted) return;
+      setState(() {
+        _prompts = fetched;
+        if (_currentState == MilestonesViewState.loading ||
+            _currentState == MilestonesViewState.error) {
+          _currentState = MilestonesViewState.ready;
+        }
+      });
+    } on NoConnectionApiException {
+      if (!mounted) return;
+      setState(() => _currentState = MilestonesViewState.offline);
+    } on TimeoutApiException {
+      if (!mounted) return;
+      setState(() => _currentState = MilestonesViewState.offline);
     } catch (_) {
-      // Keep bundled defaultMilestonePrompts as offline fallback.
+      if (!mounted) return;
+      if (_prompts.isEmpty) {
+        setState(() => _currentState = MilestonesViewState.error);
+      }
     }
+  }
+
+  void _retryLoad() {
+    setState(() => _currentState = MilestonesViewState.ready);
+    if (_prompts.isEmpty) {
+      _loadCatalogPrompts();
+    }
+    _loadObservations(_childId);
   }
 
   Future<void> _loadObservations(String? childId) async {
@@ -535,8 +561,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                 borderRadius: BorderRadius.circular(AppRadius.control),
               ),
             ),
-            onPressed: () =>
-                setState(() => _currentState = MilestonesViewState.ready),
+            onPressed: _retryLoad,
             child: const Text('Retry'),
           ),
         ],
@@ -581,8 +606,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                 borderRadius: BorderRadius.circular(AppRadius.control),
               ),
             ),
-            onPressed: () =>
-                setState(() => _currentState = MilestonesViewState.ready),
+            onPressed: _retryLoad,
             child: const Text('Retry'),
           ),
         ],

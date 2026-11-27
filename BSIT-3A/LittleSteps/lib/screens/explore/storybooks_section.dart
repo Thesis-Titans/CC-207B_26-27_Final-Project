@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../data/philippine_rhymes.dart';
 import '../../models/activity.dart';
 import '../../models/book.dart';
 import '../../models/child.dart';
 import '../../models/plan.dart';
+import '../../models/rhyme.dart';
 import '../../services/ai_service.dart';
 import '../../services/api_client.dart';
 import '../../services/books_service.dart';
@@ -90,11 +90,13 @@ class _StorybooksSectionState extends State<StorybooksSection> {
 
   bool _isLoadingBooks = true;
   bool _initialBooksLoaded = false;
+  bool _isLoadingRhymes = false;
   bool _initialRhymesLoaded = false;
   String? _booksError;
+  String? _rhymesError;
   bool _showingOfflineBooks = false;
   List<BookItem> _openLibraryBooks = [];
-  List<PhilippineRhyme> _rhymes = philippineRhymes;
+  List<PhilippineRhyme> _rhymes = [];
 
   bool _isLoadingSaved = false;
   String? _savedBooksError;
@@ -192,12 +194,26 @@ class _StorybooksSectionState extends State<StorybooksSection> {
         widget.catalogService != null || AuthScope.maybeOf(context) != null;
     if (!canFetch) return;
 
+    setState(() {
+      _isLoadingRhymes = true;
+      _rhymesError = null;
+    });
+
     try {
       final fetched = await _resolveCatalogService().getRhymes();
-      if (!mounted || fetched.isEmpty) return;
-      setState(() => _rhymes = fetched);
+      if (!mounted) return;
+      setState(() {
+        _rhymes = fetched;
+        _isLoadingRhymes = false;
+      });
     } catch (_) {
-      // Keep bundled philippineRhymes as offline fallback.
+      if (!mounted) return;
+      setState(() {
+        _isLoadingRhymes = false;
+        if (_rhymes.isEmpty) {
+          _rhymesError = 'Could not load rhymes right now. Please check your connection and try again.';
+        }
+      });
     }
   }
 
@@ -225,20 +241,14 @@ class _StorybooksSectionState extends State<StorybooksSection> {
               widget.isOffline || service.apiClient.isOffline;
         });
       }
-    } catch (error) {
+    } catch (_) {
       if (mounted) {
-        final fallback = BooksService.filterFallbackBooks(
-          _selectedSubject,
-          _searchQuery,
-        );
         setState(() {
-          _openLibraryBooks = fallback;
+          _openLibraryBooks = [];
           _visibleCatalogCount = _bookPageSize;
           _isLoadingBooks = false;
-          _showingOfflineBooks = true;
-          _booksError = fallback.isEmpty
-              ? 'Could not load storybooks right now. Please check your connection and try again.'
-              : null;
+          _showingOfflineBooks = false;
+          _booksError = 'Could not load storybooks right now. Please check your connection and try again.';
         });
       }
     }
@@ -805,6 +815,22 @@ class _StorybooksSectionState extends State<StorybooksSection> {
   }
 
   Widget _buildRhymesShelf() {
+    if (_isLoadingRhymes && _rhymes.isEmpty) {
+      return _buildLoadingGrid();
+    }
+
+    if (_rhymesError != null && _rhymes.isEmpty) {
+      return ErrorView(message: _rhymesError!, onRetry: _loadRhymes);
+    }
+
+    if (_rhymes.isEmpty) {
+      return const EmptyStateView(
+        title: 'No rhymes available yet.',
+        message: 'Check back soon for traditional songs and rhythm games.',
+        icon: Icons.music_note_outlined,
+      );
+    }
+
     return RhymesShelf(
       rhymes: _rhymes,
       childNickname: widget.activeChild?.nickname ?? 'your child',

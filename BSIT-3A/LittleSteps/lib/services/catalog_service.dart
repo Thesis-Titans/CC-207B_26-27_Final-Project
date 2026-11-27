@@ -1,7 +1,7 @@
-import '../data/philippine_rhymes.dart';
 import '../models/activity.dart';
 import '../models/book.dart';
 import '../models/milestone.dart';
+import '../models/rhyme.dart';
 import '../models/weather.dart';
 import 'api_client.dart';
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/philippine_rhymes.dart';
+import '../../../models/rhyme.dart';
 import '../../../theme/app_tokens.dart';
 
 /// List of traditional Philippine nursery rhymes and interactive action games.
@@ -8,13 +8,13 @@ class RhymesShelf extends StatelessWidget {
   /// Creates a [RhymesShelf].
   const RhymesShelf({
     super.key,
-    this.rhymes = philippineRhymes,
+    required this.rhymes,
     required this.childNickname,
     required this.onShowDetails,
     required this.onScheduleRhyme,
   });
 
-  /// Rhymes rendered on the shelf (defaults to bundled offline fallback).
+  /// Rhymes fetched from the catalog API and rendered on the shelf.
   final List<PhilippineRhyme> rhymes;
 
   /// Active child's nickname (or fallback phrase) shown in the shelf subtitle.
