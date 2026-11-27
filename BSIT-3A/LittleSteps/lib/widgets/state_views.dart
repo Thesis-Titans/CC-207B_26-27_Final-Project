@@ -225,6 +225,7 @@ class InlineErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.space16),
       decoration: BoxDecoration(
@@ -246,7 +247,7 @@ class InlineErrorCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.textError,
                   ),
@@ -255,18 +256,14 @@ class InlineErrorCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.space4),
-          Text(message, style: const TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(height: AppSpacing.space16),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.borderInput),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.control),
-              ),
+          Text(
+            message,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
             ),
-            onPressed: onRetry,
-            child: Text(retryLabel),
           ),
+          const SizedBox(height: AppSpacing.space16),
+          OutlinedButton(onPressed: onRetry, child: Text(retryLabel)),
         ],
       ),
     );
@@ -306,6 +303,7 @@ class OfflineStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final retryCallback = onRetry;
     final trailingWidget = trailing;
     return Container(
@@ -330,7 +328,7 @@ class OfflineStatusCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.textOffline,
                   ),
@@ -342,19 +340,13 @@ class OfflineStatusCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.space4),
           Text(
             message,
-            style: const TextStyle(color: AppColors.textOffline, fontSize: 13),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textOffline,
+            ),
           ),
           if (retryCallback != null) ...[
             const SizedBox(height: AppSpacing.space12),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.control),
-                ),
-              ),
-              onPressed: retryCallback,
-              child: Text(retryLabel),
-            ),
+            OutlinedButton(onPressed: retryCallback, child: Text(retryLabel)),
           ],
         ],
       ),

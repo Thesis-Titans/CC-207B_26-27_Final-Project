@@ -65,39 +65,19 @@ class MilestonePromptCard extends StatelessWidget {
                               horizontal: AppSpacing.space16,
                             ),
                             side: const BorderSide(color: AppColors.forest),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.control,
-                              ),
-                            ),
+                            foregroundColor: AppColors.forest,
                           ),
                           onPressed: onTapAction,
-                          child: const Text(
-                            'Update',
-                            style: TextStyle(
-                              color: AppColors.forest,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: const Text('Update'),
                         )
                       : FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.forest,
-                            foregroundColor: AppColors.surfaceCard,
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.space16,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.control,
-                              ),
-                            ),
                           ),
                           onPressed: onTapAction,
-                          child: const Text(
-                            'Add',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          child: const Text('Add'),
                         ),
                 ),
               ],
@@ -113,7 +93,7 @@ class MilestonePromptCard extends StatelessWidget {
               if (notes != null && notes.isNotEmpty)
                 Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 6),
+                  margin: const EdgeInsets.only(bottom: AppSpacing.space8),
                   padding: const EdgeInsets.all(AppSpacing.space8),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceCard.withValues(alpha: 0.8),

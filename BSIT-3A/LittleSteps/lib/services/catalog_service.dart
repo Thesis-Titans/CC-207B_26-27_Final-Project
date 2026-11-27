@@ -120,7 +120,7 @@ class CatalogService {
         condition: 'unavailable',
         rainChance: 0,
         heatFlag: false,
-        suggestedSetting: 'either',
+        suggestedSetting: WeatherHint.settingEither,
         hint: null,
         attribution: 'Weather data by Open-Meteo.com',
       );

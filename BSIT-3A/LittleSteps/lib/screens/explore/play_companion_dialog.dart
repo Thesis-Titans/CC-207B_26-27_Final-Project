@@ -56,8 +56,8 @@ class PlayCompanionDialog extends StatelessWidget {
       id: sanitizedId,
       title: ideaTitle,
       type: 'story',
-      language: 'en',
-      setting: 'indoor',
+      language: AppLanguages.english,
+      setting: PlaySetting.indoor,
       ageBand: 'all',
       domain: domain,
       durationMinutes: 10,
@@ -83,7 +83,10 @@ class PlayCompanionDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       backgroundColor: AppColors.surfaceCard,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space16,
+        vertical: AppSpacing.space24,
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: SingleChildScrollView(
@@ -102,8 +105,8 @@ class PlayCompanionDialog extends StatelessWidget {
                         if (badge != null) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
+                              horizontal: AppSpacing.space8,
+                              vertical: AppSpacing.space4,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.softGreen,
@@ -119,11 +122,10 @@ class PlayCompanionDialog extends StatelessWidget {
                                   size: 14,
                                   color: AppColors.forest,
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: AppSpacing.space4),
                                 Text(
                                   badge!,
-                                  style: const TextStyle(
-                                    fontSize: 12,
+                                  style: theme.textTheme.labelMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                     color: AppColors.forest,
                                   ),
@@ -151,14 +153,13 @@ class PlayCompanionDialog extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.space8),
-
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
+                      horizontal: AppSpacing.space8,
+                      vertical: AppSpacing.space4 / 2,
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceCanvas,
@@ -167,8 +168,7 @@ class PlayCompanionDialog extends StatelessWidget {
                     ),
                     child: Text(
                       domainLabel(domain),
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: theme.textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.forest,
                       ),
@@ -188,7 +188,6 @@ class PlayCompanionDialog extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.space16),
-
               Container(
                 padding: const EdgeInsets.all(AppSpacing.space16),
                 decoration: BoxDecoration(
@@ -218,7 +217,6 @@ class PlayCompanionDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.space16),
-
               Container(
                 padding: const EdgeInsets.all(AppSpacing.space12),
                 decoration: BoxDecoration(
@@ -247,7 +245,6 @@ class PlayCompanionDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.space24),
-
               Row(
                 children: [
                   Flexible(
@@ -255,14 +252,12 @@ class PlayCompanionDialog extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        side: const BorderSide(color: AppColors.borderInput),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.control,
-                          ),
+                        minimumSize: const Size.fromHeight(
+                          AppSizes.touchTarget,
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space8,
+                        ),
                       ),
                       child: const Text('Close'),
                     ),
@@ -273,14 +268,12 @@ class PlayCompanionDialog extends StatelessWidget {
                     child: FilledButton(
                       onPressed: isAdding ? null : onAddToPlan,
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.control,
-                          ),
+                        minimumSize: const Size.fromHeight(
+                          AppSizes.touchTarget,
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space8,
+                        ),
                       ),
                       child: isAdding
                           ? const SizedBox(

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import '../theme/app_tokens.dart';
 import 'local_cache.dart';
 
 /// Base exception thrown when an HTTP or backend API request fails.
@@ -99,7 +100,7 @@ class ApiClient {
     this.onRefreshToken,
     this.onSessionExpired,
     LocalDataCache? cache,
-    this.requestTimeout = const Duration(seconds: 10),
+    this.requestTimeout = AppMotion.apiRequestTimeout,
   }) : _httpClient = httpClient ?? http.Client(),
        baseUrl = baseUrl ?? defaultBaseUrl(host: host),
        cache = cache ?? LocalDataCache();

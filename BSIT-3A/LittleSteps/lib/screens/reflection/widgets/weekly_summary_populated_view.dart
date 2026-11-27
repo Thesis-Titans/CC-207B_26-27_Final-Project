@@ -89,7 +89,7 @@ class WeeklySummaryPopulatedView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.space12),
-          ..._buildDomainRows(summary.domainDistribution),
+          ..._buildDomainRows(theme, summary.domainDistribution),
         ],
       ),
     );
@@ -175,7 +175,10 @@ class WeeklySummaryPopulatedView extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildDomainRows(Map<String, int> distribution) {
+  List<Widget> _buildDomainRows(
+    ThemeData theme,
+    Map<String, int> distribution,
+  ) {
     return developmentalDomains.map((domain) {
       final count = distribution[domain.$1] ?? 0;
       final countText = count == 0
@@ -185,22 +188,23 @@ class WeeklySummaryPopulatedView extends StatelessWidget {
           : '$count activities';
 
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.space8),
         child: Row(
           children: [
             Text(
               domain.$2,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const Spacer(),
             Text(
               countText,
-              style: TextStyle(
+              style: theme.textTheme.bodySmall?.copyWith(
                 color: count == 0
                     ? AppColors.textTertiary
                     : AppColors.textPrimary,
                 fontWeight: count == 0 ? FontWeight.normal : FontWeight.w600,
-                fontSize: 13,
               ),
             ),
           ],
@@ -218,6 +222,7 @@ class _SummaryStatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.space12),
       decoration: BoxDecoration(
@@ -229,17 +234,15 @@ class _SummaryStatTile extends StatelessWidget {
         children: [
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 28,
+            style: theme.textTheme.displaySmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: AppColors.forest,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: AppSpacing.space4 / 2),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 13,
+            style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textPrimary,
               height: 1.2,
             ),

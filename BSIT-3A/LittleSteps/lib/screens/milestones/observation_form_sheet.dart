@@ -92,7 +92,9 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
           'obs-${DateTime.now().millisecondsSinceEpoch}',
       childId: widget.initialObservation?.childId ?? 'child-maya',
       milestoneId: widget.prompt.id,
-      status: _isObserved ? 'observed' : 'not_yet_observed',
+      status: _isObserved
+          ? MilestoneObservation.statusObserved
+          : MilestoneObservation.statusNotYetObserved,
       observedDate: dateStr,
       notes: _notesController.text.trim().isEmpty
           ? null
@@ -107,6 +109,10 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final sectionTitleStyle = theme.textTheme.bodyMedium?.copyWith(
+      fontWeight: FontWeight.bold,
+      color: AppColors.textPrimary,
+    );
     final dateDisplay = DateFormat('MMM d').format(_selectedDate);
     final isToday =
         DateFormat('yyyy-MM-dd').format(_selectedDate) ==
@@ -124,7 +130,6 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Back navigation link: ‹ Milestones
             InkWell(
               onTap: () => Navigator.of(context).pop(),
               child: Row(
@@ -146,15 +151,12 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.space12),
-
             if (widget.isOffline)
               OfflineStatusCard(
                 margin: const EdgeInsets.only(bottom: AppSpacing.space16),
                 message: "Your note wasn't saved. Keep this screen open and tap Retry when you're back online.",
                 onRetry: widget.onRetryOffline,
               ),
-
-            // Heading: Note what you saw
             Text(
               'Note what you saw',
               style: theme.textTheme.titleLarge?.copyWith(
@@ -163,8 +165,6 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.space4),
-
-            // Subtitle: Feelings · 12-23 months
             Text(
               '${widget.prompt.domain.label} · ${widget.prompt.ageBand}',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -172,8 +172,6 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.space12),
-
-            // Child Selector dropdown pill (For Maya · 14 months ▾)
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.space12,
@@ -188,7 +186,9 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                 children: [
                   Text(
                     'For ${widget.childName} · ${widget.childAgeMonths} months',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const Spacer(),
                   const Icon(
@@ -199,8 +199,6 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.space16),
-
-            // Prompt Title Container (warm cream box)
             Container(
               padding: const EdgeInsets.all(AppSpacing.space16),
               decoration: BoxDecoration(
@@ -216,87 +214,29 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.space16),
-
-            // Section: "What did you see?"
-            const Text(
-              'What did you see?',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text('What did you see?', style: sectionTitleStyle),
             const SizedBox(height: AppSpacing.space8),
-
-            // Observation status choice buttons ("I saw it" vs "Not seen yet").
             Row(
               children: [
                 Expanded(
-                  child: InkWell(
+                  child: _ObservationStatusToggle(
+                    label: 'I saw it',
+                    selected: _isObserved,
                     onTap: () => setState(() => _isObserved = true),
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: _isObserved
-                            ? AppColors.forest
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: _isObserved
-                              ? AppColors.forest
-                              : AppColors.borderSubtle,
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadius.chip),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'I saw it',
-                        style: TextStyle(
-                          color: _isObserved
-                              ? AppColors.surfaceCard
-                              : AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.space12),
                 Expanded(
-                  child: InkWell(
+                  child: _ObservationStatusToggle(
+                    label: 'Not seen yet',
+                    selected: !_isObserved,
                     onTap: () => setState(() => _isObserved = false),
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: !_isObserved
-                            ? AppColors.forest
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: !_isObserved
-                              ? AppColors.forest
-                              : AppColors.borderSubtle,
-                        ),
-                        borderRadius: BorderRadius.circular(AppRadius.chip),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Not seen yet',
-                        style: TextStyle(
-                          color: !_isObserved
-                              ? AppColors.surfaceCard
-                              : AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.space16),
-
-            // Section: "When did you see it?"
-            const Text(
-              'When did you see it?',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text('When did you see it?', style: sectionTitleStyle),
             const SizedBox(height: AppSpacing.space8),
             InkWell(
               onTap: _pickDate,
@@ -315,7 +255,9 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                   children: [
                     Text(
                       isToday ? 'Today, $dateDisplay' : dateDisplay,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const Spacer(),
                     const Icon(
@@ -327,12 +269,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.space16),
-
-            // Section: "Note (optional)"
-            const Text(
-              'Note (optional)',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text('Note (optional)', style: sectionTitleStyle),
             const SizedBox(height: AppSpacing.space8),
             TextField(
               controller: _notesController,
@@ -341,9 +278,8 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               decoration: InputDecoration(
                 hintText:
                     'What happened? Describe what you saw in your own words.',
-                hintStyle: const TextStyle(
+                hintStyle: theme.textTheme.bodyMedium?.copyWith(
                   color: AppColors.textTertiary,
-                  fontSize: 14,
                 ),
                 filled: true,
                 fillColor: AppColors.surfaceCard,
@@ -359,7 +295,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.space4),
             Align(
               alignment: Alignment.centerRight,
               child: Text(
@@ -370,23 +306,11 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.space16),
-
-            // Actions: Save & Cancel
             SizedBox(
               height: AppSizes.touchTarget,
               child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.forest,
-                  foregroundColor: AppColors.surfaceCard,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                  ),
-                ),
                 onPressed: _submit,
-                child: const Text(
-                  'Save',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                child: const Text('Save'),
               ),
             ),
             const SizedBox(height: AppSpacing.space8),
@@ -395,18 +319,50 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.borderSubtle),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                  ),
+                  foregroundColor: AppColors.textPrimary,
                 ),
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(color: AppColors.textPrimary),
-                ),
+                child: const Text('Cancel'),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ObservationStatusToggle extends StatelessWidget {
+  const _ObservationStatusToggle({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+      child: Container(
+        height: AppSizes.touchTargetSecondary,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.forest : Colors.transparent,
+          border: Border.all(
+            color: selected ? AppColors.forest : AppColors.borderSubtle,
+          ),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: selected ? AppColors.surfaceCard : AppColors.textPrimary,
+          ),
         ),
       ),
     );

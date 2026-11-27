@@ -35,7 +35,7 @@ const List<AgeBand> ageBands = [
   AgeBand(code: '60-71m', label: '60-71 months', minMonths: 60, maxMonths: 71),
 ];
 
-/// Returns whole months elapsed between [birthYear]/[birthMonth] and [now].
+/// Calculates whole months elapsed between [birthYear]/[birthMonth] and [now].
 int ageInMonths({
   required int birthYear,
   required int birthMonth,
@@ -44,7 +44,7 @@ int ageInMonths({
   return (now.year * 12 + now.month) - (birthYear * 12 + birthMonth);
 }
 
-/// Returns the [AgeBand] containing [months], or `null` if outside `0-71`.
+/// Finds the [AgeBand] containing [months], or `null` if outside `0-71`.
 AgeBand? ageBandForMonths(int months) {
   for (final band in ageBands) {
     if (months >= band.minMonths && months <= band.maxMonths) {
@@ -54,7 +54,7 @@ AgeBand? ageBandForMonths(int months) {
   return null;
 }
 
-/// Returns the [AgeBand] matching API [code], or `null` if unrecognized.
+/// Finds the [AgeBand] matching API [code], or `null` if unrecognized.
 AgeBand? ageBandForCode(String code) {
   for (final band in ageBands) {
     if (band.code == code) {
@@ -62,4 +62,51 @@ AgeBand? ageBandForCode(String code) {
     }
   }
   return null;
+}
+
+/// Normalizes a child or filter [rawAgeBand] value into a catalog age-band code.
+///
+/// Accepts canonical wire codes (such as `12-23m`) as well as single-month
+/// shorthand (such as `14m`), returning `null` if [rawAgeBand] is absent or
+/// unrecognized.
+String? normalizeCatalogAgeBandCode(String? rawAgeBand) {
+  if (rawAgeBand == null || rawAgeBand.isEmpty) return null;
+  if (ageBandForCode(rawAgeBand) != null) return rawAgeBand;
+  final monthMatch = RegExp(r'^(\d{1,2})m$').firstMatch(rawAgeBand);
+  final months = int.tryParse(monthMatch?.group(1) ?? '');
+  if (months == null) return null;
+  return ageBandForMonths(months)?.code;
+}
+
+/// Formats a child's age for caregiver-facing badges from [birthMonthYear] or
+/// [ageBand].
+String formatChildAgeLabel({
+  required String ageBand,
+  String? birthMonthYear,
+  DateTime? now,
+}) {
+  if (birthMonthYear != null) {
+    final parts = birthMonthYear.split('-');
+    if (parts.length == 2) {
+      final year = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      if (year != null && month != null && month >= 1 && month <= 12) {
+        final age = ageInMonths(
+          birthYear: year,
+          birthMonth: month,
+          now: now ?? DateTime.now(),
+        );
+        if (age >= 0) return '$age ${age == 1 ? 'month' : 'months'}';
+      }
+    }
+  }
+  final normalized = normalizeCatalogAgeBandCode(ageBand);
+  if (normalized != null) {
+    return ageBandForCode(normalized)?.label ?? ageBand;
+  }
+  if (ageBand.contains('month')) return ageBand;
+  if (ageBand.endsWith('m')) {
+    return '${ageBand.substring(0, ageBand.length - 1)} months';
+  }
+  return '$ageBand months';
 }

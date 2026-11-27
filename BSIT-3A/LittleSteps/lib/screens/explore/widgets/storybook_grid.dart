@@ -75,7 +75,8 @@ class StorybookGrid extends StatelessWidget {
           const SizedBox(height: AppSpacing.space16),
           Text(
             'Showing ${visibleBooks.length} of ${books.length} books',
-            style: const TextStyle(color: AppColors.textSecondary),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.space8),
           OutlinedButton(

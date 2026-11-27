@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../utils/domain_labels.dart';
 import 'activity.dart';
 
 /// Inline snapshot of a custom, storybook, or rhyme activity stored on a plan.
@@ -102,32 +103,33 @@ class CustomPlanActivity {
   /// Normalizes a domain key to one of the four API-supported values.
   static String normalizeDomain(String raw) {
     switch (raw.toLowerCase()) {
-      case 'cognitive':
-        return 'cognitive';
-      case 'motor':
-        return 'motor';
-      case 'language':
-        return 'language';
+      case AppDomains.cognitive:
+        return AppDomains.cognitive;
+      case AppDomains.motor:
+        return AppDomains.motor;
+      case AppDomains.language:
+        return AppDomains.language;
       case 'socioemotional':
       case 'socio_emotional':
       case 'socio-emotional':
-        return 'socioEmotional';
+        return AppDomains.socioEmotional;
       default:
-        return 'language';
+        return AppDomains.language;
     }
   }
 
-  /// Normalizes a setting key to `indoor`, `outdoor`, or `either`.
+  /// Normalizes a setting key to [PlaySetting.indoor], [PlaySetting.outdoor],
+  /// or [PlaySetting.either].
   static String normalizeSetting(String raw) {
     switch (raw.toLowerCase()) {
-      case 'indoor':
-        return 'indoor';
-      case 'outdoor':
-        return 'outdoor';
-      case 'either':
-        return 'either';
+      case PlaySetting.indoor:
+        return PlaySetting.indoor;
+      case PlaySetting.outdoor:
+        return PlaySetting.outdoor;
+      case PlaySetting.either:
+        return PlaySetting.either;
       default:
-        return 'indoor';
+        return PlaySetting.indoor;
     }
   }
 
@@ -212,6 +214,15 @@ class PlanItem {
     );
   }
 
+  /// Wire status for an upcoming planned activity.
+  static const String statusPlanned = 'planned';
+
+  /// Wire status for a completed activity.
+  static const String statusCompleted = 'completed';
+
+  /// Wire status for a skipped activity.
+  static const String statusSkipped = 'skipped';
+
   /// Unique identifier of the scheduled plan record.
   final String id;
 
@@ -246,7 +257,7 @@ class PlanItem {
   final DateTime updatedAt;
 
   /// Whether this activity has been completed.
-  bool get isCompleted => status == 'completed';
+  bool get isCompleted => status == statusCompleted;
 
   /// Serializes this [PlanItem] to a JSON map.
   Map<String, dynamic> toJson() {

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../utils/domain_labels.dart';
 import 'activity.dart';
 
 /// A traditional Philippine children's rhyme paired with a play prompt.
@@ -30,9 +31,9 @@ class PhilippineRhyme {
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
       subtitle: json['subtitle'] as String? ?? '',
-      domain: json['domain'] as String? ?? 'language',
+      domain: json['domain'] as String? ?? AppDomains.language,
       domainLabel: json['domainLabel'] as String? ?? 'Talking',
-      language: json['language'] as String? ?? 'fil',
+      language: json['language'] as String? ?? AppLanguages.filipino,
       lyrics: lyricsRaw.map((e) => e.toString()).toList(),
       actionPrompt: json['actionPrompt'] as String? ?? '',
       materials: materialsRaw.map((e) => e.toString()).toList(),
@@ -101,7 +102,7 @@ class PhilippineRhyme {
       title: 'Sing & Play: $title',
       type: 'rhyme',
       language: language,
-      setting: 'either',
+      setting: PlaySetting.either,
       ageBand: 'all',
       domain: domain,
       durationMinutes: durationMinutes,

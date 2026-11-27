@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../utils/domain_labels.dart';
+
 /// A Philippine city location used for optional Open-Meteo weather hints.
 @immutable
 class WeatherLocation {
@@ -80,7 +82,8 @@ class WeatherHint {
       condition: json['condition'] as String? ?? 'unavailable',
       rainChance: (json['rainChance'] as num?)?.toInt() ?? 0,
       heatFlag: json['heatFlag'] as bool? ?? false,
-      suggestedSetting: json['suggestedSetting'] as String? ?? 'either',
+      suggestedSetting:
+          json['suggestedSetting'] as String? ?? PlaySetting.either,
       hint: json['hint'] as String?,
       attribution:
           provenance?['attribution'] as String? ??
@@ -89,13 +92,13 @@ class WeatherHint {
   }
 
   /// Canonical API wire value for indoor play guidance.
-  static const String settingIndoor = 'indoor';
+  static const String settingIndoor = PlaySetting.indoor;
 
   /// Canonical API wire value for outdoor play guidance.
-  static const String settingOutdoor = 'outdoor';
+  static const String settingOutdoor = PlaySetting.outdoor;
 
   /// Canonical API wire value when either setting is suitable.
-  static const String settingEither = 'either';
+  static const String settingEither = PlaySetting.either;
 
   /// Normalized weather condition label from the forecast service.
   final String condition;

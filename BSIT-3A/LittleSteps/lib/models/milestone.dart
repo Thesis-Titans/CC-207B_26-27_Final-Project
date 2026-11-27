@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../utils/domain_labels.dart';
+
 /// A saved caregiver observation for a developmental milestone prompt.
 @immutable
 class MilestoneObservation {
@@ -29,6 +31,12 @@ class MilestoneObservation {
     );
   }
 
+  /// Wire status recorded when the caregiver saw the milestone.
+  static const String statusObserved = 'observed';
+
+  /// Wire status recorded when the milestone has not been observed yet.
+  static const String statusNotYetObserved = 'not_yet_observed';
+
   /// Unique identifier of the saved observation record.
   final String id;
 
@@ -54,7 +62,7 @@ class MilestoneObservation {
   final DateTime updatedAt;
 
   /// Whether the caregiver marked this prompt as observed.
-  bool get isObserved => status == 'observed';
+  bool get isObserved => status == statusObserved;
 
   /// Serializes this [MilestoneObservation] to a JSON map.
   Map<String, dynamic> toJson() {
@@ -74,16 +82,16 @@ class MilestoneObservation {
 /// Early-learning developmental domains used to group milestone prompts.
 enum MilestoneDomain {
   /// Problem-solving and exploration (`Thinking`).
-  cognitive('cognitive', 'Thinking', Icons.psychology_outlined),
+  cognitive(AppDomains.cognitive, 'Thinking', Icons.psychology_outlined),
 
   /// Gross and fine movement (`Moving`).
-  motor('motor', 'Moving', Icons.directions_run_outlined),
+  motor(AppDomains.motor, 'Moving', Icons.directions_run_outlined),
 
   /// Receptive and expressive communication (`Talking`).
-  language('language', 'Talking', Icons.chat_bubble_outline),
+  language(AppDomains.language, 'Talking', Icons.chat_bubble_outline),
 
   /// Social connection and emotional expression (`Feelings`).
-  socioEmotional('socioEmotional', 'Feelings', Icons.favorite_border);
+  socioEmotional(AppDomains.socioEmotional, 'Feelings', Icons.favorite_border);
 
   const MilestoneDomain(this.key, this.label, this.icon);
 

@@ -31,120 +31,114 @@ class TodaySideCards extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'This week',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Reflect on everyday moments and shared play from this week.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: onOpenReflection,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, AppSizes.touchTarget),
-                    side: const BorderSide(color: AppColors.borderInput),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.control),
-                    ),
-                  ),
-                  child: const Text('View reflection'),
-                ),
-              ),
-            ],
-          ),
+        _TodayShortcutCard(
+          title: 'This week',
+          subtitle:
+              'Reflect on everyday moments and shared play from this week.',
+          actionLabel: 'View reflection',
+          onAction: onOpenReflection,
         ),
         const SizedBox(height: AppSpacing.space16),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
-          ),
-          child: Column(
+        _TodayShortcutCard(
+          title: 'Milestones to notice',
+          subtitle: 'Everyday cues to notice for $childName:',
+          actionLabel: 'View milestones',
+          onAction: onOpenMilestones,
+          body: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Milestones to notice',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Everyday cues to notice for $childName:',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              ...milestoneCues.map(
-                (cue) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 2),
-                        child: Icon(
-                          Icons.visibility_outlined,
-                          size: 16,
-                          color: AppColors.forest,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      Expanded(
-                        child: Text(
-                          cue,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textPrimary,
+            children: milestoneCues
+                .map(
+                  (cue) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.space8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: AppSpacing.space4 / 2),
+                          child: Icon(
+                            Icons.visibility_outlined,
+                            size: 16,
+                            color: AppColors.forest,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: onOpenMilestones,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, AppSizes.touchTarget),
-                    side: const BorderSide(color: AppColors.borderInput),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.control),
+                        const SizedBox(width: AppSpacing.space8),
+                        Expanded(
+                          child: Text(
+                            cue,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: const Text('View milestones'),
-                ),
-              ),
-            ],
+                )
+                .toList(),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TodayShortcutCard extends StatelessWidget {
+  const _TodayShortcutCard({
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+    this.body,
+    this.onAction,
+  });
+
+  final String title;
+  final String subtitle;
+  final String actionLabel;
+  final Widget? body;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.space20),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceCard,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space8),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          if (body != null) ...[
+            const SizedBox(height: AppSpacing.space12),
+            body!,
+            const SizedBox(height: AppSpacing.space8),
+          ] else
+            const SizedBox(height: AppSpacing.space16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: onAction,
+              child: Text(actionLabel),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

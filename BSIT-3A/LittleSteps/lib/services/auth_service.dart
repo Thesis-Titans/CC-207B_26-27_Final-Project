@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import '../models/auth_user.dart';
+import '../theme/app_tokens.dart';
 
 /// Thrown when an authentication operation fails.
 class AuthException implements Exception {
@@ -54,7 +55,7 @@ class FirebaseAuthRestService implements AuthService {
     this.emulatorPort = 9099,
     this.apiKey = AppConfig.firebaseApiKey,
     this.useEmulator = AppConfig.useFirebaseEmulator,
-    this.requestTimeout = const Duration(seconds: 10),
+    this.requestTimeout = AppMotion.apiRequestTimeout,
     http.Client? httpClient,
   }) : httpClient = httpClient ?? http.Client(),
        emulatorHost = emulatorHost ?? defaultEmulatorHost;

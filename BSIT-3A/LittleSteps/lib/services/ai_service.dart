@@ -1,4 +1,5 @@
 import '../models/recommendation.dart';
+import '../utils/domain_labels.dart';
 import 'api_client.dart';
 
 /// Client service for requesting AI play recommendations and story activities.
@@ -16,10 +17,10 @@ class AiService {
   Future<RecommendationResponse> getRecommendations({
     required String ageBand,
     String? domain,
-    String setting = 'either',
+    String setting = PlaySetting.either,
     int timeMinutes = 15,
     List<String> materials = const [],
-    String language = 'en',
+    String language = AppLanguages.english,
     int count = 3,
     bool allowCustom = true,
   }) async {

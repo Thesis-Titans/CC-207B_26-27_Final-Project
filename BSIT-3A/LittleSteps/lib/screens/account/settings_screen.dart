@@ -480,7 +480,10 @@ class _SettingsAction extends StatelessWidget {
     return ListTile(
       minTileHeight: AppSizes.touchTarget,
       leading: Icon(icon, color: color),
-      title: Text(title, style: TextStyle(color: color)),
+      title: Text(
+        title,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: color),
+      ),
       subtitle: subtitle == null ? null : Text(subtitle!),
       trailing: isLoading
           ? const SizedBox.square(

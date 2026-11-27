@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../../models/activity.dart';
+import '../../models/age_band.dart';
 import '../../models/child.dart';
 import '../../models/plan.dart';
 import '../../services/ai_service.dart';
@@ -14,69 +15,15 @@ import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/date_formatting.dart';
+import '../../utils/domain_labels.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
 import 'storybooks_section.dart';
 import 'widgets/explore_activity_card.dart';
 import 'widgets/explore_filter_controls.dart';
+import 'widgets/explore_filters_sheet.dart';
 import 'widgets/explore_state_notices.dart';
-
-const _ageBands = <String, String>{
-  '0-5m': '0–5 months',
-  '6-11m': '6–11 months',
-  '12-23m': '12–23 months',
-  '24-35m': '24–35 months',
-  '36-47m': '36–47 months',
-  '48-59m': '48–59 months',
-  '60-71m': '60–71 months',
-};
-
-const _domains = <String, String>{
-  'cognitive': 'Thinking',
-  'motor': 'Moving',
-  'language': 'Talking',
-  'socioEmotional': 'Feelings',
-};
-
-const _languages = <String, String>{
-  'en': 'English',
-  'fil': 'Filipino',
-  'hil': 'Hiligaynon',
-};
-
-const _settings = <String, String>{'indoor': 'Indoor', 'outdoor': 'Outdoor'};
-
-String? _catalogAgeBand(String? ageBand) {
-  if (ageBand == null || _ageBands.containsKey(ageBand)) return ageBand;
-  final monthMatch = RegExp(r'^(\d{1,2})m$').firstMatch(ageBand);
-  final months = int.tryParse(monthMatch?.group(1) ?? '');
-  if (months == null || months < 0 || months > 71) return null;
-  if (months <= 5) return '0-5m';
-  if (months <= 11) return '6-11m';
-  if (months <= 23) return '12-23m';
-  if (months <= 35) return '24-35m';
-  if (months <= 47) return '36-47m';
-  if (months <= 59) return '48-59m';
-  return '60-71m';
-}
-
-String _childAgeLabel(Child child) {
-  final birth = child.birthMonthYear;
-  if (birth != null) {
-    final parts = birth.split('-');
-    if (parts.length == 2) {
-      final year = int.tryParse(parts[0]);
-      final month = int.tryParse(parts[1]);
-      if (year != null && month != null && month >= 1 && month <= 12) {
-        final now = DateTime.now();
-        final age = (now.year - year) * 12 + now.month - month;
-        if (age >= 0) return '$age ${age == 1 ? 'month' : 'months'}';
-      }
-    }
-  }
-  return _ageBands[_catalogAgeBand(child.ageBand)] ?? child.ageBand;
-}
 
 /// Browse provisional learning activities and add one to today's plan.
 class ExploreScreen extends StatefulWidget {
@@ -169,7 +116,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final childChanged = activeChild?.id != _lastChildId;
     if (childChanged) {
       _lastChildId = activeChild?.id;
-      _ageBand = _catalogAgeBand(activeChild?.ageBand);
+      _ageBand = normalizeCatalogAgeBandCode(activeChild?.ageBand);
     }
     if (!_initialLoadStarted || childChanged) {
       _initialLoadStarted = true;
@@ -247,8 +194,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
     unawaited(_loadActivities());
   }
 
+  void _resetAllFilters(String? defaultAgeBand) {
+    _searchController.clear();
+    setState(() {
+      _ageBand = defaultAgeBand;
+      _domain = null;
+      _language = null;
+      _setting = null;
+      _searchQuery = '';
+    });
+    unawaited(_loadActivities());
+  }
+
   Future<void> _openMoreFilters(Child? activeChild) async {
-    final defaultAgeBand = _catalogAgeBand(activeChild?.ageBand);
+    final defaultAgeBand = normalizeCatalogAgeBandCode(activeChild?.ageBand);
     await showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
@@ -258,163 +217,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
       sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
           ? AnimationStyle.noAnimation
           : null,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) {
-          final hasCustomFilters =
-              _ageBand != defaultAgeBand ||
-              _language != null ||
-              _setting != null;
-          return SizedBox(
-            width: double.infinity,
-            child: SafeArea(
-              top: false,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.space16,
-                  AppSpacing.space8,
-                  AppSpacing.space16,
-                  AppSpacing.space24,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Filters',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        if (hasCustomFilters)
-                          TextButton(
-                            onPressed: () {
-                              _changeFilter(
-                                ageBand: defaultAgeBand,
-                                domain: _domain,
-                                language: null,
-                                setting: null,
-                                updateSetting: true,
-                              );
-                              Navigator.pop(sheetContext);
-                            },
-                            child: const Text('Reset filters'),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                    Text(
-                      "Child's age",
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.space8),
-                    DropdownButtonFormField<String?>(
-                      key: ValueKey('age-$_ageBand'),
-                      initialValue: _ageBand,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: "Child's age",
-                      ),
-                      items: [
-                        const DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('All age bands'),
-                        ),
-                        ..._ageBands.entries.map(
-                          (entry) => DropdownMenuItem<String?>(
-                            value: entry.key,
-                            child: Text(entry.value),
-                          ),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        _changeFilter(
-                          ageBand: value,
-                          domain: _domain,
-                          language: _language,
-                        );
-                        setSheetState(() {});
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.space20),
-                    Text(
-                      'Language',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.space8),
-                    Wrap(
-                      spacing: AppSpacing.space8,
-                      runSpacing: AppSpacing.space8,
-                      children: [
-                        LanguageFilterChip(
-                          label: 'All languages',
-                          selected: _language == null,
-                          onSelected: () => _selectLanguage(sheetContext, null),
-                        ),
-                        ..._languages.entries.map(
-                          (entry) => LanguageFilterChip(
-                            label: entry.value,
-                            selected: _language == entry.key,
-                            onSelected: () =>
-                                _selectLanguage(sheetContext, entry.key),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.space20),
-                    Text(
-                      'Play space',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.space8),
-                    Wrap(
-                      spacing: AppSpacing.space8,
-                      runSpacing: AppSpacing.space8,
-                      children: [
-                        LanguageFilterChip(
-                          label: 'Any space',
-                          selected: _setting == null,
-                          onSelected: () => _selectSetting(sheetContext, null),
-                        ),
-                        ..._settings.entries.map(
-                          (entry) => LanguageFilterChip(
-                            label: entry.value,
-                            selected: _setting == entry.key,
-                            onSelected: () =>
-                                _selectSetting(sheetContext, entry.key),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                    Text(
-                      'Defaults to your active child\'s age range. Adjust anytime to browse other ages or languages.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
+      builder: (_) => ExploreFiltersSheet(
+        initialAgeBand: _ageBand,
+        defaultAgeBand: defaultAgeBand,
+        selectedLanguage: _language,
+        selectedSetting: _setting,
+        onAgeBandChanged: (value) =>
+            _changeFilter(ageBand: value, domain: _domain, language: _language),
+        onLanguageSelected: (language) => _changeFilter(
+          ageBand: _ageBand,
+          domain: _domain,
+          language: language,
+        ),
+        onSettingSelected: (setting) => _changeFilter(
+          ageBand: _ageBand,
+          domain: _domain,
+          language: _language,
+          setting: setting,
+          updateSetting: true,
+        ),
+        onResetFilters: () => _changeFilter(
+          ageBand: defaultAgeBand,
+          domain: _domain,
+          language: null,
+          setting: null,
+          updateSetting: true,
+        ),
       ),
     );
-  }
-
-  void _selectLanguage(BuildContext sheetContext, String? language) {
-    _changeFilter(ageBand: _ageBand, domain: _domain, language: language);
-    Navigator.pop(sheetContext);
-  }
-
-  void _selectSetting(BuildContext sheetContext, String? setting) {
-    _changeFilter(
-      ageBand: _ageBand,
-      domain: _domain,
-      language: _language,
-      setting: setting,
-      updateSetting: true,
-    );
-    Navigator.pop(sheetContext);
   }
 
   Future<void> _addToPlan(Activity activity) async {
@@ -429,7 +259,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
       return;
     }
 
-    final date = todayIsoDate();
     final isCustomNonCatalog =
         activity.type == 'story' ||
         activity.type == 'rhyme' ||
@@ -451,7 +280,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       await _planService.addActivityToPlan(
         childId: child.id,
         activityId: activity.id,
-        scheduledDate: date,
+        scheduledDate: todayIsoDate(),
         durationMinutes: activity.durationMinutes,
         customActivity: customSnapshot,
       );
@@ -477,47 +306,85 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
+  Widget _buildSectionTabs() {
+    return ExploreSectionTabs(
+      storybooksSelected: _storybooksSelected,
+      selectedShelf: _selectedBookshelf,
+      savedBookCount: _savedBookCount,
+      onActivities: () => setState(() => _storybooksSelected = false),
+      onStorybooks: () => setState(() {
+        _storybooksSelected = true;
+        _selectedBookshelf = BookshelfShelf.openLibrary;
+      }),
+      onBookshelf: () => setState(() {
+        _storybooksSelected = true;
+        _selectedBookshelf = BookshelfShelf.ourBookshelf;
+      }),
+      onRhymes: () => setState(() {
+        _storybooksSelected = true;
+        _selectedBookshelf = BookshelfShelf.rhymes;
+      }),
+    );
+  }
+
+  Widget _buildSearchRow(Child? activeChild) {
+    final defaultAgeBand = normalizeCatalogAgeBandCode(activeChild?.ageBand);
+    final activeFilterCount =
+        (_ageBand != defaultAgeBand ? 1 : 0) +
+        (_language != null ? 1 : 0) +
+        (_setting != null ? 1 : 0);
+
+    return ExploreSearchFilterRow(
+      controller: _searchController,
+      activeFilterCount: activeFilterCount,
+      onSearchChanged: (value) => setState(() => _searchQuery = value),
+      onOpenFilters: () => _openMoreFilters(activeChild),
+    );
+  }
+
+  Widget _buildStorybooksSection(Child? activeChild) {
+    return StorybooksSection(
+      booksService: BooksService(apiClient: _catalogService.apiClient),
+      aiService: AiService(apiClient: _catalogService.apiClient),
+      planService: _planService,
+      activeChild: activeChild,
+      selectedShelf: _selectedBookshelf,
+      isOffline: _offline,
+      onShelfSelected: (shelf) => setState(() => _selectedBookshelf = shelf),
+      onSavedCountChanged: (count) => setState(() => _savedBookCount = count),
+      onPlanActivity: _addToPlan,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final activities = _visibleActivities;
     final activeChild = AuthScope.maybeOf(context)?.activeChild;
     final ageLabel = _ageBand == null
         ? 'All age bands'
-        : _ageBands[_ageBand] ?? _ageBand!;
+        : ageBandForCode(_ageBand!)?.label ?? _ageBand!;
     final resultCount = activities.length;
     final resultMessage = _ageBand == null
         ? '$resultCount ${resultCount == 1 ? 'activity' : 'activities'}'
         : '$resultCount ${resultCount == 1 ? 'activity' : 'activities'} for $ageLabel';
-    final languageFilterLabel = _language == null
-        ? 'Language'
-        : 'Language: ${_languages[_language] ?? _language}';
-
-    final childLabel = activeChild == null
-        ? 'Choose a child'
-        : 'For ${activeChild.nickname} · ${_childAgeLabel(activeChild)}';
 
     return RefreshIndicator(
       onRefresh: _loadActivities,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isWideLayout = constraints.maxWidth >= 860;
-          final mainColumn = _buildExploreColumn(
-            context: context,
-            activities: activities,
-            activeChild: activeChild,
-            childLabel: childLabel,
-            resultMessage: resultMessage,
-            languageFilterLabel: languageFilterLabel,
-            showInlineIdeaHelper: !isWideLayout,
-          );
-
           if (!isWideLayout) {
             return Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
                   maxWidth: AppSizes.wideContentMaxWidth,
                 ),
-                child: mainColumn,
+                child: _buildCompactScrollView(
+                  context: context,
+                  activities: activities,
+                  activeChild: activeChild,
+                  resultMessage: resultMessage,
+                ),
               ),
             );
           }
@@ -543,13 +410,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: _buildExploreMainSections(
-                            context: context,
-                            activities: activities,
-                            activeChild: activeChild,
-                            resultMessage: resultMessage,
-                            languageFilterLabel: languageFilterLabel,
-                            showInlineIdeaHelper: false,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildSectionTabs(),
+                              if (!_storybooksSelected) ...[
+                                const SizedBox(height: AppSpacing.space12),
+                                _buildSearchRow(activeChild),
+                                const SizedBox(height: AppSpacing.space12),
+                                ExploreDomainFilters(
+                                  domains: AppDomains.labels,
+                                  selectedDomain: _domain,
+                                  horizontalPadding: 0,
+                                  onSelected: (domain) => _changeFilter(
+                                    ageBand: _ageBand,
+                                    domain: domain,
+                                    language: _language,
+                                  ),
+                                ),
+                                ..._buildResultsChildren(
+                                  context: context,
+                                  activities: activities,
+                                  activeChild: activeChild,
+                                  resultMessage: resultMessage,
+                                  showInlineIdeaHelper: false,
+                                ),
+                              ] else ...[
+                                const SizedBox(height: AppSpacing.space16),
+                                _buildStorybooksSection(activeChild),
+                              ],
+                            ],
                           ),
                         ),
                         if (!_storybooksSelected) ...[
@@ -574,14 +464,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildExploreColumn({
+  Widget _buildCompactScrollView({
     required BuildContext context,
     required List<Activity> activities,
     required Child? activeChild,
-    required String childLabel,
     required String resultMessage,
-    required String languageFilterLabel,
-    required bool showInlineIdeaHelper,
   }) {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -600,27 +487,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 subtitle: 'Simple ideas with things you already have.',
               ),
               const SizedBox(height: AppSpacing.space16),
-              ExploreSectionTabs(
-                storybooksSelected: _storybooksSelected,
-                selectedShelf: _selectedBookshelf,
-                savedBookCount: _savedBookCount,
-                onActivities: () => setState(() => _storybooksSelected = false),
-                onStorybooks: () => setState(() {
-                  _storybooksSelected = true;
-                  _selectedBookshelf = BookshelfShelf.openLibrary;
-                }),
-                onBookshelf: () => setState(() {
-                  _storybooksSelected = true;
-                  _selectedBookshelf = BookshelfShelf.ourBookshelf;
-                }),
-                onRhymes: () => setState(() {
-                  _storybooksSelected = true;
-                  _selectedBookshelf = BookshelfShelf.rhymes;
-                }),
-              ),
+              _buildSectionTabs(),
               if (!_storybooksSelected) ...[
                 const SizedBox(height: AppSpacing.space12),
-                _buildSearchAndFilterRow(activeChild),
+                _buildSearchRow(activeChild),
                 const SizedBox(height: AppSpacing.space12),
               ],
             ]),
@@ -629,7 +499,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         if (!_storybooksSelected) ...[
           SliverToBoxAdapter(
             child: ExploreDomainFilters(
-              domains: _domains,
+              domains: AppDomains.labels,
               selectedDomain: _domain,
               onSelected: (domain) => _changeFilter(
                 ageBand: _ageBand,
@@ -647,8 +517,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   activities: activities,
                   activeChild: activeChild,
                   resultMessage: resultMessage,
-                  languageFilterLabel: languageFilterLabel,
-                  showInlineIdeaHelper: showInlineIdeaHelper,
+                  showInlineIdeaHelper: true,
                 ),
               ),
             ),
@@ -665,151 +534,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: Visibility(
               visible: _storybooksSelected,
               maintainState: true,
-              child: StorybooksSection(
-                booksService: BooksService(
-                  apiClient: _catalogService.apiClient,
-                ),
-                aiService: AiService(apiClient: _catalogService.apiClient),
-                planService: _planService,
-                activeChild: activeChild,
-                selectedShelf: _selectedBookshelf,
-                isOffline: _offline,
-                onShelfSelected: (shelf) =>
-                    setState(() => _selectedBookshelf = shelf),
-                onSavedCountChanged: (count) =>
-                    setState(() => _savedBookCount = count),
-                onPlanActivity: _addToPlan,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildExploreMainSections({
-    required BuildContext context,
-    required List<Activity> activities,
-    required Child? activeChild,
-    required String resultMessage,
-    required String languageFilterLabel,
-    required bool showInlineIdeaHelper,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ExploreSectionTabs(
-          storybooksSelected: _storybooksSelected,
-          selectedShelf: _selectedBookshelf,
-          savedBookCount: _savedBookCount,
-          onActivities: () => setState(() => _storybooksSelected = false),
-          onStorybooks: () => setState(() {
-            _storybooksSelected = true;
-            _selectedBookshelf = BookshelfShelf.openLibrary;
-          }),
-          onBookshelf: () => setState(() {
-            _storybooksSelected = true;
-            _selectedBookshelf = BookshelfShelf.ourBookshelf;
-          }),
-          onRhymes: () => setState(() {
-            _storybooksSelected = true;
-            _selectedBookshelf = BookshelfShelf.rhymes;
-          }),
-        ),
-        if (!_storybooksSelected) ...[
-          const SizedBox(height: AppSpacing.space12),
-          _buildSearchAndFilterRow(activeChild),
-          const SizedBox(height: AppSpacing.space12),
-          ExploreDomainFilters(
-            domains: _domains,
-            selectedDomain: _domain,
-            horizontalPadding: 0,
-            onSelected: (domain) => _changeFilter(
-              ageBand: _ageBand,
-              domain: domain,
-              language: _language,
-            ),
-          ),
-          ..._buildResultsChildren(
-            context: context,
-            activities: activities,
-            activeChild: activeChild,
-            resultMessage: resultMessage,
-            languageFilterLabel: languageFilterLabel,
-            showInlineIdeaHelper: showInlineIdeaHelper,
-          ),
-        ] else ...[
-          const SizedBox(height: AppSpacing.space16),
-          StorybooksSection(
-            booksService: BooksService(apiClient: _catalogService.apiClient),
-            aiService: AiService(apiClient: _catalogService.apiClient),
-            planService: _planService,
-            activeChild: activeChild,
-            selectedShelf: _selectedBookshelf,
-            isOffline: _offline,
-            onShelfSelected: (shelf) =>
-                setState(() => _selectedBookshelf = shelf),
-            onSavedCountChanged: (count) =>
-                setState(() => _savedBookCount = count),
-            onPlanActivity: _addToPlan,
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildSearchAndFilterRow(Child? activeChild) {
-    final defaultAgeBand = _catalogAgeBand(activeChild?.ageBand);
-    final activeFilterCount =
-        (_ageBand != defaultAgeBand ? 1 : 0) +
-        (_language != null ? 1 : 0) +
-        (_setting != null ? 1 : 0);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: TextField(
-            key: const ValueKey('materials-search'),
-            controller: _searchController,
-            onChanged: (value) => setState(() => _searchQuery = value),
-            decoration: const InputDecoration(
-              hintText: 'Search activities or materials',
-              prefixIcon: Icon(Icons.search),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.space8),
-        SizedBox(
-          width: AppSizes.touchTarget,
-          height: AppSizes.touchTarget,
-          child: OutlinedButton(
-            key: const ValueKey('more-filters'),
-            onPressed: () => _openMoreFilters(activeChild),
-            style: OutlinedButton.styleFrom(
-              padding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.control),
-              ),
-              side: BorderSide(
-                color: activeFilterCount > 0
-                    ? AppColors.forest
-                    : AppColors.borderInput,
-              ),
-              backgroundColor: activeFilterCount > 0
-                  ? AppColors.softGreen
-                  : AppColors.surfaceCard,
-            ),
-            child: Tooltip(
-              message: activeFilterCount > 0
-                  ? 'Filters ($activeFilterCount active)'
-                  : 'Filters',
-              child: Badge.count(
-                count: activeFilterCount,
-                isLabelVisible: activeFilterCount > 0,
-                backgroundColor: AppColors.forest,
-                child: const Icon(Icons.tune, color: AppColors.forest),
-              ),
+              child: _buildStorybooksSection(activeChild),
             ),
           ),
         ),
@@ -822,10 +547,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     required List<Activity> activities,
     required Child? activeChild,
     required String resultMessage,
-    required String languageFilterLabel,
     required bool showInlineIdeaHelper,
   }) {
-    final defaultAgeBand = _catalogAgeBand(activeChild?.ageBand);
+    final defaultAgeBand = normalizeCatalogAgeBandCode(activeChild?.ageBand);
     final hasCustomFilter =
         _ageBand != defaultAgeBand ||
         _language != null ||
@@ -834,8 +558,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         _searchQuery.trim().isNotEmpty;
     final summaryParts = <String>[
       resultMessage,
-      if (_language != null) _languages[_language] ?? _language!,
-      if (_setting != null) _settings[_setting] ?? _setting!,
+      if (_language != null) AppLanguages.labels[_language] ?? _language!,
+      if (_setting != null) formatSettingLabel(_setting!),
     ];
     final activeSummary = summaryParts.join(' · ');
 
@@ -852,7 +576,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
         const SizedBox(height: AppSpacing.space8),
       ],
-      if (!_storybooksSelected && !_loading && _errorMessage == null)
+      if (!_loading && _errorMessage == null)
         Row(
           children: [
             Expanded(
@@ -866,17 +590,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             if (hasCustomFilter)
               TextButton(
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() {
-                    _ageBand = defaultAgeBand;
-                    _domain = null;
-                    _language = null;
-                    _setting = null;
-                    _searchQuery = '';
-                  });
-                  unawaited(_loadActivities());
-                },
+                onPressed: () => _resetAllFilters(defaultAgeBand),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(
@@ -887,16 +601,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
           ],
         ),
-      if (showInlineIdeaHelper &&
-          !_loading &&
-          _errorMessage == null &&
-          !_storybooksSelected) ...[
+      if (showInlineIdeaHelper && !_loading && _errorMessage == null) ...[
         const SizedBox(height: AppSpacing.space8),
         CompactIdeaHelperBar(
           onTap: () => Navigator.pushNamed(context, '/ai-suggest'),
         ),
       ],
-      if (_loading && !_storybooksSelected) ...[
+      if (_loading) ...[
         const SizedBox(height: AppSpacing.space8),
         Semantics(
           liveRegion: true,
@@ -907,10 +618,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         const ActivityLoadingSkeleton(),
         const ActivityLoadingSkeleton(),
       ],
-      if (!_loading &&
-          _errorMessage == null &&
-          activities.isEmpty &&
-          !_storybooksSelected)
+      if (!_loading && _errorMessage == null && activities.isEmpty)
         Padding(
           padding: const EdgeInsets.only(top: AppSpacing.space16),
           child: EmptyStateView(
@@ -921,25 +629,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
             icon: Icons.search_off_outlined,
             actionLabel: 'Clear filters',
             announce: true,
-            onAction: () {
-              _searchController.clear();
-              setState(() {
-                _ageBand = defaultAgeBand;
-                _domain = null;
-                _language = null;
-                _searchQuery = '';
-              });
-              unawaited(_loadActivities());
-            },
+            onAction: () => _resetAllFilters(defaultAgeBand),
           ),
         ),
-      if (_storybooksSelected)
-        const EmptyStateView(
-          title: 'Storybooks',
-          message: 'Browse and save family storybooks here.',
-          icon: Icons.menu_book_outlined,
-        ),
-      if (!_loading && _errorMessage == null && !_storybooksSelected)
+      if (!_loading && _errorMessage == null)
         ...activities.map(
           (activity) => Padding(
             padding: const EdgeInsets.only(
@@ -948,7 +641,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             child: ExploreActivityCard(
               activity: activity,
-              domainLabel: _domains[activity.domain] ?? activity.domain,
+              domainLabel: friendlyDomainLabel(activity.domain),
               onAdd: () => _addToPlan(activity),
             ),
           ),

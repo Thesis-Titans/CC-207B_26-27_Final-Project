@@ -3,18 +3,19 @@ import 'package:flutter/material.dart';
 import '../../../models/age_band.dart';
 import '../../../models/weather.dart';
 import '../../../theme/app_tokens.dart';
+import '../../../utils/domain_labels.dart';
 import '../../../widgets/weather_hint_banner.dart';
 
 /// Play setting choices accepted by the Idea Helper request.
 enum PlaySettingOption {
   /// Either indoor or outdoor play.
-  either('either', 'Indoor or outdoor'),
+  either(PlaySetting.either, 'Indoor or outdoor'),
 
   /// Indoor play only.
-  indoor('indoor', 'Indoor'),
+  indoor(PlaySetting.indoor, 'Indoor'),
 
   /// Outdoor play only.
-  outdoor('outdoor', 'Outdoor');
+  outdoor(PlaySetting.outdoor, 'Outdoor');
 
   const PlaySettingOption(this.code, this.label);
 
@@ -28,13 +29,13 @@ enum PlaySettingOption {
 /// Supported caregiver languages for Idea Helper recommendations.
 enum PlayLanguageOption {
   /// English language responses.
-  english('en', 'English'),
+  english(AppLanguages.english, 'English'),
 
   /// Filipino language responses.
-  filipino('fil', 'Filipino'),
+  filipino(AppLanguages.filipino, 'Filipino'),
 
   /// Hiligaynon language responses.
-  hiligaynon('hil', 'Hiligaynon');
+  hiligaynon(AppLanguages.hiligaynon, 'Hiligaynon');
 
   const PlayLanguageOption(this.code, this.label);
 

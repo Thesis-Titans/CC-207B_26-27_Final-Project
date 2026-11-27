@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_tokens.dart';
+import '../../../widgets/horizontal_scroll_fade.dart';
 import '../storybooks_section.dart';
+
+export '../../../widgets/horizontal_scroll_fade.dart';
 
 /// Horizontal section switcher across Activities, Storybooks, Bookshelf, and Rhymes.
 class ExploreSectionTabs extends StatelessWidget {
@@ -149,6 +152,84 @@ class _SectionButton extends StatelessWidget {
   }
 }
 
+/// Search field paired with the badged advanced-filters button for Explore.
+class ExploreSearchFilterRow extends StatelessWidget {
+  /// Creates an [ExploreSearchFilterRow].
+  const ExploreSearchFilterRow({
+    super.key,
+    required this.controller,
+    required this.activeFilterCount,
+    required this.onSearchChanged,
+    required this.onOpenFilters,
+  });
+
+  /// Text controller backing the catalog search input.
+  final TextEditingController controller;
+
+  /// Number of non-default filters currently active in the filter sheet.
+  final int activeFilterCount;
+
+  /// Callback invoked whenever the search query changes.
+  final ValueChanged<String> onSearchChanged;
+
+  /// Callback invoked when the caregiver taps the filter button.
+  final VoidCallback onOpenFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: TextField(
+            key: const ValueKey('materials-search'),
+            controller: controller,
+            onChanged: onSearchChanged,
+            decoration: const InputDecoration(
+              hintText: 'Search activities or materials',
+              prefixIcon: Icon(Icons.search),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.space8),
+        SizedBox(
+          width: AppSizes.touchTarget,
+          height: AppSizes.touchTarget,
+          child: OutlinedButton(
+            key: const ValueKey('more-filters'),
+            onPressed: onOpenFilters,
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.control),
+              ),
+              side: BorderSide(
+                color: activeFilterCount > 0
+                    ? AppColors.forest
+                    : AppColors.borderInput,
+              ),
+              backgroundColor: activeFilterCount > 0
+                  ? AppColors.softGreen
+                  : AppColors.surfaceCard,
+            ),
+            child: Tooltip(
+              message: activeFilterCount > 0
+                  ? 'Filters ($activeFilterCount active)'
+                  : 'Filters',
+              child: Badge.count(
+                count: activeFilterCount,
+                isLabelVisible: activeFilterCount > 0,
+                backgroundColor: AppColors.forest,
+                child: const Icon(Icons.tune, color: AppColors.forest),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Horizontal row of developmental domain filter chips for Explore.
 class ExploreDomainFilters extends StatelessWidget {
   /// Creates an [ExploreDomainFilters].
@@ -262,10 +343,7 @@ class CompactIdeaHelperBar extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.card),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.space12,
-            vertical: AppSpacing.space12,
-          ),
+          padding: const EdgeInsets.all(AppSpacing.space12),
           child: Row(
             children: [
               const Icon(
@@ -309,56 +387,6 @@ class CompactIdeaHelperBar extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Applies a soft right-edge fade when a horizontal scroll view has more content.
-class HorizontalScrollFade extends StatefulWidget {
-  /// Creates a [HorizontalScrollFade].
-  const HorizontalScrollFade({super.key, required this.child});
-
-  /// Horizontally scrollable child widget.
-  final Widget child;
-
-  @override
-  State<HorizontalScrollFade> createState() => _HorizontalScrollFadeState();
-}
-
-class _HorizontalScrollFadeState extends State<HorizontalScrollFade> {
-  bool _showRightFade = true;
-
-  bool _handleScroll(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.horizontal) return false;
-    final hasMoreRight =
-        notification.metrics.maxScrollExtent > 0 &&
-        notification.metrics.extentAfter > 4;
-    if (hasMoreRight != _showRightFade) {
-      setState(() => _showRightFade = hasMoreRight);
-    }
-    return false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: _handleScroll,
-      child: _showRightFade
-          ? ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  AppColors.surfaceCard,
-                  AppColors.surfaceCard,
-                  Colors.transparent,
-                ],
-                stops: [0.0, 0.9, 1.0],
-              ).createShader(bounds),
-              blendMode: BlendMode.dstIn,
-              child: widget.child,
-            )
-          : widget.child,
     );
   }
 }

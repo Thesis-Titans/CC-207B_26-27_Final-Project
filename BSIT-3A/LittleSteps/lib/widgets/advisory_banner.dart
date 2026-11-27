@@ -59,7 +59,7 @@ class AdvisoryBanner extends StatelessWidget {
                 if (heading != null) ...[
                   Text(
                     heading,
-                    style: const TextStyle(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),

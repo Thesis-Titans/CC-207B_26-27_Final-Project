@@ -11,6 +11,7 @@ import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
 import 'observation_form_sheet.dart';
 import 'widgets/milestone_prompt_card.dart';
+import 'widgets/milestone_widgets.dart';
 
 /// View states for the milestones screen.
 enum MilestonesViewState {
@@ -62,6 +63,15 @@ class MilestonesScreen extends StatefulWidget {
 }
 
 class _MilestonesScreenState extends State<MilestonesScreen> {
+  static const List<String> _ageBands = [
+    '0-11 months',
+    '12-23 months',
+    '24-35 months',
+    '36-47 months',
+    '48-59 months',
+    '60-71 months',
+  ];
+
   late MilestonesViewState _currentState;
   late List<MilestonePrompt> _prompts;
   late Map<String, MilestoneObservation> _observations;
@@ -73,14 +83,13 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   bool _initialLoadStarted = false;
   bool _promptsLoadStarted = false;
 
-  String get _childName {
-    final session = AuthScope.maybeOf(context);
-    return session?.activeChild?.nickname ?? 'Maya';
-  }
+  String get _childName =>
+      AuthScope.maybeOf(context)?.activeChild?.nickname ?? 'Maya';
+
+  String? get _childId => AuthScope.maybeOf(context)?.activeChild?.id;
 
   int get _childAgeMonths {
-    final session = AuthScope.maybeOf(context);
-    final ageBand = session?.activeChild?.ageBand;
+    final ageBand = AuthScope.maybeOf(context)?.activeChild?.ageBand;
     if (ageBand != null) {
       final match = RegExp(r'\d+').firstMatch(ageBand);
       if (match != null) {
@@ -90,25 +99,15 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     return 14;
   }
 
-  // Maps the active child's age in months to the nearest milestone prompt band.
   String get _childAgeBand {
     final months = _childAgeMonths;
-    if (months < 12) return '0-11 months';
-    if (months < 24) return '12-23 months';
-    if (months < 36) return '24-35 months';
-    if (months < 48) return '36-47 months';
-    if (months < 60) return '48-59 months';
-    return '60-71 months';
+    if (months < 12) return _ageBands[0];
+    if (months < 24) return _ageBands[1];
+    if (months < 36) return _ageBands[2];
+    if (months < 48) return _ageBands[3];
+    if (months < 60) return _ageBands[4];
+    return _ageBands[5];
   }
-
-  static const List<String> _ageBands = [
-    '0-11 months',
-    '12-23 months',
-    '24-35 months',
-    '36-47 months',
-    '48-59 months',
-    '60-71 months',
-  ];
 
   @override
   void initState() {
@@ -116,7 +115,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     _currentState = widget.initialState;
     _prompts = widget.prompts;
     _observations = Map.from(widget.initialObservations);
-    _selectedAgeBand = '12-23 months';
+    _selectedAgeBand = _ageBands[1];
   }
 
   ApiClient _resolveApiClient() {
@@ -126,18 +125,13 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   }
 
   MilestonesService _resolveMilestonesService() {
-    if (widget.milestonesService != null) return widget.milestonesService!;
-    return MilestonesService(apiClient: _resolveApiClient());
+    return widget.milestonesService ??
+        MilestonesService(apiClient: _resolveApiClient());
   }
 
   CatalogService _resolveCatalogService() {
-    if (widget.catalogService != null) return widget.catalogService!;
-    return CatalogService(apiClient: _resolveApiClient());
-  }
-
-  String? get _childId {
-    final session = AuthScope.maybeOf(context);
-    return session?.activeChild?.id;
+    return widget.catalogService ??
+        CatalogService(apiClient: _resolveApiClient());
   }
 
   @override
@@ -209,8 +203,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     if (!canFetch) return;
 
     try {
-      final service = _resolveMilestonesService();
-      final fetched = await service.getObservations(childId);
+      final fetched = await _resolveMilestonesService().getObservations(
+        childId,
+      );
       if (!mounted || childId != _lastChildId) return;
       setState(() {
         _observations = {for (final obs in fetched) obs.milestoneId: obs};
@@ -235,60 +230,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           top: Radius.circular(AppRadius.sheet),
         ),
       ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.space16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  "Child's age range",
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  'You can browse any age range.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: AppSpacing.space12),
-                ..._ageBands.map((band) {
-                  final isSelected = band == _selectedAgeBand;
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space8,
-                      vertical: AppSpacing.space4,
-                    ),
-                    title: Text(
-                      band,
-                      style: TextStyle(
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: isSelected
-                            ? AppColors.forest
-                            : AppColors.textPrimary,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check, color: AppColors.forest)
-                        : null,
-                    onTap: () {
-                      setState(() => _selectedAgeBand = band);
-                      Navigator.of(context).pop();
-                    },
-                  );
-                }),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (_) => MilestoneAgeBandPickerSheet(
+        ageBands: _ageBands,
+        selectedAgeBand: _selectedAgeBand,
+        onSelected: (band) => setState(() => _selectedAgeBand = band),
+      ),
     );
   }
 
@@ -355,330 +301,20 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
           top: Radius.circular(AppRadius.sheet),
         ),
       ),
-      builder: (context) {
-        return ObservationFormSheet(
-          prompt: prompt,
-          childName: _childName,
-          childAgeMonths: _childAgeMonths,
-          initialObservation: _observations[prompt.id],
-          isOffline: _currentState == MilestonesViewState.offline,
-          onRetryOffline: () =>
-              setState(() => _currentState = MilestonesViewState.ready),
-          onSave: _saveObservation,
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.surfaceCanvas,
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space16,
-        vertical: AppSpacing.space16,
-      ),
-      children: [
-        ScreenHeader(
-          title: 'Milestones',
-          subtitle: 'Every child develops at their own pace.',
-          onAdvisoryTap: !_showAdvisory
-              ? () => setState(() => _showAdvisory = true)
-              : null,
-        ),
-        const SizedBox(height: AppSpacing.space12),
-        if (_currentState == MilestonesViewState.loading)
-          _buildLoadingState()
-        else if (_currentState == MilestonesViewState.error)
-          _buildErrorState()
-        else ...[
-          if (_currentState == MilestonesViewState.offline)
-            _buildOfflineBanner(),
-          if (_currentState == MilestonesViewState.empty ||
-              _observations.isEmpty)
-            _buildEmptyStateCard(),
-          if (_showAdvisory) _buildAdvisoryBanner(),
-          InkWell(
-            onTap: _showAgeBandPicker,
-            borderRadius: BorderRadius.circular(AppRadius.control),
-            child: Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Child's age",
-                      style: Theme.of(context).textTheme.labelSmall
-                          ?.copyWith(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: AppSpacing.space4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.space12,
-                        vertical: AppSpacing.space8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceCard,
-                        border: Border.all(color: AppColors.borderSubtle),
-                        borderRadius: BorderRadius.circular(AppRadius.control),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            _selectedAgeBand,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(width: AppSpacing.space8),
-                          const Icon(
-                            Icons.arrow_drop_down,
-                            size: 18,
-                            color: AppColors.textSecondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          _buildDomainChips(),
-          const SizedBox(height: AppSpacing.space16),
-          ..._buildGroupedPrompts(),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Loading milestones...',
-          style: Theme.of(context).textTheme.bodyMedium
-              ?.copyWith(color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: AppSpacing.space16),
-        for (int i = 0; i < 3; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-            child: Container(
-              height: 72,
-              padding: const EdgeInsets.all(AppSpacing.space16),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceCard,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                border: Border.all(color: AppColors.borderSubtle),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: AppColors.borderSubtle,
-                            borderRadius: BorderRadius.circular(
-                              AppRadius.skeleton,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space8),
-                        Container(
-                          width: 140,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: AppColors.borderSubtle.withValues(
-                              alpha: 0.6,
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              AppRadius.skeleton,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.space16),
-                  Container(
-                    width: 48,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppColors.borderSubtle,
-                      borderRadius: BorderRadius.circular(AppRadius.control),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildErrorState() => InlineErrorCard(onRetry: _retryLoad);
-
-  Widget _buildOfflineBanner() {
-    return OfflineStatusCard(
-      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      message: "Your note wasn't saved. Keep this screen open and tap Retry when you're back online.",
-      onRetry: _retryLoad,
-    );
-  }
-
-  Widget _buildEmptyStateCard() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      padding: const EdgeInsets.all(AppSpacing.space20),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: const Center(
-        child: Column(
-          children: [
-            CircleAvatar(
-              backgroundColor: AppColors.softGreen,
-              radius: 24,
-              child: Icon(
-                Icons.eco_outlined,
-                color: AppColors.forest,
-                size: 24,
-              ),
-            ),
-            SizedBox(height: AppSpacing.space12),
-            Text(
-              'Nothing noted yet',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            SizedBox(height: AppSpacing.space4),
-            Text(
-              'Look for small moments during play.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-            ),
-          ],
-        ),
+      builder: (_) => ObservationFormSheet(
+        prompt: prompt,
+        childName: _childName,
+        childAgeMonths: _childAgeMonths,
+        initialObservation: _observations[prompt.id],
+        isOffline: _currentState == MilestonesViewState.offline,
+        onRetryOffline: () =>
+            setState(() => _currentState = MilestonesViewState.ready),
+        onSave: _saveObservation,
       ),
     );
   }
 
-  Widget _buildAdvisoryBanner() {
-    return AdvisoryBanner(
-      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      title: 'LittleSteps is not a diagnostic tool',
-      message: "LittleSteps shares play ideas and things to look for. It's not a test. Children develop at different rates. Talk to a health professional, like your pediatrician or barangay health worker, if you have concerns.",
-      onDismiss: () => setState(() => _showAdvisory = false),
-    );
-  }
-
-  bool _showDomainRightFade = true;
-
-  Widget _buildDomainChips() {
-    final row = SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.only(right: AppSpacing.space20),
-      child: Row(
-        children: [
-          ChoiceChip(
-            showCheckmark: false,
-            label: const Text('All'),
-            selected: _selectedDomainFilter == null,
-            selectedColor: AppColors.forest,
-            backgroundColor: AppColors.surfaceCard,
-            labelStyle: TextStyle(
-              color: _selectedDomainFilter == null
-                  ? AppColors.surfaceCard
-                  : AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.chip),
-              side: BorderSide(
-                color: _selectedDomainFilter == null
-                    ? AppColors.forest
-                    : AppColors.borderSubtle,
-              ),
-            ),
-            onSelected: (_) => setState(() => _selectedDomainFilter = null),
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          ...MilestoneDomain.values.map((domain) {
-            final isSelected = _selectedDomainFilter == domain;
-            return Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.space8),
-              child: ChoiceChip(
-                showCheckmark: false,
-                label: Text(domain.label),
-                selected: isSelected,
-                selectedColor: AppColors.forest,
-                backgroundColor: AppColors.surfaceCard,
-                labelStyle: TextStyle(
-                  color: isSelected
-                      ? AppColors.surfaceCard
-                      : AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.chip),
-                  side: BorderSide(
-                    color: isSelected
-                        ? AppColors.forest
-                        : AppColors.borderSubtle,
-                  ),
-                ),
-                onSelected: (_) =>
-                    setState(() => _selectedDomainFilter = domain),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-
-    return NotificationListener<ScrollNotification>(
-      onNotification: (notification) {
-        if (notification.metrics.axis != Axis.horizontal) return false;
-        final hasMoreRight =
-            notification.metrics.maxScrollExtent > 0 &&
-            notification.metrics.extentAfter > 4;
-        if (hasMoreRight != _showDomainRightFade) {
-          setState(() => _showDomainRightFade = hasMoreRight);
-        }
-        return false;
-      },
-      child: _showDomainRightFade
-          ? ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  AppColors.surfaceCard,
-                  AppColors.surfaceCard,
-                  Colors.transparent,
-                ],
-                stops: [0.0, 0.9, 1.0],
-              ).createShader(bounds),
-              blendMode: BlendMode.dstIn,
-              child: row,
-            )
-          : row,
-    );
-  }
-
-  List<Widget> _buildGroupedPrompts() {
+  List<Widget> _buildGroupedPrompts(BuildContext context) {
     final ageBandPrompts = _prompts
         .where((p) => p.ageBand == _selectedAgeBand)
         .toList();
@@ -689,12 +325,12 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
               .where((p) => p.domain == _selectedDomainFilter)
               .toList();
 
-    final Map<MilestoneDomain, List<MilestonePrompt>> grouped = {};
+    final grouped = <MilestoneDomain, List<MilestonePrompt>>{};
     for (final p in filteredPrompts) {
       grouped.putIfAbsent(p.domain, () => []).add(p);
     }
 
-    final List<Widget> widgets = [];
+    final widgets = <Widget>[];
     for (final domain in MilestoneDomain.values) {
       final domainPrompts = grouped[domain];
       if (domainPrompts == null || domainPrompts.isEmpty) continue;
@@ -723,5 +359,59 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       }
     }
     return widgets;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surfaceCanvas,
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        children: [
+          ScreenHeader(
+            title: 'Milestones',
+            subtitle: 'Every child develops at their own pace.',
+            onAdvisoryTap: !_showAdvisory
+                ? () => setState(() => _showAdvisory = true)
+                : null,
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          if (_currentState == MilestonesViewState.loading)
+            const MilestonesLoadingSkeleton()
+          else if (_currentState == MilestonesViewState.error)
+            InlineErrorCard(onRetry: _retryLoad)
+          else ...[
+            if (_currentState == MilestonesViewState.offline)
+              OfflineStatusCard(
+                margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+                message: "Your note wasn't saved. Keep this screen open and tap Retry when you're back online.",
+                onRetry: _retryLoad,
+              ),
+            if (_currentState == MilestonesViewState.empty ||
+                _observations.isEmpty)
+              const MilestonesEmptyCard(),
+            if (_showAdvisory)
+              AdvisoryBanner(
+                margin: const EdgeInsets.only(bottom: AppSpacing.space12),
+                title: 'LittleSteps is not a diagnostic tool',
+                message: "LittleSteps shares play ideas and things to look for. It's not a test. Children develop at different rates. Talk to a health professional, like your pediatrician or barangay health worker, if you have concerns.",
+                onDismiss: () => setState(() => _showAdvisory = false),
+              ),
+            MilestoneAgeBandSelector(
+              selectedAgeBand: _selectedAgeBand,
+              onTap: _showAgeBandPicker,
+            ),
+            const SizedBox(height: AppSpacing.space12),
+            MilestoneDomainFilters(
+              selectedDomain: _selectedDomainFilter,
+              onSelected: (domain) =>
+                  setState(() => _selectedDomainFilter = domain),
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            ..._buildGroupedPrompts(context),
+          ],
+        ],
+      ),
+    );
   }
 }

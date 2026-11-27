@@ -157,7 +157,7 @@ class AuthResponsiveLayout extends StatelessWidget {
             border: Border(right: BorderSide(color: AppColors.borderSubtle)),
           ),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
+            padding: const EdgeInsets.all(AppSpacing.space32),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: (constraints.maxHeight - 72).clamp(
@@ -203,7 +203,9 @@ class AuthResponsiveLayout extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Padding(
-                                  padding: EdgeInsets.only(top: 2),
+                                  padding: EdgeInsets.only(
+                                    top: AppSpacing.space4 / 2,
+                                  ),
                                   child: Icon(
                                     Icons.check,
                                     size: 16,

@@ -4,6 +4,7 @@ import '../../../config/external_links.dart';
 import '../../../models/activity.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/app_tokens.dart';
+import '../../../utils/domain_labels.dart';
 import '../../../utils/url_helper.dart';
 
 /// Card displaying a catalog play activity with provenance badge and add CTA.
@@ -29,9 +30,7 @@ class ExploreActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isReviewed = activity.status == 'reviewed_approved';
-    final setting = activity.setting.isEmpty
-        ? activity.setting
-        : '${activity.setting[0].toUpperCase()}${activity.setting.substring(1)}';
+    final setting = formatSettingLabel(activity.setting);
     final meta = '${activity.durationEstimate} · $domainLabel · $setting';
 
     return Card.outlined(
@@ -282,7 +281,7 @@ class ReviewProvenanceBadge extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(top: 1),
+              padding: const EdgeInsets.only(top: AppSpacing.space4 / 2),
               child: Icon(
                 reviewed ? Icons.verified_outlined : Icons.menu_book_outlined,
                 size: 16,

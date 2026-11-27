@@ -202,6 +202,11 @@ abstract final class AppTheme {
         }),
       ),
       textTheme: const TextTheme(
+        displaySmall: TextStyle(
+          fontSize: 28,
+          height: 34 / 28,
+          fontWeight: FontWeight.w700,
+        ),
         headlineMedium: TextStyle(
           fontSize: 26,
           height: 32 / 26,
@@ -236,6 +241,11 @@ abstract final class AppTheme {
           fontSize: 14,
           height: 20 / 14,
           fontWeight: FontWeight.w600,
+        ),
+        labelMedium: TextStyle(
+          fontSize: 12,
+          height: 16 / 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
       cardTheme: CardThemeData(

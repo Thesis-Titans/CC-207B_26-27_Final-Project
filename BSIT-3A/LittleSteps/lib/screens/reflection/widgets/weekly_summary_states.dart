@@ -13,6 +13,7 @@ class WeeklySummaryEmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.space24),
       decoration: BoxDecoration(
@@ -32,17 +33,18 @@ class WeeklySummaryEmptyCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.space16),
-          const Text(
+          Text(
             'Nothing recorded this week yet',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.space8),
-          const Text(
+          Text(
             "This fills in when you finish an activity or note a milestone. There's no daily goal and nothing to catch up on.",
-            style: TextStyle(
+            style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textSecondary,
-              fontSize: 13,
               height: 1.35,
             ),
             textAlign: TextAlign.center,
@@ -51,21 +53,8 @@ class WeeklySummaryEmptyCard extends StatelessWidget {
           SizedBox(
             height: AppSizes.touchTarget,
             child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.forest,
-                foregroundColor: AppColors.surfaceCard,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.space24,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.control),
-                ),
-              ),
               onPressed: onFindIdea,
-              child: const Text(
-                'Find a 10-minute idea',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              child: const Text('Find a 10-minute idea'),
             ),
           ),
         ],

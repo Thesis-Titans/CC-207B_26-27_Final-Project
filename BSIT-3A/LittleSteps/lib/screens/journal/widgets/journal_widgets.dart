@@ -113,15 +113,14 @@ class JournalPrivateBadge extends StatelessWidget {
         const SizedBox(width: AppSpacing.space4),
         Text(
           'Private',
-          style: filled
-              ? Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.forest,
-                  fontWeight: FontWeight.bold,
-                )
-              : const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.forest,
-                ),
+          style:
+              (filled
+                      ? Theme.of(context).textTheme.labelSmall
+                      : Theme.of(context).textTheme.bodyMedium)
+                  ?.copyWith(
+                    color: AppColors.forest,
+                    fontWeight: FontWeight.bold,
+                  ),
         ),
       ],
     );
