@@ -14,9 +14,9 @@ import '../../widgets/advisory_banner.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
+import '../../widgets/weather_hint_banner.dart';
 import 'widgets/today_activity_card.dart';
 import 'widgets/today_side_cards.dart';
-import 'widgets/today_weather_banner.dart';
 
 /// Interaction states displayed by [TodayScreen].
 enum TodayViewState {
@@ -986,9 +986,10 @@ class _TodayScreenState extends State<TodayScreen> {
       return const SizedBox.shrink();
     }
 
-    return TodayWeatherBanner(
+    return WeatherHintBanner(
       hint: hint,
       hasPlans: _plans.isNotEmpty,
+      margin: const EdgeInsets.only(bottom: AppSpacing.space16),
       onDismiss: () => setState(() => _weatherDismissed = true),
       onApplyIndoorAction: () {
         setState(() => _filterIndoor = true);

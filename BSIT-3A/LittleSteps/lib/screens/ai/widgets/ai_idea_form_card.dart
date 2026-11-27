@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/age_band.dart';
 import '../../../models/weather.dart';
 import '../../../theme/app_tokens.dart';
+import '../../../widgets/weather_hint_banner.dart';
 
 /// Play setting choices accepted by the Idea Helper request.
 enum PlaySettingOption {
@@ -137,9 +138,10 @@ class AiIdeaFormCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.space16),
             if (hint != null && !hint.isUnavailable) ...[
-              _WeatherGuidanceBanner(
-                weatherHint: hint,
+              WeatherHintBanner(
+                hint: hint,
                 cityLabel: weatherCityLabel,
+                advisoryTone: true,
               ),
               const SizedBox(height: AppSpacing.space16),
             ],
@@ -260,66 +262,6 @@ class AiIdeaFormCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _WeatherGuidanceBanner extends StatelessWidget {
-  const _WeatherGuidanceBanner({required this.weatherHint, this.cityLabel});
-
-  final WeatherHint weatherHint;
-  final String? cityLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final attributionText = cityLabel != null && cityLabel!.isNotEmpty
-        ? '$cityLabel · ${weatherHint.attribution}'
-        : weatherHint.attribution;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAdvisory,
-        borderRadius: BorderRadius.circular(AppRadius.chip),
-        border: Border.all(color: AppColors.borderAdvisory),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                weatherHint.isRainy
-                    ? Icons.cloud_outlined
-                    : Icons.wb_sunny_outlined,
-                size: 20,
-                color: AppColors.textPrimary,
-              ),
-              const SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  weatherHint.hint ??
-                      (weatherHint.suggestedSetting == 'indoor'
-                          ? 'Rainy weather · Indoor play suggested'
-                          : 'Outdoor play recommended today'),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space4),
-          Text(
-            attributionText,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
       ),
     );
   }
