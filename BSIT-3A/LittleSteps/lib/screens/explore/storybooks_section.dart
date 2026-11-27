@@ -8,7 +8,6 @@ import '../../models/child.dart';
 import '../../models/plan.dart';
 import '../../models/rhyme.dart';
 import '../../services/ai_service.dart';
-import '../../services/api_client.dart';
 import '../../services/books_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
@@ -121,11 +120,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
 
   BooksService _resolveBooksService() {
     if (widget.booksService != null) return widget.booksService!;
-    final session = AuthScope.maybeOf(context);
-    final client = session != null && AuthScope.maybeOf(context) != null
-        ? AuthScope.apiClientOf(context)
-        : ApiClient();
-    return BooksService(apiClient: client);
+    return BooksService(apiClient: AuthScope.apiClientOrDefault(context));
   }
 
   CatalogService _resolveCatalogService() {
@@ -135,20 +130,12 @@ class _StorybooksSectionState extends State<StorybooksSection> {
 
   AiService _resolveAiService() {
     if (widget.aiService != null) return widget.aiService!;
-    final session = AuthScope.maybeOf(context);
-    final client = session != null && AuthScope.maybeOf(context) != null
-        ? AuthScope.apiClientOf(context)
-        : ApiClient();
-    return AiService(apiClient: client);
+    return AiService(apiClient: AuthScope.apiClientOrDefault(context));
   }
 
   PlanService _resolvePlanService() {
     if (widget.planService != null) return widget.planService!;
-    final session = AuthScope.maybeOf(context);
-    final client = session != null && AuthScope.maybeOf(context) != null
-        ? AuthScope.apiClientOf(context)
-        : ApiClient();
-    return PlanService(apiClient: client);
+    return PlanService(apiClient: AuthScope.apiClientOrDefault(context));
   }
 
   @override

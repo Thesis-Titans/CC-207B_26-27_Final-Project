@@ -122,9 +122,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   ApiClient _resolveApiClient() {
     return widget.milestonesService?.apiClient ??
         widget.catalogService?.apiClient ??
-        (AuthScope.maybeOf(context) != null
-            ? AuthScope.apiClientOf(context)
-            : ApiClient());
+        AuthScope.apiClientOrDefault(context);
   }
 
   MilestonesService _resolveMilestonesService() {

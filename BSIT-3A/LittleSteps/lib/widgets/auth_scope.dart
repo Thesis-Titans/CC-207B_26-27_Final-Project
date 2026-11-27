@@ -34,4 +34,10 @@ class AuthScope extends InheritedNotifier<AuthSessionState> {
     assert(scope != null, 'No AuthScope found in context');
     return scope!.apiClient;
   }
+
+  /// Returns the nearest [ApiClient] from [context], or a default [ApiClient].
+  static ApiClient apiClientOrDefault(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<AuthScope>();
+    return scope?.apiClient ?? ApiClient();
+  }
 }

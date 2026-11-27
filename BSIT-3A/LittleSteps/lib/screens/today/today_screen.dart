@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
 import '../../models/activity.dart';
 import '../../models/child.dart';
@@ -9,11 +8,14 @@ import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/accessibility.dart';
 import '../../utils/date_formatting.dart';
+import '../../widgets/advisory_banner.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
 import 'widgets/today_activity_card.dart';
+import 'widgets/today_side_cards.dart';
 import 'widgets/today_weather_banner.dart';
 
 /// Interaction states displayed by [TodayScreen].
@@ -348,39 +350,22 @@ class _TodayScreenState extends State<TodayScreen> {
     }
   }
 
-  // Resolves the ApiClient using planService or context AuthScope.
   ApiClient _resolveApiClient() {
     return widget.planService?.apiClient ??
-        (AuthScope.maybeOf(context) != null
-            ? AuthScope.apiClientOf(context)
-            : ApiClient());
+        AuthScope.apiClientOrDefault(context);
   }
 
-  // Resolves the PlanService using widget injection or context-scoped ApiClient.
   PlanService _resolvePlanService() {
-    if (widget.planService != null) return widget.planService!;
-    final apiClient = AuthScope.maybeOf(context) != null
-        ? AuthScope.apiClientOf(context)
-        : ApiClient();
-    return PlanService(apiClient: apiClient);
+    return widget.planService ??
+        PlanService(apiClient: AuthScope.apiClientOrDefault(context));
   }
 
-  // Resolves the CatalogService using widget injection or context-scoped ApiClient.
   CatalogService _resolveCatalogService() {
-    if (widget.catalogService != null) return widget.catalogService!;
-    final apiClient = AuthScope.maybeOf(context) != null
-        ? AuthScope.apiClientOf(context)
-        : ApiClient();
-    return CatalogService(apiClient: apiClient);
+    return widget.catalogService ??
+        CatalogService(apiClient: AuthScope.apiClientOrDefault(context));
   }
 
-  // Sends an accessible announcement to screen readers and live regions.
-  void _announce(String message) {
-    try {
-      final view = View.of(context);
-      SemanticsService.sendAnnouncement(view, message, TextDirection.ltr);
-    } catch (_) {}
-  }
+  void _announce(String message) => announceForAccessibility(context, message);
 
   String _formatDate(DateTime date) => formatIsoDate(date);
 
@@ -949,168 +934,25 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  // Renders the "This week" and "Milestones to notice" summary shortcut cards.
   Widget _buildSideCards() {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'This week',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Reflect on everyday moments and shared play from this week.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: widget.onNavigateTab != null
-                      ? () => widget.onNavigateTab!(4)
-                      : null,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, AppSizes.touchTarget),
-                    side: const BorderSide(color: AppColors.borderInput),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.control),
-                    ),
-                  ),
-                  child: const Text('View reflection'),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space16),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Milestones to notice',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Everyday cues to notice for $_childName:',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              ..._milestoneCues.map(
-                (cue) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 2),
-                        child: Icon(
-                          Icons.visibility_outlined,
-                          size: 16,
-                          color: AppColors.forest,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      Expanded(
-                        child: Text(
-                          cue,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: widget.onNavigateTab != null
-                      ? () => widget.onNavigateTab!(2)
-                      : null,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, AppSizes.touchTarget),
-                    side: const BorderSide(color: AppColors.borderInput),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.control),
-                    ),
-                  ),
-                  child: const Text('View milestones'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return TodaySideCards(
+      childName: _childName,
+      milestoneCues: _milestoneCues,
+      onOpenReflection: widget.onNavigateTab != null
+          ? () => widget.onNavigateTab!(4)
+          : null,
+      onOpenMilestones: widget.onNavigateTab != null
+          ? () => widget.onNavigateTab!(2)
+          : null,
     );
   }
 
   // Renders the advisory banner or persistent link depending on dismissal state.
   Widget _buildAdvisorySection() {
     if (!_advisorySeen) {
-      return Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAdvisory,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.borderAdvisory),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.space12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.info_outline,
-              size: 20,
-              color: AppColors.textPrimary,
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(
-              child: Text(
-                'Not a diagnostic tool. Observational play suggestions only. You know your child best.',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: AppColors.textPrimary),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Dismiss advisory',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              onPressed: _dismissAdvisory,
-            ),
-          ],
-        ),
+      return AdvisoryBanner(
+        dismissTooltip: 'Dismiss advisory',
+        onDismiss: _dismissAdvisory,
       );
     }
 

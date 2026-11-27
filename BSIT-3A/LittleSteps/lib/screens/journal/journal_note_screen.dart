@@ -417,44 +417,19 @@ class _OfflineDraftNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOffline,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return const OfflineStatusCard(
+      message: 'Reconnect to save changes. Your note is kept here.',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Icon(Icons.wifi_off, color: AppColors.textOffline, size: 20),
-              SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  "You're offline",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textOffline,
-                  ),
-                ),
-              ),
-              Icon(Icons.lock_outline, color: AppColors.forest, size: 16),
-              SizedBox(width: AppSpacing.space4),
-              Text(
-                'Private',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.forest,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.space4),
+          Icon(Icons.lock_outline, color: AppColors.forest, size: 16),
+          SizedBox(width: AppSpacing.space4),
           Text(
-            'Reconnect to save changes. Your note is kept here.',
-            style: TextStyle(color: AppColors.textOffline),
+            'Private',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.forest,
+            ),
           ),
         ],
       ),

@@ -1,3 +1,11 @@
+/// Ordered `(key, label)` pairs for the four early-learning developmental domains.
+const List<(String, String)> developmentalDomains = [
+  ('cognitive', 'Thinking'),
+  ('motor', 'Moving'),
+  ('language', 'Talking'),
+  ('socioEmotional', 'Feelings'),
+];
+
 /// Maps a backend developmental [domain] key to its caregiver-friendly label.
 String friendlyDomainLabel(String domain) {
   switch (domain.toLowerCase()) {

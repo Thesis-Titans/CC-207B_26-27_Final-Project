@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/milestone.dart';
 import '../../theme/app_tokens.dart';
+import '../../widgets/state_views.dart';
 
 /// Modal bottom sheet for recording an observation for a prompt.
 ///
@@ -146,60 +147,12 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
             ),
             const SizedBox(height: AppSpacing.space12),
 
-            // Offline warning banner alerting caregiver that observation syncing is paused.
-            if (widget.isOffline) ...[
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.space16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceOffline,
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                  border: Border.all(color: AppColors.borderSubtle),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(
-                          Icons.wifi_off,
-                          color: AppColors.textOffline,
-                          size: 20,
-                        ),
-                        SizedBox(width: AppSpacing.space8),
-                        Text(
-                          "You're offline",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textOffline,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.space8),
-                    const Text(
-                      "Your note wasn't saved. Keep this screen open and tap Retry when you're back online.",
-                      style: TextStyle(
-                        color: AppColors.textOffline,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.space12),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.control,
-                          ),
-                        ),
-                      ),
-                      onPressed: widget.onRetryOffline,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
+            if (widget.isOffline)
+              OfflineStatusCard(
+                margin: const EdgeInsets.only(bottom: AppSpacing.space16),
+                message: "Your note wasn't saved. Keep this screen open and tap Retry when you're back online.",
+                onRetry: widget.onRetryOffline,
               ),
-              const SizedBox(height: AppSpacing.space16),
-            ],
 
             // Heading: Note what you saw
             Text(

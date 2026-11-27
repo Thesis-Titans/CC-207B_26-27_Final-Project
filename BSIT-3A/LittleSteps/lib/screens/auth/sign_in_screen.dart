@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/accessibility.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/brand_logo.dart';
 
@@ -24,8 +24,6 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  static const double _wideLayoutMinWidth = 840;
-
   static const List<String> _desktopHighlights = [
     'Plan play and note what you can.',
     'Your journal stays private.',
@@ -47,12 +45,7 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
-  void _announce(String message) {
-    final view = View.maybeOf(context);
-    if (view != null) {
-      SemanticsService.sendAnnouncement(view, message, TextDirection.ltr);
-    }
-  }
+  void _announce(String message) => announceForAccessibility(context, message);
 
   Future<void> _submit([
     String? overrideEmail,
@@ -118,7 +111,7 @@ class _SignInScreenState extends State<SignInScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth >= _wideLayoutMinWidth) {
+            if (constraints.maxWidth >= AppSizes.wideLayoutBreakpoint) {
               return _buildWideLayout(
                 context,
                 theme,

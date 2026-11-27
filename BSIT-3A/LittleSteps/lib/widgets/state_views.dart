@@ -282,6 +282,7 @@ class OfflineStatusCard extends StatelessWidget {
     required this.message,
     this.retryLabel = 'Retry',
     this.onRetry,
+    this.trailing,
     this.margin,
   });
 
@@ -297,12 +298,16 @@ class OfflineStatusCard extends StatelessWidget {
   /// Optional callback rendering a retry button when provided.
   final VoidCallback? onRetry;
 
+  /// Optional widget displayed at the end of the header row.
+  final Widget? trailing;
+
   /// Optional outer margin around the card container.
   final EdgeInsetsGeometry? margin;
 
   @override
   Widget build(BuildContext context) {
     final retryCallback = onRetry;
+    final trailingWidget = trailing;
     return Container(
       margin: margin,
       padding: const EdgeInsets.all(AppSpacing.space16),
@@ -331,6 +336,7 @@ class OfflineStatusCard extends StatelessWidget {
                   ),
                 ),
               ),
+              ?trailingWidget,
             ],
           ),
           const SizedBox(height: AppSpacing.space4),

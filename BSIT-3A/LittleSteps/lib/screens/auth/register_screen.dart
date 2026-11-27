@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
 import '../../services/auth_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/accessibility.dart';
 import '../../widgets/auth_scope.dart';
 
 /// Caregiver registration screen.
@@ -59,12 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _announce(String message) {
-    final view = View.maybeOf(context);
-    if (view != null) {
-      SemanticsService.sendAnnouncement(view, message, TextDirection.ltr);
-    }
-  }
+  void _announce(String message) => announceForAccessibility(context, message);
 
   Future<void> _submit() async {
     if (!_acceptedPrivacy) {

@@ -396,46 +396,10 @@ class _OfflineView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOffline,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.wifi_off, color: AppColors.textOffline, size: 20),
-              SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  "You're offline",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textOffline,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space4),
-          const Text(
-            'Your notes will show when you reconnect.',
-            style: TextStyle(color: AppColors.textOffline),
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          SizedBox(
-            height: AppSizes.touchTarget,
-            child: OutlinedButton(
-              onPressed: onRetry,
-              child: const Text('Try again'),
-            ),
-          ),
-        ],
-      ),
+    return OfflineStatusCard(
+      message: 'Your notes will show when you reconnect.',
+      retryLabel: 'Try again',
+      onRetry: onRetry,
     );
   }
 }

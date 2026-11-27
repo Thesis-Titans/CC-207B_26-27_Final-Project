@@ -10,6 +10,7 @@ class AdvisoryBanner extends StatelessWidget {
     this.title,
     this.message = 'Not a diagnostic tool. Observational play suggestions only. You know your child best.',
     this.onDismiss,
+    this.dismissTooltip,
     this.margin,
   });
 
@@ -21,6 +22,9 @@ class AdvisoryBanner extends StatelessWidget {
 
   /// Optional callback rendering a close button when provided.
   final VoidCallback? onDismiss;
+
+  /// Optional semantic tooltip for the dismiss button.
+  final String? dismissTooltip;
 
   /// Optional outer margin around the banner container.
   final EdgeInsetsGeometry? margin;
@@ -75,7 +79,13 @@ class AdvisoryBanner extends StatelessWidget {
           if (onDismiss != null)
             IconButton(
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+              tooltip: dismissTooltip,
+              constraints: dismissTooltip != null
+                  ? const BoxConstraints(
+                      minWidth: AppSizes.touchTarget,
+                      minHeight: AppSizes.touchTarget,
+                    )
+                  : const BoxConstraints(),
               icon: const Icon(Icons.close, size: 18),
               onPressed: onDismiss,
             ),

@@ -107,10 +107,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       widget.initialChild ?? AuthScope.maybeOf(context)?.activeChild;
 
   ApiClient _resolveApiClient() {
-    return widget.apiClient ??
-        (AuthScope.maybeOf(context) != null
-            ? AuthScope.apiClientOf(context)
-            : ApiClient());
+    return widget.apiClient ?? AuthScope.apiClientOrDefault(context);
   }
 
   AiService _resolveAiService() {
