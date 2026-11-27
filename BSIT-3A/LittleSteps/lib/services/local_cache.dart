@@ -15,6 +15,8 @@ class LocalDataCache {
   static const List<String> _permittedPrefixes = [
     '/api/v1/children',
     '/api/v1/catalog/activities',
+    '/api/v1/catalog/milestones',
+    '/api/v1/catalog/rhymes',
     '/api/v1/catalog/books',
   ];
 

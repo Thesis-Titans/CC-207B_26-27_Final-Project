@@ -236,4 +236,52 @@ const List<MilestonePrompt> defaultMilestonePrompts = [
     ageBand: '48-59 months',
     provenance: 'Source: ECCD Early Social Development Standards',
   ),
+
+  // 60-71 months
+  MilestonePrompt(
+    id: 'lan-60-01',
+    domain: MilestoneDomain.language,
+    title: 'Retells familiar stories and notices starting sounds',
+    lookFor: [
+      'Retells a short story with a beginning, middle, and end',
+      'Spots everyday words that start with the same sound',
+    ],
+    ageBand: '60-71 months',
+    provenance: 'Source: DepEd MATATAG Curriculum - Kindergarten (Literacy)',
+  ),
+  MilestonePrompt(
+    id: 'mot-60-01',
+    domain: MilestoneDomain.motor,
+    title: 'Hops cleanly on one foot and draws basic shapes',
+    lookFor: [
+      'Hops across a Piko hopscotch grid with steady balance',
+      'Draws circles, squares, and simple letters with control',
+    ],
+    ageBand: '60-71 months',
+    provenance:
+        'Source: DepEd MATATAG Curriculum - Kindergarten & CDC 5-year tips',
+  ),
+  MilestonePrompt(
+    id: 'cog-60-01',
+    domain: MilestoneDomain.cognitive,
+    title: 'Counts up to ten objects and extends simple patterns',
+    lookFor: [
+      'Counts household items accurately up to 10',
+      'Predicts what comes next in an alternating color or shape pattern',
+    ],
+    ageBand: '60-71 months',
+    provenance: 'Source: DepEd MATATAG Curriculum - Kindergarten (Numeracy)',
+  ),
+  MilestonePrompt(
+    id: 'soc-60-01',
+    domain: MilestoneDomain.socioEmotional,
+    title: 'Follows simple rules and helps with family routines',
+    lookFor: [
+      'Takes turns fairly during group games',
+      'Helps tidy toys or set table items when asked',
+    ],
+    ageBand: '60-71 months',
+    provenance:
+        'Source: DepEd MATATAG Curriculum - Kindergarten & CDC 5-year tips',
+  ),
 ];

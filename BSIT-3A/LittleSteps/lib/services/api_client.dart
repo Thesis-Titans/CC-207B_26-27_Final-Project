@@ -169,6 +169,8 @@ class ApiClient {
   /// Returns whether [path] requires an authenticated bearer token.
   static bool isProtectedPath(String path) {
     if (path.contains('/catalog/activities') ||
+        path.contains('/catalog/milestones') ||
+        path.contains('/catalog/rhymes') ||
         path.contains('/catalog/books') ||
         path.contains('/catalog/weather') ||
         path.contains('/health')) {

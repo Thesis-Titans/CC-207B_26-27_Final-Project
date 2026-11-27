@@ -8,10 +8,14 @@ class RhymesShelf extends StatelessWidget {
   /// Creates a [RhymesShelf].
   const RhymesShelf({
     super.key,
+    this.rhymes = philippineRhymes,
     required this.childNickname,
     required this.onShowDetails,
     required this.onScheduleRhyme,
   });
+
+  /// Rhymes rendered on the shelf (defaults to bundled offline fallback).
+  final List<PhilippineRhyme> rhymes;
 
   /// Active child's nickname (or fallback phrase) shown in the shelf subtitle.
   final String childNickname;
@@ -38,7 +42,7 @@ class RhymesShelf extends StatelessWidget {
             ),
           ),
         ),
-        ...philippineRhymes.map((rhyme) {
+        ...rhymes.map((rhyme) {
           return Container(
             margin: const EdgeInsets.only(bottom: AppSpacing.space16),
             decoration: ShapeDecoration(

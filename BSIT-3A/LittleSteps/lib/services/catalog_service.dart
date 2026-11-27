@@ -1,9 +1,11 @@
+import '../data/philippine_rhymes.dart';
 import '../models/activity.dart';
 import '../models/book.dart';
+import '../models/milestone.dart';
 import '../models/weather.dart';
 import 'api_client.dart';
 
-/// Service for accessing activities, picture books, and weather advisories.
+/// Service for accessing activities, milestones, rhymes, books, and weather.
 class CatalogService {
   /// Creates a [CatalogService].
   CatalogService({required this.apiClient});
@@ -42,6 +44,46 @@ class CatalogService {
       '/api/v1/catalog/activities/$id',
     ) as Map<String, dynamic>;
     return Activity.fromJson(data);
+  }
+
+  /// Fetches reference developmental milestone prompts from the catalog.
+  Future<List<MilestonePrompt>> getMilestones({
+    String? ageBand,
+    String? domain,
+    int limit = 50,
+  }) async {
+    final queryParams = <String, String>{'limit': limit.toString()};
+    if (ageBand != null) queryParams['ageBand'] = ageBand;
+    if (domain != null) queryParams['domain'] = domain;
+
+    final data = await apiClient.get(
+      '/api/v1/catalog/milestones',
+      queryParams: queryParams,
+    ) as Map<String, dynamic>;
+    final items = data['items'] as List<dynamic>? ?? [];
+    return items
+        .map((e) => MilestonePrompt.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Fetches Philippine traditional rhymes and action songs from the catalog.
+  Future<List<PhilippineRhyme>> getRhymes({
+    String? domain,
+    String? language,
+    int limit = 50,
+  }) async {
+    final queryParams = <String, String>{'limit': limit.toString()};
+    if (domain != null) queryParams['domain'] = domain;
+    if (language != null) queryParams['language'] = language;
+
+    final data = await apiClient.get(
+      '/api/v1/catalog/rhymes',
+      queryParams: queryParams,
+    ) as Map<String, dynamic>;
+    final items = data['items'] as List<dynamic>? ?? [];
+    return items
+        .map((e) => PhilippineRhyme.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Fetches recommended picture books for young children.

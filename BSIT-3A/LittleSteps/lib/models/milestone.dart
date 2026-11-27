@@ -80,6 +80,14 @@ enum MilestoneDomain {
 
   /// Representative icon for domain headers and filter chips.
   final IconData icon;
+
+  /// Resolves a [MilestoneDomain] from a backend wire [key].
+  static MilestoneDomain fromKey(String key) {
+    for (final domain in MilestoneDomain.values) {
+      if (domain.key == key) return domain;
+    }
+    return MilestoneDomain.cognitive;
+  }
 }
 
 /// An age-grouped observational prompt shown on the Milestones tab.
@@ -94,6 +102,21 @@ class MilestonePrompt {
     this.provenance =
         'Source: CDC Developmental Milestones & Early Learning Guidelines',
   });
+
+  /// Creates a [MilestonePrompt] from a decoded catalog JSON object.
+  factory MilestonePrompt.fromJson(Map<String, dynamic> json) {
+    final lookForRaw = json['lookFor'] as List<dynamic>? ?? const [];
+    return MilestonePrompt(
+      id: json['id'] as String? ?? '',
+      domain: MilestoneDomain.fromKey(json['domain'] as String? ?? ''),
+      title: json['title'] as String? ?? '',
+      lookFor: lookForRaw.map((e) => e.toString()).toList(),
+      ageBand: json['ageBand'] as String? ?? '12-23 months',
+      provenance:
+          json['provenance'] as String? ??
+          'Source: CDC Developmental Milestones & Early Learning Guidelines',
+    );
+  }
 
   /// Unique identifier of the milestone prompt.
   final String id;

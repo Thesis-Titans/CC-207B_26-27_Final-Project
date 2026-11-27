@@ -10,6 +10,7 @@ import '../../models/plan.dart';
 import '../../services/ai_service.dart';
 import '../../services/api_client.dart';
 import '../../services/books_service.dart';
+import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
@@ -36,6 +37,7 @@ class StorybooksSection extends StatefulWidget {
   const StorybooksSection({
     super.key,
     this.booksService,
+    this.catalogService,
     this.aiService,
     this.planService,
     this.activeChild,
@@ -48,6 +50,9 @@ class StorybooksSection extends StatefulWidget {
 
   /// Optional books service override used in tests.
   final BooksService? booksService;
+
+  /// Optional catalog service override for fetching live Philippine rhymes.
+  final CatalogService? catalogService;
 
   /// Optional AI service override for generating story play companions.
   final AiService? aiService;
@@ -85,9 +90,11 @@ class _StorybooksSectionState extends State<StorybooksSection> {
 
   bool _isLoadingBooks = true;
   bool _initialBooksLoaded = false;
+  bool _initialRhymesLoaded = false;
   String? _booksError;
   bool _showingOfflineBooks = false;
   List<BookItem> _openLibraryBooks = [];
+  List<PhilippineRhyme> _rhymes = philippineRhymes;
 
   bool _isLoadingSaved = false;
   String? _savedBooksError;
@@ -116,6 +123,11 @@ class _StorybooksSectionState extends State<StorybooksSection> {
         ? AuthScope.apiClientOf(context)
         : ApiClient();
     return BooksService(apiClient: client);
+  }
+
+  CatalogService _resolveCatalogService() {
+    if (widget.catalogService != null) return widget.catalogService!;
+    return CatalogService(apiClient: _resolveBooksService().apiClient);
   }
 
   AiService _resolveAiService() {
@@ -148,6 +160,10 @@ class _StorybooksSectionState extends State<StorybooksSection> {
       _initialBooksLoaded = true;
       _loadOpenLibraryBooks();
     }
+    if (!_initialRhymesLoaded) {
+      _initialRhymesLoaded = true;
+      _loadRhymes();
+    }
     final childId = widget.activeChild?.id;
     if (_lastLoadedChildId != childId) {
       _lastLoadedChildId = childId;
@@ -169,6 +185,20 @@ class _StorybooksSectionState extends State<StorybooksSection> {
     _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRhymes() async {
+    final canFetch =
+        widget.catalogService != null || AuthScope.maybeOf(context) != null;
+    if (!canFetch) return;
+
+    try {
+      final fetched = await _resolveCatalogService().getRhymes();
+      if (!mounted || fetched.isEmpty) return;
+      setState(() => _rhymes = fetched);
+    } catch (_) {
+      // Keep bundled philippineRhymes as offline fallback.
+    }
   }
 
   Future<void> _loadOpenLibraryBooks() async {
@@ -776,6 +806,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
 
   Widget _buildRhymesShelf() {
     return RhymesShelf(
+      rhymes: _rhymes,
       childNickname: widget.activeChild?.nickname ?? 'your child',
       onShowDetails: _showRhymeDetails,
       onScheduleRhyme: _scheduleRhyme,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/milestone_prompts.dart';
 import '../../models/milestone.dart';
 import '../../services/api_client.dart';
+import '../../services/catalog_service.dart';
 import '../../services/milestones_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
@@ -37,12 +38,13 @@ class MilestonesScreen extends StatefulWidget {
     this.prompts = defaultMilestonePrompts,
     this.initialObservations = const {},
     this.milestonesService,
+    this.catalogService,
   });
 
   /// Initial view state override for widget tests.
   final MilestonesViewState initialState;
 
-  /// Observational prompts rendered on the screen.
+  /// Fallback or injected observational prompts rendered on the screen.
   final List<MilestonePrompt> prompts;
 
   /// Preloaded observations keyed by milestone prompt identifier.
@@ -51,12 +53,16 @@ class MilestonesScreen extends StatefulWidget {
   /// Optional service override for loading and saving observations.
   final MilestonesService? milestonesService;
 
+  /// Optional catalog service override for fetching live milestone prompts.
+  final CatalogService? catalogService;
+
   @override
   State<MilestonesScreen> createState() => _MilestonesScreenState();
 }
 
 class _MilestonesScreenState extends State<MilestonesScreen> {
   late MilestonesViewState _currentState;
+  late List<MilestonePrompt> _prompts;
   late Map<String, MilestoneObservation> _observations;
   MilestoneDomain? _selectedDomainFilter;
   bool _showAdvisory = true;
@@ -64,6 +70,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   late String _selectedAgeBand;
   String? _lastChildId;
   bool _initialLoadStarted = false;
+  bool _promptsLoadStarted = false;
 
   String get _childName {
     final session = AuthScope.maybeOf(context);
@@ -89,7 +96,8 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     if (months < 24) return '12-23 months';
     if (months < 36) return '24-35 months';
     if (months < 48) return '36-47 months';
-    return '48-59 months';
+    if (months < 60) return '48-59 months';
+    return '60-71 months';
   }
 
   static const List<String> _ageBands = [
@@ -98,18 +106,21 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     '24-35 months',
     '36-47 months',
     '48-59 months',
+    '60-71 months',
   ];
 
   @override
   void initState() {
     super.initState();
     _currentState = widget.initialState;
+    _prompts = widget.prompts;
     _observations = Map.from(widget.initialObservations);
     _selectedAgeBand = '12-23 months';
   }
 
   ApiClient _resolveApiClient() {
     return widget.milestonesService?.apiClient ??
+        widget.catalogService?.apiClient ??
         (AuthScope.maybeOf(context) != null
             ? AuthScope.apiClientOf(context)
             : ApiClient());
@@ -120,6 +131,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     return MilestonesService(apiClient: _resolveApiClient());
   }
 
+  CatalogService _resolveCatalogService() {
+    if (widget.catalogService != null) return widget.catalogService!;
+    return CatalogService(apiClient: _resolveApiClient());
+  }
+
   String? get _childId {
     final session = AuthScope.maybeOf(context);
     return session?.activeChild?.id;
@@ -128,6 +144,10 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_promptsLoadStarted) {
+      _promptsLoadStarted = true;
+      _loadCatalogPrompts();
+    }
     final childId = _childId;
     final childChanged = childId != _lastChildId;
     if (!_initialLoadStarted || childChanged) {
@@ -138,6 +158,20 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
         _observations = {};
       }
       _loadObservations(childId);
+    }
+  }
+
+  Future<void> _loadCatalogPrompts() async {
+    final canFetch =
+        widget.catalogService != null || AuthScope.maybeOf(context) != null;
+    if (!canFetch) return;
+
+    try {
+      final fetched = await _resolveCatalogService().getMilestones();
+      if (!mounted || fetched.isEmpty) return;
+      setState(() => _prompts = fetched);
+    } catch (_) {
+      // Keep bundled defaultMilestonePrompts as offline fallback.
     }
   }
 
@@ -737,7 +771,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   }
 
   List<Widget> _buildGroupedPrompts() {
-    final ageBandPrompts = widget.prompts
+    final ageBandPrompts = _prompts
         .where((p) => p.ageBand == _selectedAgeBand)
         .toList();
 

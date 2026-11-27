@@ -14,7 +14,31 @@ class PhilippineRhyme {
     required this.actionPrompt,
     this.materials = const ['None required'],
     this.durationMinutes = 5,
+    this.provenanceSource =
+        'Traditional Philippine Children\'s Rhyme & Folk Song',
   });
+
+  /// Creates a [PhilippineRhyme] from a decoded catalog JSON object.
+  factory PhilippineRhyme.fromJson(Map<String, dynamic> json) {
+    final lyricsRaw = json['lyrics'] as List<dynamic>? ?? const [];
+    final materialsRaw =
+        json['materials'] as List<dynamic>? ?? const ['None required'];
+    return PhilippineRhyme(
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      subtitle: json['subtitle'] as String? ?? '',
+      domain: json['domain'] as String? ?? 'language',
+      domainLabel: json['domainLabel'] as String? ?? 'Talking',
+      language: json['language'] as String? ?? 'fil',
+      lyrics: lyricsRaw.map((e) => e.toString()).toList(),
+      actionPrompt: json['actionPrompt'] as String? ?? '',
+      materials: materialsRaw.map((e) => e.toString()).toList(),
+      durationMinutes: (json['durationMinutes'] as num?)?.toInt() ?? 5,
+      provenanceSource:
+          json['provenanceSource'] as String? ??
+          'Traditional Philippine Children\'s Rhyme & Folk Song',
+    );
+  }
 
   /// Unique identifier for this rhyme.
   final String id;
@@ -46,6 +70,9 @@ class PhilippineRhyme {
   /// Estimated duration in minutes.
   final int durationMinutes;
 
+  /// Published cultural or educational citation for this rhyme.
+  final String provenanceSource;
+
   /// Converts this rhyme into an [Activity] that can be scheduled in a plan.
   Activity toActivity({String? childNickname}) {
     final name = childNickname ?? 'your child';
@@ -66,8 +93,8 @@ class PhilippineRhyme {
         actionPrompt,
         'Pause and invite $name to copy your gestures or sound out favorite words.',
       ],
-      provenanceSource: 'Traditional Philippine Children\'s Rhyme & Folk Song',
-      status: 'reviewed_approved',
+      provenanceSource: provenanceSource,
+      status: 'source_checked',
       limitations: 'Shared cultural singing and bonding routine.',
     );
   }
@@ -166,5 +193,25 @@ const List<PhilippineRhyme> philippineRhymes = [
     actionPrompt: 'Waddle like a little duck with elbows bent and flap hands on "Kwak, kwak, kwak!"',
     materials: ['None required'],
     durationMinutes: 5,
+    provenanceSource:
+        'Traditional Philippine Action Song; ECCD Council NELF (2010)',
+  ),
+  PhilippineRhyme(
+    id: 'rhyme-ili-ili-tulog-anay',
+    title: 'Ili-Ili Tulog Anay',
+    subtitle: 'Gentle Hiligaynon lullaby for calm bonding and rhythm',
+    domain: 'socioEmotional',
+    domainLabel: 'Feelings',
+    language: 'hil',
+    lyrics: [
+      'Ili-ili tulog anay,',
+      'Wala diri imong nanay,',
+      'Kadto tienda bakal papay,',
+      'Ili-ili tulog anay.',
+    ],
+    actionPrompt: 'Hold your child close or sit side-by-side and sway gently in slow rhythm while humming softly.',
+    materials: ['None required'],
+    durationMinutes: 5,
+    provenanceSource: 'Hiligaynon Traditional Lullaby (Western Visayas); ECCD Council NELF (2010)',
   ),
 ];
