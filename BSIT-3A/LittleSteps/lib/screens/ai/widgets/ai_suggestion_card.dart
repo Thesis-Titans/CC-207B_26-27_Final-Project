@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/recommendation.dart';
 import '../../../theme/app_tokens.dart';
+import '../../../utils/domain_labels.dart';
 
 /// Card presenting an AI-recommended or catalog-fallback play idea.
 class AiSuggestionCard extends StatelessWidget {
@@ -15,10 +16,10 @@ class AiSuggestionCard extends StatelessWidget {
     required this.onAddToPlan,
   });
 
-  /// Play recommendation data returned by the AI service.
+  /// Play recommendation data returned by the AI or catalog service.
   final Recommendation suggestion;
 
-  /// Human-readable play setting label (for example, `Indoor`).
+  /// Caregiver-facing play setting label (for example, `Indoor`).
   final String settingLabel;
 
   /// Whether an active child profile is selected for adding to a plan.
@@ -32,6 +33,7 @@ class AiSuggestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final activity = suggestion.activity;
 
     return Card(
@@ -63,8 +65,8 @@ class AiSuggestionCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadius.chip),
                     ),
                     child: Text(
-                      activity.domain.toUpperCase(),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      formalDomainLabel(activity.domain),
+                      style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
                       ),
@@ -72,8 +74,9 @@ class AiSuggestionCard extends StatelessWidget {
                   ),
                   Text(
                     '${activity.durationEstimate} · $settingLabel',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: AppColors.textSecondary),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   if (suggestion.isCustom)
                     Container(
@@ -88,7 +91,7 @@ class AiSuggestionCard extends StatelessWidget {
                       ),
                       child: Text(
                         'Material adaptation',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
@@ -99,8 +102,9 @@ class AiSuggestionCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.space8),
             Text(
               suggestion.title,
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: AppSpacing.space8),
             Container(
@@ -121,8 +125,9 @@ class AiSuggestionCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Why this fits: ${suggestion.whyPicked}',
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: AppColors.textPrimary),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ],
@@ -133,22 +138,25 @@ class AiSuggestionCard extends StatelessWidget {
               if (activity.materials.isNotEmpty) ...[
                 Text(
                   'Materials needed:',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.space4),
                 Text(
                   activity.materials.join(', '),
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.space8),
               ],
               if (activity.instructions.isNotEmpty) ...[
                 Text(
                   'Steps to play:',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.space4),
                 ...activity.instructions.asMap().entries.map((entry) {
@@ -159,13 +167,14 @@ class AiSuggestionCard extends StatelessWidget {
                       children: [
                         Text(
                           '${entry.key + 1}. ',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Expanded(
                           child: Text(
                             entry.value,
-                            style: Theme.of(context).textTheme.bodySmall,
+                            style: theme.textTheme.bodySmall,
                           ),
                         ),
                       ],
@@ -180,8 +189,9 @@ class AiSuggestionCard extends StatelessWidget {
                 activity.limitations.isNotEmpty) ...[
               Text(
                 'Safety note: ${activity.limitations}',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: AppColors.textSecondary),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: AppSpacing.space12),
             ],
@@ -190,8 +200,9 @@ class AiSuggestionCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: AppSpacing.space8),
                 child: Text(
                   'Choose a child to add this to a plan.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             Align(

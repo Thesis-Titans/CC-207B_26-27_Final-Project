@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/recommendation.dart';
 import '../../../theme/app_tokens.dart';
 
-/// Summary banner for multi-activity Play Blocks with batch add-to-plan action.
+/// Summary banner for multi-activity play blocks with a batch add-to-plan CTA.
 class AiPlayBlockBanner extends StatelessWidget {
   /// Creates an [AiPlayBlockBanner].
   const AiPlayBlockBanner({
@@ -16,7 +16,7 @@ class AiPlayBlockBanner extends StatelessWidget {
     required this.onAddAll,
   });
 
-  /// Recommended play activities grouped into the current Play Block.
+  /// Recommended play activities grouped into the current play block.
   final List<Recommendation> suggestions;
 
   /// Caregiver's requested total play window in minutes.
@@ -36,6 +36,7 @@ class AiPlayBlockBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final totalMinutes = suggestions.fold<int>(
       0,
       (sum, item) => sum + (item.activity?.durationMinutes ?? 10),
@@ -73,7 +74,7 @@ class AiPlayBlockBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   'Play block for $timeMinutes min',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  style: theme.textTheme.labelLarge?.copyWith(
                     color: AppColors.forest,
                     fontWeight: FontWeight.bold,
                   ),
@@ -84,8 +85,9 @@ class AiPlayBlockBanner extends StatelessWidget {
           const SizedBox(height: AppSpacing.space4),
           Text(
             pacingSummary,
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppColors.textPrimary),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textPrimary,
+            ),
           ),
           if (suggestions.length >= 2 && hasActiveChild) ...[
             const SizedBox(height: AppSpacing.space12),
