@@ -1,6 +1,9 @@
-/// Represents an authenticated caregiver user.
+import 'package:flutter/foundation.dart';
+
+/// An authenticated caregiver user.
+@immutable
 class AuthUser {
-  /// Creates an [AuthUser] instance.
+  /// Creates an [AuthUser].
   const AuthUser({
     required this.id,
     required this.email,
@@ -8,6 +11,20 @@ class AuthUser {
     this.refreshToken,
     this.expiresAt,
   });
+
+  /// Creates an [AuthUser] from Firebase REST authentication JSON.
+  factory AuthUser.fromRestJson(Map<String, dynamic> json) {
+    final expiresInSeconds =
+        int.tryParse(json['expiresIn']?.toString() ?? '3600') ?? 3600;
+    return AuthUser(
+      id: json['localId'] as String? ?? json['user_id'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      idToken: json['idToken'] as String? ?? json['id_token'] as String? ?? '',
+      refreshToken:
+          json['refreshToken'] as String? ?? json['refresh_token'] as String?,
+      expiresAt: DateTime.now().add(Duration(seconds: expiresInSeconds)),
+    );
+  }
 
   /// Unique Firebase local user ID.
   final String id;
@@ -30,7 +47,7 @@ class AuthUser {
     return DateTime.now().isAfter(expiresAt!);
   }
 
-  /// Creates a copy of [AuthUser] with updated token details.
+  /// Returns a copy of this [AuthUser] with updated token fields.
   AuthUser copyWith({
     String? idToken,
     String? refreshToken,
@@ -42,20 +59,6 @@ class AuthUser {
       idToken: idToken ?? this.idToken,
       refreshToken: refreshToken ?? this.refreshToken,
       expiresAt: expiresAt ?? this.expiresAt,
-    );
-  }
-
-  /// Deserializes an [AuthUser] from Firebase REST authentication JSON.
-  factory AuthUser.fromRestJson(Map<String, dynamic> json) {
-    final expiresInSeconds =
-        int.tryParse(json['expiresIn']?.toString() ?? '3600') ?? 3600;
-    return AuthUser(
-      id: json['localId'] as String? ?? json['user_id'] as String? ?? '',
-      email: json['email'] as String? ?? '',
-      idToken: json['idToken'] as String? ?? json['id_token'] as String? ?? '',
-      refreshToken:
-          json['refreshToken'] as String? ?? json['refresh_token'] as String?,
-      expiresAt: DateTime.now().add(Duration(seconds: expiresInSeconds)),
     );
   }
 }

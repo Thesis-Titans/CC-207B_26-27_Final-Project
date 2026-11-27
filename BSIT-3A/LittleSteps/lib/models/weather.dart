@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 /// A Philippine city location used for optional Open-Meteo weather hints.
+@immutable
 class WeatherLocation {
   /// Creates a [WeatherLocation] with display [name] and city coordinates.
   const WeatherLocation({
@@ -58,6 +61,7 @@ class WeatherLocation {
 }
 
 /// A weather advisory hint for indoor or outdoor play planning.
+@immutable
 class WeatherHint {
   /// Creates a [WeatherHint] describing current play-weather guidance.
   const WeatherHint({
@@ -68,6 +72,21 @@ class WeatherHint {
     this.hint,
     required this.attribution,
   });
+
+  /// Creates a [WeatherHint] from a JSON map returned by the catalog API.
+  factory WeatherHint.fromJson(Map<String, dynamic> json) {
+    final provenance = json['provenance'] as Map<String, dynamic>?;
+    return WeatherHint(
+      condition: json['condition'] as String? ?? 'unavailable',
+      rainChance: (json['rainChance'] as num?)?.toInt() ?? 0,
+      heatFlag: json['heatFlag'] as bool? ?? false,
+      suggestedSetting: json['suggestedSetting'] as String? ?? 'either',
+      hint: json['hint'] as String?,
+      attribution:
+          provenance?['attribution'] as String? ??
+          'Weather data by Open-Meteo.com',
+    );
+  }
 
   /// Normalized weather condition label from the forecast service.
   final String condition;
@@ -101,21 +120,6 @@ class WeatherHint {
     };
     return rainyConditions.contains(condition.toLowerCase()) ||
         rainChance >= 50;
-  }
-
-  /// Creates a [WeatherHint] from a JSON map returned by the catalog API.
-  factory WeatherHint.fromJson(Map<String, dynamic> json) {
-    final provenance = json['provenance'] as Map<String, dynamic>?;
-    return WeatherHint(
-      condition: json['condition'] as String? ?? 'unavailable',
-      rainChance: json['rainChance'] as int? ?? 0,
-      heatFlag: json['heatFlag'] as bool? ?? false,
-      suggestedSetting: json['suggestedSetting'] as String? ?? 'either',
-      hint: json['hint'] as String?,
-      attribution:
-          provenance?['attribution'] as String? ??
-          'Weather data by Open-Meteo.com',
-    );
   }
 
   /// Serializes this [WeatherHint] to a JSON map.

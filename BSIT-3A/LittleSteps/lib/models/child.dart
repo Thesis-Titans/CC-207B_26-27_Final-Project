@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 /// A child profile record associated with a caregiver account.
+@immutable
 class Child {
   /// Creates a [Child].
   const Child({
@@ -9,6 +12,18 @@ class Child {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Creates a [Child] from a decoded JSON object.
+  factory Child.fromJson(Map<String, dynamic> json) {
+    return Child(
+      id: json['id'] as String,
+      nickname: json['nickname'] as String,
+      ageBand: json['ageBand'] as String,
+      birthMonthYear: json['birthMonthYear'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
 
   /// Unique identifier of the child profile.
   final String id;
@@ -27,18 +42,6 @@ class Child {
 
   /// Timestamp when the profile was last updated.
   final DateTime updatedAt;
-
-  /// Creates a [Child] from a decoded JSON object.
-  factory Child.fromJson(Map<String, dynamic> json) {
-    return Child(
-      id: json['id'] as String,
-      nickname: json['nickname'] as String,
-      ageBand: json['ageBand'] as String,
-      birthMonthYear: json['birthMonthYear'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-    );
-  }
 
   /// Serializes this [Child] to a JSON map.
   Map<String, dynamic> toJson() {

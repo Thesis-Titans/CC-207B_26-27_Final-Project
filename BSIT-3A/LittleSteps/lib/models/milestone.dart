@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// A saved caregiver observation for a developmental milestone prompt.
+@immutable
 class MilestoneObservation {
   /// Creates a [MilestoneObservation].
   const MilestoneObservation({
@@ -13,6 +14,20 @@ class MilestoneObservation {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Creates a [MilestoneObservation] from a decoded JSON object.
+  factory MilestoneObservation.fromJson(Map<String, dynamic> json) {
+    return MilestoneObservation(
+      id: json['id'] as String,
+      childId: json['childId'] as String,
+      milestoneId: json['milestoneId'] as String,
+      status: json['status'] as String,
+      observedDate: json['observedDate'] as String,
+      notes: json['notes'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
 
   /// Unique identifier of the saved observation record.
   final String id;
@@ -41,18 +56,18 @@ class MilestoneObservation {
   /// Whether the caregiver marked this prompt as observed.
   bool get isObserved => status == 'observed';
 
-  /// Creates a [MilestoneObservation] from a decoded JSON object.
-  factory MilestoneObservation.fromJson(Map<String, dynamic> json) {
-    return MilestoneObservation(
-      id: json['id'] as String,
-      childId: json['childId'] as String,
-      milestoneId: json['milestoneId'] as String,
-      status: json['status'] as String,
-      observedDate: json['observedDate'] as String,
-      notes: json['notes'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-    );
+  /// Serializes this [MilestoneObservation] to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'childId': childId,
+      'milestoneId': milestoneId,
+      'status': status,
+      'observedDate': observedDate,
+      if (notes != null) 'notes': notes,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
   }
 }
 
@@ -91,6 +106,7 @@ enum MilestoneDomain {
 }
 
 /// An age-grouped observational prompt shown on the Milestones tab.
+@immutable
 class MilestonePrompt {
   /// Creates a [MilestonePrompt].
   const MilestonePrompt({
@@ -135,4 +151,16 @@ class MilestonePrompt {
 
   /// Published guideline citation backing the prompt.
   final String provenance;
+
+  /// Serializes this [MilestonePrompt] to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'domain': domain.key,
+      'title': title,
+      'lookFor': lookFor,
+      'ageBand': ageBand,
+      'provenance': provenance,
+    };
+  }
 }

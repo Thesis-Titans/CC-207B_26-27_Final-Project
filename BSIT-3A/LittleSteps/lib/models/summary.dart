@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 /// A child's weekly summary of completed activities and observations.
+@immutable
 class WeeklySummary {
   /// Creates a [WeeklySummary].
   const WeeklySummary({
@@ -15,6 +17,23 @@ class WeeklySummary {
     required this.reflectionPrompt,
     required this.generatedAt,
   });
+
+  /// Creates a [WeeklySummary] from a decoded JSON object.
+  factory WeeklySummary.fromJson(Map<String, dynamic> json) {
+    return WeeklySummary(
+      id: json['id'] as String,
+      weekStartDate: json['weekStartDate'] as String,
+      weekEndDate: json['weekEndDate'] as String,
+      completedActivityCount: (json['completedActivityCount'] as num).toInt(),
+      observedMilestoneCount: (json['observedMilestoneCount'] as num).toInt(),
+      totalPlannedActivities: (json['totalPlannedActivities'] as num).toInt(),
+      domainDistribution: (json['domainDistribution'] as Map<String, dynamic>)
+          .map((k, v) => MapEntry(k, (v as num).toInt())),
+      topActivityIds: (json['topActivityIds'] as List<dynamic>).cast<String>(),
+      reflectionPrompt: json['reflectionPrompt'] as String,
+      generatedAt: DateTime.parse(json['generatedAt'] as String),
+    );
+  }
 
   /// ISO week identifier (for example, `2026-W43`).
   final String id;
@@ -63,25 +82,23 @@ class WeeklySummary {
 
     if (start.month == end.month) {
       return '$startMonth ${start.day} – ${end.day}, $year';
-    } else {
-      return '$startMonth ${start.day} – $endMonth ${end.day}, $year';
     }
+    return '$startMonth ${start.day} – $endMonth ${end.day}, $year';
   }
 
-  /// Creates a [WeeklySummary] from a decoded JSON object.
-  factory WeeklySummary.fromJson(Map<String, dynamic> json) {
-    return WeeklySummary(
-      id: json['id'] as String,
-      weekStartDate: json['weekStartDate'] as String,
-      weekEndDate: json['weekEndDate'] as String,
-      completedActivityCount: json['completedActivityCount'] as int,
-      observedMilestoneCount: json['observedMilestoneCount'] as int,
-      totalPlannedActivities: json['totalPlannedActivities'] as int,
-      domainDistribution: (json['domainDistribution'] as Map<String, dynamic>)
-          .map((k, v) => MapEntry(k, v as int)),
-      topActivityIds: (json['topActivityIds'] as List<dynamic>).cast<String>(),
-      reflectionPrompt: json['reflectionPrompt'] as String,
-      generatedAt: DateTime.parse(json['generatedAt'] as String),
-    );
+  /// Serializes this [WeeklySummary] to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'weekStartDate': weekStartDate,
+      'weekEndDate': weekEndDate,
+      'completedActivityCount': completedActivityCount,
+      'observedMilestoneCount': observedMilestoneCount,
+      'totalPlannedActivities': totalPlannedActivities,
+      'domainDistribution': domainDistribution,
+      'topActivityIds': topActivityIds,
+      'reflectionPrompt': reflectionPrompt,
+      'generatedAt': generatedAt.toIso8601String(),
+    };
   }
 }

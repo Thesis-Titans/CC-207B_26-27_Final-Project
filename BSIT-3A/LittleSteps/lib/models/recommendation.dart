@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
+
 import 'activity.dart';
 
-/// An immutable play activity suggestion paired with a caregiver rationale.
+/// A play activity suggestion paired with a caregiver rationale.
+@immutable
 class Recommendation {
   /// Creates a [Recommendation].
   const Recommendation({
@@ -10,6 +13,20 @@ class Recommendation {
     this.activity,
     this.isCustom = false,
   });
+
+  /// Creates a [Recommendation] from a decoded JSON object.
+  factory Recommendation.fromJson(Map<String, dynamic> json) {
+    final activityId = json['activityId'] as String? ?? '';
+    return Recommendation(
+      activityId: activityId,
+      title: json['title'] as String? ?? 'Suggested Activity',
+      whyPicked: json['whyPicked'] as String? ?? '',
+      activity: json['activity'] != null
+          ? Activity.fromJson(json['activity'] as Map<String, dynamic>)
+          : null,
+      isCustom: json['isCustom'] == true || activityId.startsWith('custom-'),
+    );
+  }
 
   /// Identifier of the catalog activity referenced by this recommendation.
   final String activityId;
@@ -27,22 +44,20 @@ class Recommendation {
   /// rather than selected from the reviewed catalog.
   final bool isCustom;
 
-  /// Creates a [Recommendation] from a decoded JSON object.
-  factory Recommendation.fromJson(Map<String, dynamic> json) {
-    final activityId = json['activityId'] as String? ?? '';
-    return Recommendation(
-      activityId: activityId,
-      title: json['title'] as String? ?? 'Suggested Activity',
-      whyPicked: json['whyPicked'] as String? ?? '',
-      activity: json['activity'] != null
-          ? Activity.fromJson(json['activity'] as Map<String, dynamic>)
-          : null,
-      isCustom: json['isCustom'] == true || activityId.startsWith('custom-'),
-    );
+  /// Serializes this [Recommendation] to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'activityId': activityId,
+      'title': title,
+      'whyPicked': whyPicked,
+      if (activity != null) 'activity': activity!.toJson(),
+      'isCustom': isCustom,
+    };
   }
 }
 
-/// Immutable response containing play suggestions and provenance metadata.
+/// Response containing play suggestions and provenance metadata.
+@immutable
 class RecommendationResponse {
   /// Creates a [RecommendationResponse].
   const RecommendationResponse({
@@ -55,6 +70,28 @@ class RecommendationResponse {
     this.reviewed = true,
     this.materialNote,
   });
+
+  /// Creates a [RecommendationResponse] from a decoded JSON object.
+  factory RecommendationResponse.fromJson(Map<String, dynamic> json) {
+    final rawSuggestions = json['suggestions'] as List<dynamic>? ?? [];
+    final suggestions = rawSuggestions
+        .map((e) => Recommendation.fromJson(e as Map<String, dynamic>))
+        .toList();
+    final provenance = json['provenance'] as Map<String, dynamic>?;
+
+    return RecommendationResponse(
+      suggestions: suggestions,
+      source: json['source'] as String? ?? 'catalog_fallback',
+      tier: (json['tier'] as num?)?.toInt() ?? 3,
+      badge: provenance?['badge'] as String?,
+      label: provenance?['label'] as String?,
+      disclaimer:
+          provenance?['disclaimer'] as String? ??
+          'Observational play suggestion only. Not developmental assessment.',
+      reviewed: provenance?['reviewed'] as bool? ?? true,
+      materialNote: json['materialNote'] as String?,
+    );
+  }
 
   /// Suggested play activities returned for the request.
   final List<Recommendation> suggestions;
@@ -88,25 +125,19 @@ class RecommendationResponse {
   /// than reviewed catalog entries.
   bool get isCustomGenerated => source == 'ai_custom';
 
-  /// Creates a [RecommendationResponse] from a decoded JSON object.
-  factory RecommendationResponse.fromJson(Map<String, dynamic> json) {
-    final rawSuggestions = json['suggestions'] as List<dynamic>? ?? [];
-    final suggestions = rawSuggestions
-        .map((e) => Recommendation.fromJson(e as Map<String, dynamic>))
-        .toList();
-    final provenance = json['provenance'] as Map<String, dynamic>?;
-
-    return RecommendationResponse(
-      suggestions: suggestions,
-      source: json['source'] as String? ?? 'catalog_fallback',
-      tier: json['tier'] as int? ?? 3,
-      badge: provenance?['badge'] as String?,
-      label: provenance?['label'] as String?,
-      disclaimer:
-          provenance?['disclaimer'] as String? ??
-          'Observational play suggestion only. Not developmental assessment.',
-      reviewed: provenance?['reviewed'] as bool? ?? true,
-      materialNote: json['materialNote'] as String?,
-    );
+  /// Serializes this [RecommendationResponse] to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'suggestions': suggestions.map((s) => s.toJson()).toList(),
+      'source': source,
+      'tier': tier,
+      'provenance': {
+        if (badge != null) 'badge': badge,
+        if (label != null) 'label': label,
+        'disclaimer': disclaimer,
+        'reviewed': reviewed,
+      },
+      if (materialNote != null) 'materialNote': materialNote,
+    };
   }
 }

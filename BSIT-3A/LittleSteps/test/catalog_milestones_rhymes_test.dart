@@ -14,24 +14,30 @@ import 'package:littlesteps/services/local_cache.dart';
 
 void main() {
   group('Catalog milestones and rhymes integration', () {
-    test('marks milestone and rhyme catalog endpoints public and cacheable', () {
-      expect(ApiClient.isProtectedPath('/api/v1/catalog/milestones'), isFalse);
-      expect(ApiClient.isProtectedPath('/api/v1/catalog/rhymes'), isFalse);
+    test(
+      'marks milestone and rhyme catalog endpoints public and cacheable',
+      () {
+        expect(
+          ApiClient.isProtectedPath('/api/v1/catalog/milestones'),
+          isFalse,
+        );
+        expect(ApiClient.isProtectedPath('/api/v1/catalog/rhymes'), isFalse);
 
-      final cache = LocalDataCache();
-      expect(cache.isCacheablePath('/api/v1/catalog/milestones'), isTrue);
-      expect(
-        cache.isCacheablePath(
-          '/api/v1/catalog/milestones?ageBand=60-71%20months',
-        ),
-        isTrue,
-      );
-      expect(cache.isCacheablePath('/api/v1/catalog/rhymes'), isTrue);
-      expect(
-        cache.isCacheablePath('/api/v1/catalog/rhymes?language=hil'),
-        isTrue,
-      );
-    });
+        final cache = LocalDataCache();
+        expect(cache.isCacheablePath('/api/v1/catalog/milestones'), isTrue);
+        expect(
+          cache.isCacheablePath(
+            '/api/v1/catalog/milestones?ageBand=60-71%20months',
+          ),
+          isTrue,
+        );
+        expect(cache.isCacheablePath('/api/v1/catalog/rhymes'), isTrue);
+        expect(
+          cache.isCacheablePath('/api/v1/catalog/rhymes?language=hil'),
+          isTrue,
+        );
+      },
+    );
 
     test(
       'CatalogService parses milestones and rhymes from API responses',
@@ -106,66 +112,68 @@ void main() {
       },
     );
 
-    testWidgets('MilestonesScreen displays prompts loaded from CatalogService', (
-      tester,
-    ) async {
-      final mockClient = MockClient((request) async {
-        return http.Response(
-          jsonEncode({
-            'total': 1,
-            'items': [
-              {
-                'id': 'lan-12-live',
-                'domain': 'language',
-                'title': 'Live API Milestone Prompt',
-                'lookFor': ['Points to a familiar storybook page'],
-                'ageBand': '12-23 months',
-                'provenance': 'Source: ECCD Council NELF (2010)',
-                'status': 'source_checked',
-              },
-            ],
-          }),
-          200,
+    testWidgets(
+      'MilestonesScreen displays prompts loaded from CatalogService',
+      (tester) async {
+        final mockClient = MockClient((request) async {
+          return http.Response(
+            jsonEncode({
+              'total': 1,
+              'items': [
+                {
+                  'id': 'lan-12-live',
+                  'domain': 'language',
+                  'title': 'Live API Milestone Prompt',
+                  'lookFor': ['Points to a familiar storybook page'],
+                  'ageBand': '12-23 months',
+                  'provenance': 'Source: ECCD Council NELF (2010)',
+                  'status': 'source_checked',
+                },
+              ],
+            }),
+            200,
+          );
+        });
+
+        final catalogService = CatalogService(
+          apiClient: ApiClient(
+            baseUrl: 'https://example.test',
+            httpClient: mockClient,
+          ),
         );
-      });
 
-      final catalogService = CatalogService(
-        apiClient: ApiClient(
-          baseUrl: 'https://example.test',
-          httpClient: mockClient,
-        ),
-      );
+        await tester.pumpWidget(
+          MaterialApp(home: MilestonesScreen(catalogService: catalogService)),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        MaterialApp(home: MilestonesScreen(catalogService: catalogService)),
-      );
-      await tester.pumpAndSettle();
+        expect(find.text('Live API Milestone Prompt'), findsOneWidget);
+      },
+    );
 
-      expect(find.text('Live API Milestone Prompt'), findsOneWidget);
-    });
+    testWidgets(
+      'MilestonesScreen shows error state with Retry on API failure',
+      (tester) async {
+        final mockClient = MockClient((request) async {
+          return http.Response('{"error":{"code":"SERVER_ERROR"}}', 500);
+        });
 
-    testWidgets('MilestonesScreen shows error state with Retry on API failure', (
-      tester,
-    ) async {
-      final mockClient = MockClient((request) async {
-        return http.Response('{"error":{"code":"SERVER_ERROR"}}', 500);
-      });
+        final catalogService = CatalogService(
+          apiClient: ApiClient(
+            baseUrl: 'https://example.test',
+            httpClient: mockClient,
+          ),
+        );
 
-      final catalogService = CatalogService(
-        apiClient: ApiClient(
-          baseUrl: 'https://example.test',
-          httpClient: mockClient,
-        ),
-      );
+        await tester.pumpWidget(
+          MaterialApp(home: MilestonesScreen(catalogService: catalogService)),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        MaterialApp(home: MilestonesScreen(catalogService: catalogService)),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text("We couldn't load this right now"), findsOneWidget);
-      expect(find.widgetWithText(OutlinedButton, 'Retry'), findsOneWidget);
-    });
+        expect(find.text("We couldn't load this right now"), findsOneWidget);
+        expect(find.widgetWithText(OutlinedButton, 'Retry'), findsOneWidget);
+      },
+    );
 
     testWidgets(
       'MilestonesScreen shows error state with Retry on API failure',

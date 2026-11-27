@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
+
 import 'activity.dart';
 
 /// A traditional Philippine children's rhyme paired with a play prompt.
+@immutable
 class PhilippineRhyme {
   /// Creates a [PhilippineRhyme].
   const PhilippineRhyme({
@@ -72,6 +75,23 @@ class PhilippineRhyme {
 
   /// Published cultural or educational citation for this rhyme.
   final String provenanceSource;
+
+  /// Serializes this [PhilippineRhyme] to a JSON map.
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'subtitle': subtitle,
+      'domain': domain,
+      'domainLabel': domainLabel,
+      'language': language,
+      'lyrics': lyrics,
+      'actionPrompt': actionPrompt,
+      'materials': materials,
+      'durationMinutes': durationMinutes,
+      'provenanceSource': provenanceSource,
+    };
+  }
 
   /// Converts this rhyme into an [Activity] that can be scheduled in a plan.
   Activity toActivity({String? childNickname}) {

@@ -1,4 +1,4 @@
-/// The longest journal note the API accepts.
+/// Maximum journal note length accepted by the API.
 const int maxJournalLength = 2000;
 
 // Matches invisible control characters (except line breaks and tabs) and
@@ -8,11 +8,10 @@ final RegExp _forbiddenCharacters = RegExp(
   unicode: true,
 );
 
-/// Returns an error message if [value] is not a valid journal note,
-/// or null if it is valid.
+/// Returns a validation error if [value] is not a valid note, or `null` if valid.
 ///
-/// Line breaks are allowed in notes, unlike nicknames. The length counts
-/// the note as typed, the same way the API and the form's counter do.
+/// Line breaks are permitted. Length is checked against the raw typed text to
+/// match the backend limit and form character counter.
 String? validateJournalContent(String? value) {
   final content = value ?? '';
 
@@ -20,7 +19,6 @@ String? validateJournalContent(String? value) {
     return 'Write a note';
   }
   if (content.length > maxJournalLength) {
-    // The API's own wording for the 2,000-character limit.
     return 'Notes can be up to 2,000 characters. '
         'Please make this one a little shorter.';
   }
@@ -30,11 +28,8 @@ String? validateJournalContent(String? value) {
   return null;
 }
 
-/// Returns an error message if [date] is after the day of [now],
-/// or null if it is valid.
-///
-/// Only the day is compared, so any time later today still counts as
-/// today.
+/// Returns a validation error if [date] is after the calendar day of [now],
+/// or `null` if valid.
 String? validateEntryDate(DateTime date, {required DateTime now}) {
   final today = DateTime(now.year, now.month, now.day);
   final day = DateTime(date.year, date.month, date.day);
