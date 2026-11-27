@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -53,6 +54,7 @@ class FirebaseAuthRestService implements AuthService {
     this.emulatorPort = 9099,
     this.apiKey = AppConfig.firebaseApiKey,
     this.useEmulator = AppConfig.useFirebaseEmulator,
+    this.requestTimeout = const Duration(seconds: 10),
     http.Client? httpClient,
   }) : httpClient = httpClient ?? http.Client(),
        emulatorHost = emulatorHost ?? defaultEmulatorHost;
@@ -66,21 +68,24 @@ class FirebaseAuthRestService implements AuthService {
   /// Whether requests target the local Firebase Auth emulator.
   final bool useEmulator;
 
-  /// Firebase Auth emulator port (defaults to 9099).
+  /// Firebase Auth emulator port (defaults to `9099`).
   final int emulatorPort;
 
   /// Host address for the emulator (defaults to [AppConfig.emulatorHost]).
   final String emulatorHost;
 
+  /// Timeout applied to authentication HTTP requests.
+  final Duration requestTimeout;
+
   /// Returns the default emulator host based on [AppConfig] or platform.
   static String get defaultEmulatorHost => AppConfig.emulatorHost;
 
-  /// Base URL for Identity Toolkit endpoints.
+  // Base URL for Identity Toolkit endpoints.
   String get _identityBaseUrl => useEmulator
       ? 'http://$emulatorHost:$emulatorPort/identitytoolkit.googleapis.com/v1'
       : 'https://identitytoolkit.googleapis.com/v1';
 
-  /// Base URL for secure token endpoints.
+  // Base URL for secure token endpoints.
   String get _secureTokenBaseUrl => useEmulator
       ? 'http://$emulatorHost:$emulatorPort/securetoken.googleapis.com/v1'
       : 'https://securetoken.googleapis.com/v1';
@@ -118,11 +123,13 @@ class FirebaseAuthRestService implements AuthService {
   @override
   Future<AuthUser> refreshToken(String refreshToken) async {
     final uri = Uri.parse('$_secureTokenBaseUrl/token?key=$apiKey');
-    final response = await httpClient.post(
-      uri,
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: {'grant_type': 'refresh_token', 'refresh_token': refreshToken},
-    );
+    final response = await httpClient
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: {'grant_type': 'refresh_token', 'refresh_token': refreshToken},
+        )
+        .timeout(requestTimeout);
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -147,13 +154,20 @@ class FirebaseAuthRestService implements AuthService {
 
   Future<http.Response> _postJson(Uri uri, Map<String, dynamic> body) async {
     try {
-      return await httpClient.post(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: jsonEncode(body),
+      return await httpClient
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(requestTimeout);
+    } on TimeoutException {
+      throw const AuthException(
+        code: 'auth/network-request-failed',
+        message: "We couldn't reach the sign-in service. Check your connection and try again.",
       );
     } on SocketException {
       throw const AuthException(
@@ -177,7 +191,13 @@ class FirebaseAuthRestService implements AuthService {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final user = AuthUser.fromRestJson(json);
       if (user.email.isEmpty) {
-        return user.copyWith();
+        return AuthUser(
+          id: user.id,
+          email: fallbackEmail,
+          idToken: user.idToken,
+          refreshToken: user.refreshToken,
+          expiresAt: user.expiresAt,
+        );
       }
       return user;
     }

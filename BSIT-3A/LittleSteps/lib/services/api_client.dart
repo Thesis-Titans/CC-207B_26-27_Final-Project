@@ -153,6 +153,11 @@ class ApiClient {
     cache.clear();
   }
 
+  /// Releases resources held by this client.
+  void dispose() {
+    isOfflineNotifier.dispose();
+  }
+
   /// Returns the default host based on [AppConfig] or runtime platform.
   static String get defaultHost => AppConfig.emulatorHost;
 
@@ -165,7 +170,6 @@ class ApiClient {
     return 'http://$selectedHost:5001/demo-littlesteps/asia-southeast1/api';
   }
 
-  // Determines whether an endpoint [path] is protected by authentication.
   /// Returns whether [path] requires an authenticated bearer token.
   static bool isProtectedPath(String path) {
     if (path.contains('/catalog/activities') ||
@@ -226,8 +230,11 @@ class ApiClient {
     }
 
     try {
-      final uri = Uri.parse('$baseUrl$path')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse('$baseUrl$path').replace(
+        queryParameters: queryParams != null && queryParams.isNotEmpty
+            ? queryParams
+            : null,
+      );
       final response = await _sendWithRetry(
         path,
         (headers) =>

@@ -21,16 +21,15 @@ class CatalogService {
     String? setting,
     int limit = 50,
   }) async {
-    final queryParams = <String, String>{};
-    if (ageBand != null) queryParams['ageBand'] = ageBand;
-    if (domain != null) queryParams['domain'] = domain;
-    if (language != null) queryParams['language'] = language;
-    if (setting != null) queryParams['setting'] = setting;
-    queryParams['limit'] = limit.toString();
-
     final data = await apiClient.get(
       '/api/v1/catalog/activities',
-      queryParams: queryParams,
+      queryParams: {
+        'ageBand': ?ageBand,
+        'domain': ?domain,
+        'language': ?language,
+        'setting': ?setting,
+        'limit': limit.toString(),
+      },
     ) as Map<String, dynamic>;
     final items = data['items'] as List<dynamic>? ?? [];
     return items
@@ -52,13 +51,13 @@ class CatalogService {
     String? domain,
     int limit = 50,
   }) async {
-    final queryParams = <String, String>{'limit': limit.toString()};
-    if (ageBand != null) queryParams['ageBand'] = ageBand;
-    if (domain != null) queryParams['domain'] = domain;
-
     final data = await apiClient.get(
       '/api/v1/catalog/milestones',
-      queryParams: queryParams,
+      queryParams: {
+        'ageBand': ?ageBand,
+        'domain': ?domain,
+        'limit': limit.toString(),
+      },
     ) as Map<String, dynamic>;
     final items = data['items'] as List<dynamic>? ?? [];
     return items
@@ -72,13 +71,13 @@ class CatalogService {
     String? language,
     int limit = 50,
   }) async {
-    final queryParams = <String, String>{'limit': limit.toString()};
-    if (domain != null) queryParams['domain'] = domain;
-    if (language != null) queryParams['language'] = language;
-
     final data = await apiClient.get(
       '/api/v1/catalog/rhymes',
-      queryParams: queryParams,
+      queryParams: {
+        'domain': ?domain,
+        'language': ?language,
+        'limit': limit.toString(),
+      },
     ) as Map<String, dynamic>;
     final items = data['items'] as List<dynamic>? ?? [];
     return items
