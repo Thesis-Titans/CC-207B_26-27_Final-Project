@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import '../config/external_links.dart';
 import '../models/weather.dart';
 import '../theme/app_tokens.dart';
+import '../utils/domain_labels.dart';
 import '../utils/url_helper.dart';
 
 /// Weather guidance banner with Open-Meteo attribution and optional actions.
 ///
-/// Renders indoor/outdoor play guidance when [hint] is available. Supports an
-/// optional dismiss button ([onDismiss]), city attribution ([cityLabel]), and
-/// an indoor-play action CTA ([onApplyIndoorAction]).
+/// Renders standardized indoor or outdoor play guidance derived from [hint].
+/// Supports an optional dismiss button ([onDismiss]), city attribution
+/// ([cityLabel]), and symmetric indoor/outdoor action callbacks
+/// ([onApplyIndoorAction] and [onApplyOutdoorAction]).
 class WeatherHintBanner extends StatelessWidget {
   /// Creates a [WeatherHintBanner].
   const WeatherHintBanner({
@@ -19,6 +21,7 @@ class WeatherHintBanner extends StatelessWidget {
     this.hasPlans = false,
     this.onDismiss,
     this.onApplyIndoorAction,
+    this.onApplyOutdoorAction,
     this.advisoryTone = false,
     this.margin,
   });
@@ -35,14 +38,34 @@ class WeatherHintBanner extends StatelessWidget {
   /// Optional callback invoked when the caregiver dismisses the banner.
   final VoidCallback? onDismiss;
 
-  /// Optional callback invoked when the caregiver taps the indoor-ideas action.
+  /// Optional callback invoked when indoor play is suggested and tapped.
   final VoidCallback? onApplyIndoorAction;
+
+  /// Optional callback invoked when outdoor play is suggested and tapped.
+  final VoidCallback? onApplyOutdoorAction;
 
   /// Whether to use the warm advisory surface instead of soft green.
   final bool advisoryTone;
 
   /// Optional outer margin around the banner container.
   final EdgeInsetsGeometry? margin;
+
+  IconData _weatherIcon() {
+    if (hint.isRainy) return Icons.cloud_outlined;
+    if (hint.heatFlag) return Icons.thermostat_outlined;
+    return Icons.wb_sunny_outlined;
+  }
+
+  VoidCallback? _resolveAction() {
+    if (hint.isIndoorSuggested) return onApplyIndoorAction;
+    if (hint.isOutdoorSuggested) return onApplyOutdoorAction;
+    return null;
+  }
+
+  String _actionLabel() {
+    final settingWord = formatSettingLabel(hint.suggestedSetting).toLowerCase();
+    return hasPlans ? 'Filter $settingWord' : 'Find $settingWord ideas';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,22 +74,10 @@ class WeatherHintBanner extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
-    final rawHint =
-        hint.hint ??
-        (hint.suggestedSetting == 'indoor'
-            ? 'Rainy weather · Indoor play suggested'
-            : 'Outdoor play recommended today');
-
-    final showIndoorAction =
-        onApplyIndoorAction != null &&
-        (hint.suggestedSetting == 'indoor' || rawHint.contains('Indoor'));
-    final displayHint = showIndoorAction
-        ? rawHint.replaceFirst(
-            RegExp(r'\s*·\s*Indoor ideas$', caseSensitive: false),
-            '',
-          )
-        : rawHint;
-    final indoorActionLabel = hasPlans ? 'Filter indoor' : 'Find indoor ideas';
+    final actionCallback = _resolveAction();
+    final displayHint = hint.displayMessage(
+      stripActionSuffix: actionCallback != null,
+    );
     final attributionText = cityLabel != null && cityLabel!.isNotEmpty
         ? '$cityLabel · ${hint.attribution}'
         : hint.attribution;
@@ -98,7 +109,7 @@ class WeatherHintBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(
-                  hint.isRainy ? Icons.cloud_outlined : Icons.wb_sunny_outlined,
+                  _weatherIcon(),
                   size: 18,
                   color: advisoryTone
                       ? AppColors.textPrimary
@@ -162,7 +173,7 @@ class WeatherHintBanner extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (showIndoorAction)
+                if (actionCallback != null)
                   TextButton.icon(
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -170,9 +181,9 @@ class WeatherHintBanner extends StatelessWidget {
                       ),
                       minimumSize: const Size(0, AppSizes.touchTarget),
                     ),
-                    onPressed: onApplyIndoorAction,
+                    onPressed: actionCallback,
                     icon: const Icon(Icons.arrow_forward, size: 16),
-                    label: Text(indoorActionLabel),
+                    label: Text(_actionLabel()),
                   ),
               ],
             ),

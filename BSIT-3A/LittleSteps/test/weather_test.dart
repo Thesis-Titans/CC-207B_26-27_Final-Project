@@ -100,6 +100,16 @@ void main() {
       expect(rainyHint.isRainy, isTrue);
       expect(sunnyHint.isRainy, isFalse);
       expect(highChanceCloudy.isRainy, isTrue);
+      expect(rainyHint.isIndoorSuggested, isTrue);
+      expect(sunnyHint.isOutdoorSuggested, isTrue);
+      expect(
+        rainyHint.displayMessage(stripActionSuffix: true),
+        'Rain likely this afternoon',
+      );
+      expect(
+        sunnyHint.displayMessage(stripActionSuffix: true),
+        'Good weather for outdoor play',
+      );
     });
   });
 

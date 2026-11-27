@@ -88,6 +88,15 @@ class WeatherHint {
     );
   }
 
+  /// Canonical API wire value for indoor play guidance.
+  static const String settingIndoor = 'indoor';
+
+  /// Canonical API wire value for outdoor play guidance.
+  static const String settingOutdoor = 'outdoor';
+
+  /// Canonical API wire value when either setting is suitable.
+  static const String settingEither = 'either';
+
   /// Normalized weather condition label from the forecast service.
   final String condition;
 
@@ -97,7 +106,8 @@ class WeatherHint {
   /// Whether elevated heat makes indoor play preferable.
   final bool heatFlag;
 
-  /// Suggested play setting (`indoor`, `outdoor`, or `either`).
+  /// Suggested play setting ([settingIndoor], [settingOutdoor], or
+  /// [settingEither]).
   final String suggestedSetting;
 
   /// Short caregiver-facing weather hint, or `null` when neutral.
@@ -108,6 +118,13 @@ class WeatherHint {
 
   /// Whether current weather data is unavailable.
   bool get isUnavailable => condition == 'unavailable' || hint == null;
+
+  /// Whether [suggestedSetting] recommends indoor play.
+  bool get isIndoorSuggested => suggestedSetting.toLowerCase() == settingIndoor;
+
+  /// Whether [suggestedSetting] recommends outdoor play.
+  bool get isOutdoorSuggested =>
+      suggestedSetting.toLowerCase() == settingOutdoor;
 
   /// Whether the forecast indicates rain, showers, or storms.
   bool get isRainy {
@@ -120,6 +137,34 @@ class WeatherHint {
     };
     return rainyConditions.contains(condition.toLowerCase()) ||
         rainChance >= 50;
+  }
+
+  /// Returns a standardized caregiver-facing weather message.
+  ///
+  /// When [stripActionSuffix] is `true`, strips trailing `· Indoor ideas` or
+  /// `· Outdoor ideas` suffixes so banners with an explicit action button do
+  /// not repeat the call to action.
+  String displayMessage({bool stripActionSuffix = false}) {
+    final raw = (hint != null && hint!.trim().isNotEmpty)
+        ? hint!.trim()
+        : _defaultMessage();
+    if (!stripActionSuffix) return raw;
+    return raw.replaceFirst(
+      RegExp(r'\s*·\s*(Indoor|Outdoor)\s+ideas$', caseSensitive: false),
+      '',
+    );
+  }
+
+  String _defaultMessage() {
+    if (isIndoorSuggested) {
+      if (isRainy) return 'Rainy weather · Indoor play suggested';
+      if (heatFlag) return 'Warm weather · Indoor play suggested';
+      return 'Indoor play suggested';
+    }
+    if (isOutdoorSuggested) {
+      return 'Clear weather · Outdoor play suggested';
+    }
+    return 'Indoor or outdoor play works well today';
   }
 
   /// Serializes this [WeatherHint] to a JSON map.
