@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../models/age_band.dart';
 import '../../models/milestone.dart';
 import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
@@ -63,15 +64,6 @@ class MilestonesScreen extends StatefulWidget {
 }
 
 class _MilestonesScreenState extends State<MilestonesScreen> {
-  static const List<String> _ageBands = [
-    '0-11 months',
-    '12-23 months',
-    '24-35 months',
-    '36-47 months',
-    '48-59 months',
-    '60-71 months',
-  ];
-
   late MilestonesViewState _currentState;
   late List<MilestonePrompt> _prompts;
   late Map<String, MilestoneObservation> _observations;
@@ -99,15 +91,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     return 14;
   }
 
-  String get _childAgeBand {
-    final months = _childAgeMonths;
-    if (months < 12) return _ageBands[0];
-    if (months < 24) return _ageBands[1];
-    if (months < 36) return _ageBands[2];
-    if (months < 48) return _ageBands[3];
-    if (months < 60) return _ageBands[4];
-    return _ageBands[5];
-  }
+  String get _childAgeBand => milestoneAgeBandForMonths(_childAgeMonths);
 
   @override
   void initState() {
@@ -115,7 +99,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     _currentState = widget.initialState;
     _prompts = widget.prompts;
     _observations = Map.from(widget.initialObservations);
-    _selectedAgeBand = _ageBands[1];
+    _selectedAgeBand = milestoneAgeBands[1];
   }
 
   ApiClient _resolveApiClient() {
@@ -231,7 +215,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
         ),
       ),
       builder: (_) => MilestoneAgeBandPickerSheet(
-        ageBands: _ageBands,
+        ageBands: milestoneAgeBands,
         selectedAgeBand: _selectedAgeBand,
         onSelected: (band) => setState(() => _selectedAgeBand = band),
       ),

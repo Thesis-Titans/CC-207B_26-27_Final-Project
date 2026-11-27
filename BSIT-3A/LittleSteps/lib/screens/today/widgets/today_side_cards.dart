@@ -41,41 +41,49 @@ class TodaySideCards extends StatelessWidget {
         const SizedBox(height: AppSpacing.space16),
         _TodayShortcutCard(
           title: 'Milestones to notice',
-          subtitle: 'Everyday cues to notice for $childName:',
+          subtitle: milestoneCues.isNotEmpty
+              ? 'Everyday cues to notice for $childName:'
+              : 'Explore everyday developmental cues to notice for $childName.',
           actionLabel: 'View milestones',
           onAction: onOpenMilestones,
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: milestoneCues
-                .map(
-                  (cue) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: AppSpacing.space4 / 2),
-                          child: Icon(
-                            Icons.visibility_outlined,
-                            size: 16,
-                            color: AppColors.forest,
+          body: milestoneCues.isEmpty
+              ? null
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: milestoneCues
+                      .map(
+                        (cue) => Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: AppSpacing.space8,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(
+                                  top: AppSpacing.space4 / 2,
+                                ),
+                                child: Icon(
+                                  Icons.visibility_outlined,
+                                  size: 16,
+                                  color: AppColors.forest,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.space8),
+                              Expanded(
+                                child: Text(
+                                  cue,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.space8),
-                        Expanded(
-                          child: Text(
-                            cue,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
+                      )
+                      .toList(),
+                ),
         ),
       ],
     );

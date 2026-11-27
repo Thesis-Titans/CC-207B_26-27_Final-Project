@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/book.dart';
 import '../../../models/rhyme.dart';
 import '../../../theme/app_tokens.dart';
+import '../../../widgets/horizontal_scroll_fade.dart';
 import '../../../widgets/state_views.dart';
 import 'storybook_grid.dart';
 
@@ -135,26 +136,28 @@ class OpenLibraryShelf extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.space12),
         if (searchQuery.isEmpty) ...[
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.only(right: AppSpacing.space24),
-            child: Row(
-              children: [
-                _SubjectChip(
-                  label: 'All books',
-                  selected: selectedSubject == null,
-                  onSelected: (_) => onSubjectSelected(null),
-                ),
-                ...storybookSubjectOptions.map(
-                  (subject) => _SubjectChip(
-                    label: subject.label,
-                    selected: selectedSubject == subject.id,
-                    onSelected: (selected) =>
-                        onSubjectSelected(selected ? subject.id : null),
+          HorizontalScrollFade(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.only(right: AppSpacing.space24),
+              child: Row(
+                children: [
+                  _SubjectChip(
+                    label: 'All books',
+                    selected: selectedSubject == null,
+                    onSelected: (_) => onSubjectSelected(null),
                   ),
-                ),
-              ],
+                  ...storybookSubjectOptions.map(
+                    (subject) => _SubjectChip(
+                      label: subject.label,
+                      selected: selectedSubject == subject.id,
+                      onSelected: (selected) =>
+                          onSubjectSelected(selected ? subject.id : null),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.space12),

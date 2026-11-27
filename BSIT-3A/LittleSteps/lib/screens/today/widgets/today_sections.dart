@@ -3,54 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_tokens.dart';
 import '../../../utils/domain_labels.dart';
 import '../../../widgets/advisory_banner.dart';
-
-/// Sample observational milestone cues tailored to an [ageBand] code.
-List<String> todayMilestoneCuesForAgeBand(String? ageBand) {
-  switch (ageBand) {
-    case '0-5m':
-      return const [
-        'Follows a moving face or toy with both eyes',
-        'Turns head toward familiar voices and sounds',
-        'Brings hands to mouth and kicks legs during play',
-      ];
-    case '6-11m':
-      return const [
-        'Passes a soft toy from one hand to the other',
-        'Looks when you call their name or play peekaboo',
-        'Babbles chains of vowel and consonant sounds',
-      ];
-    case '24-35m':
-      return const [
-        'Puts two or more words together during play',
-        'Pretends to feed a doll or stir a toy cup',
-        'Kicks a ball forward or climbs low steps with help',
-      ];
-    case '36-47m':
-      return const [
-        'Asks simple "what" or "where" questions while playing',
-        'Takes turns in short games with a caregiver',
-        'Sorts everyday objects by color or size',
-      ];
-    case '48-59m':
-      return const [
-        'Tells a short story about a drawing or pretend game',
-        'Hops or balances briefly on one foot',
-        'Counts a small group of household items together',
-      ];
-    case '60-71m':
-      return const [
-        'Follows two- or three-step game rules with ease',
-        'Shares ideas and solves simple puzzles during play',
-        'Draws shapes or letters and talks about what they mean',
-      ];
-    default:
-      return const [
-        'Explores toys by banging, shaking, or dropping',
-        'Reaches out or gestures to show you something interesting',
-        'Copies actions like waving goodbye or clapping',
-      ];
-  }
-}
+import '../../../widgets/horizontal_scroll_fade.dart';
 
 /// Dismissible non-diagnostic advisory banner or persistent underlined link.
 class TodayAdvisorySection extends StatelessWidget {
@@ -253,38 +206,40 @@ class TodayQuickFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.only(right: AppSpacing.space16),
-      child: Row(
-        children: [
-          FilterChip(
-            label: const Text('Under 10 mins'),
-            selected: under10Mins,
-            onSelected: onUnder10MinsChanged,
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          FilterChip(
-            label: const Text('No materials needed'),
-            selected: noMaterials,
-            onSelected: onNoMaterialsChanged,
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          FilterChip(
-            label: Text(formatSettingLabel(PlaySetting.indoor)),
-            selected: indoorOnly,
-            onSelected: onIndoorChanged,
-          ),
-          if (outdoorOnly) ...[
+    return HorizontalScrollFade(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.only(right: AppSpacing.space16),
+        child: Row(
+          children: [
+            FilterChip(
+              label: const Text('Under 10 mins'),
+              selected: under10Mins,
+              onSelected: onUnder10MinsChanged,
+            ),
             const SizedBox(width: AppSpacing.space8),
             FilterChip(
-              label: Text(formatSettingLabel(PlaySetting.outdoor)),
-              selected: outdoorOnly,
-              onSelected: onOutdoorChanged,
+              label: const Text('No materials needed'),
+              selected: noMaterials,
+              onSelected: onNoMaterialsChanged,
             ),
+            const SizedBox(width: AppSpacing.space8),
+            FilterChip(
+              label: Text(formatSettingLabel(PlaySetting.indoor)),
+              selected: indoorOnly,
+              onSelected: onIndoorChanged,
+            ),
+            if (outdoorOnly) ...[
+              const SizedBox(width: AppSpacing.space8),
+              FilterChip(
+                label: Text(formatSettingLabel(PlaySetting.outdoor)),
+                selected: outdoorOnly,
+                onSelected: onOutdoorChanged,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

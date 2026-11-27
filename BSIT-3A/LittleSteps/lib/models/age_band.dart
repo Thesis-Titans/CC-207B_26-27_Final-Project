@@ -35,6 +35,40 @@ const List<AgeBand> ageBands = [
   AgeBand(code: '60-71m', label: '60-71 months', minMonths: 60, maxMonths: 71),
 ];
 
+/// Ordered milestone catalog age-band labels matching `GET /catalog/milestones`.
+const List<String> milestoneAgeBands = [
+  '0-11 months',
+  '12-23 months',
+  '24-35 months',
+  '36-47 months',
+  '48-59 months',
+  '60-71 months',
+];
+
+/// Resolves the milestone catalog age-band label for an age in [months].
+String milestoneAgeBandForMonths(int months) {
+  if (months < 12) return milestoneAgeBands[0];
+  if (months < 24) return milestoneAgeBands[1];
+  if (months < 36) return milestoneAgeBands[2];
+  if (months < 48) return milestoneAgeBands[3];
+  if (months < 60) return milestoneAgeBands[4];
+  return milestoneAgeBands[5];
+}
+
+/// Resolves the milestone catalog age-band label from a child [rawAgeBand] code.
+String milestoneAgeBandForCode(String? rawAgeBand) {
+  if (rawAgeBand == null || rawAgeBand.isEmpty) {
+    return milestoneAgeBands[1];
+  }
+  final band = ageBandForCode(rawAgeBand);
+  if (band != null) {
+    return milestoneAgeBandForMonths(band.minMonths);
+  }
+  final match = RegExp(r'\d+').firstMatch(rawAgeBand);
+  final months = int.tryParse(match?.group(0) ?? '');
+  return milestoneAgeBandForMonths(months ?? 14);
+}
+
 /// Calculates whole months elapsed between [birthYear]/[birthMonth] and [now].
 int ageInMonths({
   required int birthYear,

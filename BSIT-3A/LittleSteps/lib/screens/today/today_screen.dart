@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../models/activity.dart';
+import '../../models/age_band.dart';
 import '../../models/child.dart';
+import '../../models/milestone.dart';
 import '../../models/plan.dart';
 import '../../models/weather.dart';
 import '../../services/api_client.dart';
@@ -62,6 +64,7 @@ class TodayScreen extends StatefulWidget {
     this.initialPlans,
     this.initialActivities,
     this.initialWeatherHint,
+    this.initialMilestoneCues,
     this.activeChild,
     this.initialDate,
     this.isOffline = false,
@@ -88,6 +91,9 @@ class TodayScreen extends StatefulWidget {
 
   /// Optional weather hint override for widget tests.
   final WeatherHint? initialWeatherHint;
+
+  /// Optional preloaded milestone cue titles for widget tests.
+  final List<String>? initialMilestoneCues;
 
   /// Currently selected active child profile.
   final Child? activeChild;
@@ -123,6 +129,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
   List<PlanItem> _plans = [];
   Map<String, Activity> _activityLookup = {};
+  List<String> _milestoneCues = const [];
   WeatherHint? _weatherHint;
   String? _errorMessage;
 
@@ -186,6 +193,9 @@ class _TodayScreenState extends State<TodayScreen> {
     if (widget.initialWeatherHint != null) {
       _weatherHint = widget.initialWeatherHint;
     }
+    if (widget.initialMilestoneCues != null) {
+      _milestoneCues = List.of(widget.initialMilestoneCues!);
+    }
     if (widget.initialPlans != null) {
       _plans = List.from(widget.initialPlans!);
     }
@@ -237,6 +247,7 @@ class _TodayScreenState extends State<TodayScreen> {
       _loadedChildId = nextChildId;
       if (childChanged) {
         _plans = [];
+        _milestoneCues = const [];
         _filterUnder10Mins = false;
         _filterNoMaterials = false;
         _filterIndoor = false;
@@ -350,6 +361,7 @@ class _TodayScreenState extends State<TodayScreen> {
         : WeatherLocation.iloiloCity;
     final requestedWeatherKey = weatherLocation?.name ?? '__off__';
     _loadedWeatherCityKey = requestedWeatherKey;
+    final milestoneAgeBand = milestoneAgeBandForCode(_resolvedChild?.ageBand);
 
     try {
       final results = await Future.wait([
@@ -361,10 +373,14 @@ class _TodayScreenState extends State<TodayScreen> {
           )
         else
           Future<WeatherHint?>.value(null),
+        catalogService
+            .getMilestones(ageBand: milestoneAgeBand, limit: 3)
+            .catchError((_) => const <MilestonePrompt>[]),
       ]);
 
       final fetchedPlans = results[0] as List<PlanItem>;
       final fetchedWeather = results[1] as WeatherHint?;
+      final fetchedMilestones = results[2] as List<MilestonePrompt>;
 
       for (final plan in fetchedPlans) {
         if (plan.customActivity != null) {
@@ -388,6 +404,11 @@ class _TodayScreenState extends State<TodayScreen> {
 
       setState(() {
         _plans = fetchedPlans;
+        _milestoneCues = fetchedMilestones
+            .map((prompt) => prompt.title)
+            .where((title) => title.isNotEmpty)
+            .take(3)
+            .toList();
         if (_loadedWeatherCityKey == requestedWeatherKey) {
           _weatherHint = fetchedWeather;
         }
@@ -712,7 +733,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
     final sideCards = TodaySideCards(
       childName: _childName,
-      milestoneCues: todayMilestoneCuesForAgeBand(_resolvedChild?.ageBand),
+      milestoneCues: _milestoneCues,
       onOpenReflection: widget.onNavigateTab != null
           ? () => widget.onNavigateTab!(4)
           : null,
