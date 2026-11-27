@@ -15,6 +15,7 @@ import '../../utils/accessibility.dart';
 import '../../utils/date_formatting.dart';
 import '../../utils/domain_labels.dart';
 import '../../widgets/auth_scope.dart';
+import '../../widgets/responsive_layout.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
 import '../../widgets/weather_hint_banner.dart';
@@ -817,28 +818,7 @@ class _TodayScreenState extends State<TodayScreen> {
                 ),
             ],
           ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth >= AppSizes.twoColumnBreakpoint) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: mainColumn),
-                    const SizedBox(width: AppSpacing.space24),
-                    SizedBox(width: AppSizes.sidePanelWidth, child: sideCards),
-                  ],
-                );
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  mainColumn,
-                  const SizedBox(height: AppSpacing.space20),
-                  sideCards,
-                ],
-              );
-            },
-          ),
+          AdaptiveTwoPane(primary: mainColumn, secondary: sideCards),
         ],
       ),
     );

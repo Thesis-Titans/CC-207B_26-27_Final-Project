@@ -9,6 +9,7 @@ import '../../services/api_client.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
+import '../../widgets/responsive_layout.dart';
 import 'widgets/child_widgets.dart';
 
 /// Form screen for creating or editing a child profile.
@@ -270,167 +271,160 @@ class _AddChildScreenState extends State<AddChildScreen> {
         title: Text(_isEditing ? 'Edit child profile' : 'Add child profile'),
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: AppSizes.contentMaxWidth,
-            ),
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.space16),
-                children: [
-                  TextFormField(
-                    controller: _nicknameController,
-                    textInputAction: TextInputAction.done,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(
-                      labelText: 'Nickname',
-                      errorText: _fieldErrors['nickname'],
-                    ),
-                    validator: validateNickname,
-                    onChanged: (_) => _clearFieldError('nickname'),
-                    onFieldSubmitted: (_) => _submit(),
+        child: ResponsiveContentBox(
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(AppSpacing.space16),
+              children: [
+                TextFormField(
+                  controller: _nicknameController,
+                  textInputAction: TextInputAction.done,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: 'Nickname',
+                    errorText: _fieldErrors['nickname'],
                   ),
-                  const SizedBox(height: AppSpacing.space16),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Choose an age band instead'),
-                    value: _useAgeBand,
+                  validator: validateNickname,
+                  onChanged: (_) => _clearFieldError('nickname'),
+                  onFieldSubmitted: (_) => _submit(),
+                ),
+                const SizedBox(height: AppSpacing.space16),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Choose an age band instead'),
+                  value: _useAgeBand,
+                  onChanged: (value) {
+                    setState(() {
+                      _useAgeBand = value;
+                      _fieldErrors = Map.of(_fieldErrors)
+                        ..remove('ageBand')
+                        ..remove('birthMonthYear');
+                    });
+                  },
+                ),
+                const SizedBox(height: AppSpacing.space8),
+                // Only one way of giving the age is on screen, so the form only
+                // checks that one. The API needs exactly one of the two.
+                if (_useAgeBand)
+                  DropdownButtonFormField<AgeBand>(
+                    isExpanded: true,
+                    initialValue: _ageBand,
+                    decoration: InputDecoration(
+                      labelText: 'Age band',
+                      errorText: _fieldErrors['ageBand'],
+                    ),
+                    items: [
+                      for (final ageBand in ageBands)
+                        DropdownMenuItem(
+                          value: ageBand,
+                          child: Text(ageBand.label),
+                        ),
+                    ],
                     onChanged: (value) {
                       setState(() {
-                        _useAgeBand = value;
-                        _fieldErrors = Map.of(_fieldErrors)
-                          ..remove('ageBand')
-                          ..remove('birthMonthYear');
+                        _ageBand = value;
                       });
+                      _clearFieldError('ageBand');
                     },
-                  ),
-                  const SizedBox(height: AppSpacing.space8),
-                  // Only one way of giving the age is on screen, so the form only
-                  // checks that one. The API needs exactly one of the two.
-                  if (_useAgeBand)
-                    DropdownButtonFormField<AgeBand>(
-                      isExpanded: true,
-                      initialValue: _ageBand,
-                      decoration: InputDecoration(
-                        labelText: 'Age band',
-                        errorText: _fieldErrors['ageBand'],
-                      ),
-                      items: [
-                        for (final ageBand in ageBands)
-                          DropdownMenuItem(
-                            value: ageBand,
-                            child: Text(ageBand.label),
+                    validator: (value) =>
+                        value == null ? 'Choose an age band' : null,
+                  )
+                else ...[
+                  DropdownButtonFormField<int>(
+                    isExpanded: true,
+                    initialValue: _birthMonth,
+                    decoration: const InputDecoration(labelText: 'Birth month'),
+                    items: [
+                      for (var month = 1; month <= 12; month++)
+                        DropdownMenuItem(
+                          value: month,
+                          child: Text(
+                            DateFormat.MMMM().format(DateTime(2000, month)),
                           ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _ageBand = value;
-                        });
-                        _clearFieldError('ageBand');
-                      },
-                      validator: (value) =>
-                          value == null ? 'Choose an age band' : null,
-                    )
-                  else ...[
-                    DropdownButtonFormField<int>(
-                      isExpanded: true,
-                      initialValue: _birthMonth,
-                      decoration: const InputDecoration(
-                        labelText: 'Birth month',
-                      ),
-                      items: [
-                        for (var month = 1; month <= 12; month++)
-                          DropdownMenuItem(
-                            value: month,
-                            child: Text(
-                              DateFormat.MMMM().format(DateTime(2000, month)),
-                            ),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _birthMonth = value;
-                        });
-                        _clearFieldError('birthMonthYear');
-                      },
-                      validator: (value) =>
-                          value == null ? 'Choose a month' : null,
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                    DropdownButtonFormField<int>(
-                      isExpanded: true,
-                      initialValue: _birthYear,
-                      // A server error about the birth date shows here, under
-                      // the year, where the local birth date check shows too.
-                      decoration: InputDecoration(
-                        labelText: 'Birth year',
-                        errorText: _fieldErrors['birthMonthYear'],
-                      ),
-                      items: [
-                        for (final year in years)
-                          DropdownMenuItem(value: year, child: Text('$year')),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _birthYear = value;
-                        });
-                        _clearFieldError('birthMonthYear');
-                      },
-                      validator: _validateBirthYear,
-                    ),
-                    if (band != null) ...[
-                      const SizedBox(height: AppSpacing.space8),
-                      Text('Age band: ${band.label}'),
+                        ),
                     ],
-                  ],
-                  const SizedBox(height: AppSpacing.space16),
-                  if (_offline) ...[
-                    const ChildOfflineNotice(),
-                    const SizedBox(height: AppSpacing.space16),
-                  ],
-                  if (_errorMessage != null) ...[
-                    Text(
-                      _errorMessage!,
-                      style: Theme.of(context).textTheme.bodyMedium
-                          ?.copyWith(color: AppColors.textError),
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                  ],
-                  SizedBox(
-                    height: AppSizes.touchTarget,
-                    child: FilledButton(
-                      onPressed: _saving ? null : _submit,
-                      child: _saving
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: AppColors.surfaceCard,
-                              ),
-                            )
-                          : const Text('Save'),
-                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        _birthMonth = value;
+                      });
+                      _clearFieldError('birthMonthYear');
+                    },
+                    validator: (value) =>
+                        value == null ? 'Choose a month' : null,
                   ),
-                  if (_isEditing) ...[
-                    const SizedBox(height: AppSpacing.space20),
-                    Center(
-                      child: TextButton(
-                        onPressed: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.accountSettings,
-                        ),
-                        child: const Text(
-                          'Need to delete this profile and its records? Manage in Settings',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                  const SizedBox(height: AppSpacing.space16),
+                  DropdownButtonFormField<int>(
+                    isExpanded: true,
+                    initialValue: _birthYear,
+                    // A server error about the birth date shows here, under
+                    // the year, where the local birth date check shows too.
+                    decoration: InputDecoration(
+                      labelText: 'Birth year',
+                      errorText: _fieldErrors['birthMonthYear'],
                     ),
+                    items: [
+                      for (final year in years)
+                        DropdownMenuItem(value: year, child: Text('$year')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _birthYear = value;
+                      });
+                      _clearFieldError('birthMonthYear');
+                    },
+                    validator: _validateBirthYear,
+                  ),
+                  if (band != null) ...[
+                    const SizedBox(height: AppSpacing.space8),
+                    Text('Age band: ${band.label}'),
                   ],
                 ],
-              ),
+                const SizedBox(height: AppSpacing.space16),
+                if (_offline) ...[
+                  const ChildOfflineNotice(),
+                  const SizedBox(height: AppSpacing.space16),
+                ],
+                if (_errorMessage != null) ...[
+                  Text(
+                    _errorMessage!,
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: AppColors.textError),
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                ],
+                SizedBox(
+                  height: AppSizes.touchTarget,
+                  child: FilledButton(
+                    onPressed: _saving ? null : _submit,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: AppColors.surfaceCard,
+                            ),
+                          )
+                        : const Text('Save'),
+                  ),
+                ),
+                if (_isEditing) ...[
+                  const SizedBox(height: AppSpacing.space20),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.accountSettings,
+                      ),
+                      child: const Text(
+                        'Need to delete this profile and its records? Manage in Settings',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),

@@ -36,7 +36,8 @@ class ExploreActivityCard extends StatelessWidget {
     return Card.outlined(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isWideCard = constraints.maxWidth >= 520;
+          final isWideCard =
+              constraints.maxWidth >= AppSizes.wideCardBreakpoint;
           return Padding(
             padding: EdgeInsets.all(
               isWideCard ? AppSpacing.space20 : AppSpacing.space16,

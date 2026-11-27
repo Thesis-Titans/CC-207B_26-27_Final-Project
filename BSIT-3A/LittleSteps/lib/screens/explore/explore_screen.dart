@@ -19,6 +19,7 @@ import '../../utils/date_formatting.dart';
 import '../../utils/domain_labels.dart';
 import '../../utils/plan_errors.dart';
 import '../../widgets/auth_scope.dart';
+import '../../widgets/responsive_layout.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
 import 'storybooks_section.dart';
@@ -215,7 +216,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       useSafeArea: true,
       showDragHandle: true,
       isScrollControlled: true,
-      constraints: const BoxConstraints(maxWidth: 600),
+      constraints: const BoxConstraints(maxWidth: AppSizes.sheetMaxWidth),
       sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
           ? AnimationStyle.noAnimation
           : null,
@@ -369,90 +370,73 @@ class _ExploreScreenState extends State<ExploreScreen> {
           final isWideLayout =
               constraints.maxWidth >= AppSizes.twoColumnBreakpoint;
           if (!isWideLayout) {
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: AppSizes.wideContentMaxWidth,
-                ),
-                child: _buildCompactScrollView(
-                  context: context,
-                  activities: activities,
-                  activeChild: activeChild,
-                  resultMessage: resultMessage,
-                ),
+            return ResponsiveContentBox(
+              maxWidth: AppSizes.wideContentMaxWidth,
+              child: _buildCompactScrollView(
+                context: context,
+                activities: activities,
+                activeChild: activeChild,
+                resultMessage: resultMessage,
               ),
             );
           }
 
-          return Align(
+          return ResponsiveContentBox(
             alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppSizes.wideContentMaxWidth,
-              ),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(AppSpacing.space16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const ScreenHeader(
-                      title: 'Explore',
-                      subtitle: 'Simple ideas with things you already have.',
-                    ),
-                    const SizedBox(height: AppSpacing.space16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            maxWidth: AppSizes.wideContentMaxWidth,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.space16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const ScreenHeader(
+                    title: 'Explore',
+                    subtitle: 'Simple ideas with things you already have.',
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  AdaptiveTwoPane(
+                    primary: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildSectionTabs(),
-                              if (!_storybooksSelected) ...[
-                                const SizedBox(height: AppSpacing.space12),
-                                _buildSearchRow(activeChild),
-                                const SizedBox(height: AppSpacing.space12),
-                                ExploreDomainFilters(
-                                  domains: AppDomains.labels,
-                                  selectedDomain: _domain,
-                                  horizontalPadding: 0,
-                                  onSelected: (domain) => _changeFilter(
-                                    ageBand: _ageBand,
-                                    domain: domain,
-                                    language: _language,
-                                  ),
-                                ),
-                                ..._buildResultsChildren(
-                                  context: context,
-                                  activities: activities,
-                                  activeChild: activeChild,
-                                  resultMessage: resultMessage,
-                                  showInlineIdeaHelper: false,
-                                ),
-                              ] else ...[
-                                const SizedBox(height: AppSpacing.space16),
-                                _buildStorybooksSection(activeChild),
-                              ],
-                            ],
-                          ),
-                        ),
+                        _buildSectionTabs(),
                         if (!_storybooksSelected) ...[
-                          const SizedBox(width: AppSpacing.space24),
-                          SizedBox(
-                            width: AppSizes.sidePanelWidth,
-                            child: IdeaHelperEntryCard(
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.aiSuggest,
-                              ),
+                          const SizedBox(height: AppSpacing.space12),
+                          _buildSearchRow(activeChild),
+                          const SizedBox(height: AppSpacing.space12),
+                          ExploreDomainFilters(
+                            domains: AppDomains.labels,
+                            selectedDomain: _domain,
+                            horizontalPadding: 0,
+                            onSelected: (domain) => _changeFilter(
+                              ageBand: _ageBand,
+                              domain: domain,
+                              language: _language,
                             ),
                           ),
+                          ..._buildResultsChildren(
+                            context: context,
+                            activities: activities,
+                            activeChild: activeChild,
+                            resultMessage: resultMessage,
+                            showInlineIdeaHelper: false,
+                          ),
+                        ] else ...[
+                          const SizedBox(height: AppSpacing.space16),
+                          _buildStorybooksSection(activeChild),
                         ],
                       ],
                     ),
-                  ],
-                ),
+                    secondary: !_storybooksSelected
+                        ? IdeaHelperEntryCard(
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.aiSuggest,
+                            ),
+                          )
+                        : null,
+                  ),
+                ],
               ),
             ),
           );

@@ -44,30 +44,24 @@ class StorybookGrid extends StatelessWidget {
     final visibleBooks = books.take(visibleCount).toList();
     return Column(
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final crossAxisCount = constraints.maxWidth > 500 ? 3 : 2;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: AppSpacing.space12,
-                mainAxisSpacing: AppSpacing.space16,
-                mainAxisExtent:
-                    280 + MediaQuery.textScalerOf(context).scale(70),
-              ),
-              itemCount: visibleBooks.length,
-              itemBuilder: (context, index) {
-                final book = visibleBooks[index];
-                return BookCard(
-                  book: book,
-                  isSaved: isBookSaved(book.id),
-                  isSaving: pendingSaveIds.contains(book.id),
-                  onToggleSave: () => onToggleSave(book),
-                  onGetPlayIdea: () => onGetPlayIdea(book),
-                );
-              },
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: AppSizes.bookGridMaxTileExtent,
+            crossAxisSpacing: AppSpacing.space12,
+            mainAxisSpacing: AppSpacing.space16,
+            mainAxisExtent: 280 + MediaQuery.textScalerOf(context).scale(70),
+          ),
+          itemCount: visibleBooks.length,
+          itemBuilder: (context, index) {
+            final book = visibleBooks[index];
+            return BookCard(
+              book: book,
+              isSaved: isBookSaved(book.id),
+              isSaving: pendingSaveIds.contains(book.id),
+              onToggleSave: () => onToggleSave(book),
+              onGetPlayIdea: () => onGetPlayIdea(book),
             );
           },
         ),

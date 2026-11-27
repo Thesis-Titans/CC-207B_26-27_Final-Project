@@ -7,6 +7,7 @@ import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/no_children_view.dart';
+import '../../widgets/responsive_layout.dart';
 import '../../widgets/state_views.dart';
 import 'add_child_screen.dart';
 import 'widgets/child_widgets.dart';
@@ -154,47 +155,44 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
     final activeChildId = AuthScope.maybeOf(context)?.activeChild?.id;
     final profileWord = children.length == 1 ? 'profile' : 'profiles';
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          children: [
-            Text(
-              'Manage your private family space.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+    return ResponsiveContentBox(
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpacing.space16),
+        children: [
+          Text(
+            'Manage your private family space.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
             ),
-            const SizedBox(height: AppSpacing.space16),
-            Text(
-              'Your children (${children.length} $profileWord)',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+          ),
+          const SizedBox(height: AppSpacing.space16),
+          Text(
+            'Your children (${children.length} $profileWord)',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
             ),
-            const SizedBox(height: AppSpacing.space12),
-            for (final child in children)
-              ChildProfileCard(
-                child: child,
-                isCurrent: child.id == activeChildId,
-                onSelect: () => _select(child),
-                onEdit: () => _openEditChild(child),
-              ),
-            const SizedBox(height: AppSpacing.space12),
-            OutlinedButton.icon(
-              onPressed: _openAddChild,
-              icon: const Icon(Icons.add),
-              label: const Text('Add a child'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(AppSizes.touchTarget),
-              ),
+          ),
+          const SizedBox(height: AppSpacing.space12),
+          for (final child in children)
+            ChildProfileCard(
+              child: child,
+              isCurrent: child.id == activeChildId,
+              onSelect: () => _select(child),
+              onEdit: () => _openEditChild(child),
             ),
-            const SizedBox(height: AppSpacing.space24),
-            const ChildPrivacyHintCard(),
-          ],
-        ),
+          const SizedBox(height: AppSpacing.space12),
+          OutlinedButton.icon(
+            onPressed: _openAddChild,
+            icon: const Icon(Icons.add),
+            label: const Text('Add a child'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(AppSizes.touchTarget),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space24),
+          const ChildPrivacyHintCard(),
+        ],
       ),
     );
   }

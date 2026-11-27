@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/summary.dart';
 import '../../../theme/app_tokens.dart';
 import '../../../utils/domain_labels.dart';
+import '../../../widgets/responsive_layout.dart';
 
 /// Populated weekly reflection summary displaying counts, domains, and prompt.
 class WeeklySummaryPopulatedView extends StatelessWidget {
@@ -133,46 +134,20 @@ class WeeklySummaryPopulatedView extends StatelessWidget {
           )
         : null;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= AppSizes.twoColumnBreakpoint &&
-            promptCard != null) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.space24),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      summaryCard,
-                      const SizedBox(height: AppSpacing.space16),
-                      domainsCard,
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.space24),
-                SizedBox(width: AppSizes.sidePanelWidth, child: promptCard),
-              ],
-            ),
-          );
-        }
-
-        return Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.space24),
+      child: AdaptiveTwoPane(
+        primary: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             summaryCard,
             const SizedBox(height: AppSpacing.space16),
             domainsCard,
-            if (promptCard != null) ...[
-              const SizedBox(height: AppSpacing.space16),
-              promptCard,
-            ],
-            const SizedBox(height: AppSpacing.space24),
           ],
-        );
-      },
+        ),
+        secondary: promptCard,
+        verticalSpacing: AppSpacing.space16,
+      ),
     );
   }
 

@@ -88,7 +88,7 @@ class PlayCompanionDialog extends StatelessWidget {
         vertical: AppSpacing.space24,
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
+        constraints: const BoxConstraints(maxWidth: AppSizes.dialogMaxWidth),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.space24),
           child: Column(

@@ -16,6 +16,7 @@ import '../../utils/date_formatting.dart';
 import '../../utils/domain_labels.dart';
 import '../../utils/plan_errors.dart';
 import '../../widgets/auth_scope.dart';
+import '../../widgets/responsive_layout.dart';
 import '../../widgets/state_views.dart';
 import 'widgets/ai_idea_form_card.dart';
 import 'widgets/ai_results_section.dart';
@@ -463,55 +464,47 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppSizes.contentMaxWidth,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_isLoading)
-                    const LoadingView(
-                      message:
-                          'Finding ideas… This usually takes a few seconds.',
-                    )
-                  else if (response != null)
-                    AiResultsSection(
-                      response: response,
-                      timeMinutes: _timeMinutes,
-                      hasActiveChild: _effectiveChild != null,
-                      isAddingAll: _isAddingAll,
-                      rateLimitMessage: _rateLimitMessage,
-                      fallbackNotice: _fallbackNotice,
-                      isAlreadyAdded: (item) =>
-                          _addedActivityIds.contains(_planActivityId(item)),
-                      onAddToPlan: _addToPlan,
-                      onAddAll: () => _addAllToPlan(response.suggestions),
-                      onRetry: _submitRequest,
-                      onEditPreferences: _resetToForm,
-                      onBackToActivities: () => Navigator.of(context).pop(),
-                    )
-                  else
-                    AiIdeaFormCard(
-                      timeOptions: _timeOptions,
-                      selectedTimeMinutes: _timeMinutes,
-                      selectedSetting: _setting,
-                      selectedAgeBand: _ageBand,
-                      selectedLanguage: _language,
-                      materialsController: _materialsController,
-                      weatherHint: _weatherHint,
-                      weatherCityLabel: weatherCityLabel,
-                      onTimeChanged: (val) =>
-                          setState(() => _timeMinutes = val),
-                      onSettingChanged: (val) => setState(() => _setting = val),
-                      onAgeBandChanged: (val) => setState(() => _ageBand = val),
-                      onLanguageChanged: (val) =>
-                          setState(() => _language = val),
-                      onSubmit: _submitRequest,
-                    ),
-                ],
-              ),
+          child: ResponsiveContentBox(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_isLoading)
+                  const LoadingView(
+                    message: 'Finding ideas… This usually takes a few seconds.',
+                  )
+                else if (response != null)
+                  AiResultsSection(
+                    response: response,
+                    timeMinutes: _timeMinutes,
+                    hasActiveChild: _effectiveChild != null,
+                    isAddingAll: _isAddingAll,
+                    rateLimitMessage: _rateLimitMessage,
+                    fallbackNotice: _fallbackNotice,
+                    isAlreadyAdded: (item) =>
+                        _addedActivityIds.contains(_planActivityId(item)),
+                    onAddToPlan: _addToPlan,
+                    onAddAll: () => _addAllToPlan(response.suggestions),
+                    onRetry: _submitRequest,
+                    onEditPreferences: _resetToForm,
+                    onBackToActivities: () => Navigator.of(context).pop(),
+                  )
+                else
+                  AiIdeaFormCard(
+                    timeOptions: _timeOptions,
+                    selectedTimeMinutes: _timeMinutes,
+                    selectedSetting: _setting,
+                    selectedAgeBand: _ageBand,
+                    selectedLanguage: _language,
+                    materialsController: _materialsController,
+                    weatherHint: _weatherHint,
+                    weatherCityLabel: weatherCityLabel,
+                    onTimeChanged: (val) => setState(() => _timeMinutes = val),
+                    onSettingChanged: (val) => setState(() => _setting = val),
+                    onAgeBandChanged: (val) => setState(() => _ageBand = val),
+                    onLanguageChanged: (val) => setState(() => _language = val),
+                    onSubmit: _submitRequest,
+                  ),
+              ],
             ),
           ),
         ),

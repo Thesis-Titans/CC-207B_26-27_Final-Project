@@ -13,6 +13,7 @@ import '../widgets/auth_scope.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/child_chip.dart';
 import '../widgets/no_children_view.dart';
+import '../widgets/responsive_layout.dart';
 import '../widgets/shell_navigation_sidebar.dart';
 import '../widgets/state_views.dart';
 import 'account/settings_screen.dart';
@@ -74,8 +75,6 @@ class ShellScreen extends StatefulWidget {
 }
 
 class _ShellScreenState extends State<ShellScreen> {
-  static const double _extendedRailBreakpoint = 1080;
-
   static const List<ShellDestination> _destinations = [
     ShellDestination(
       icon: Icons.today_outlined,
@@ -204,7 +203,8 @@ class _ShellScreenState extends State<ShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final compactHeader = MediaQuery.sizeOf(context).width < 380;
+    final compactHeader =
+        MediaQuery.sizeOf(context).width < AppSizes.compactHeaderBreakpoint;
     final sessionState = AuthScope.maybeOf(context);
     final isAuthenticated = sessionState?.isAuthenticated ?? false;
     final activeChild = sessionState?.activeChild;
@@ -290,26 +290,19 @@ class _ShellScreenState extends State<ShellScreen> {
     // IndexedStack keeps all five tab subtrees mounted so scroll position and
     // filter inputs persist when switching tabs.
     final tabStack = IndexedStack(index: _currentIndex, children: screens);
-    final compactContent = Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
-        child: tabStack,
-      ),
-    );
-    final wideContent = Align(
+    final compactContent = ResponsiveContentBox(child: tabStack);
+    final wideContent = ResponsiveContentBox(
       alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: AppSizes.wideContentMaxWidth,
-        ),
-        child: tabStack,
-      ),
+      maxWidth: AppSizes.wideContentMaxWidth,
+      child: tabStack,
     );
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= AppSizes.wideLayoutBreakpoint;
-        final isExtendedRail = constraints.maxWidth >= _extendedRailBreakpoint;
+        final windowSize = AppWindowSize.fromWidth(constraints.maxWidth);
+        final isWide = windowSize == AppWindowSize.expanded;
+        final isExtendedRail =
+            constraints.maxWidth >= AppSizes.extendedRailBreakpoint;
 
         return Scaffold(
           appBar: isWide

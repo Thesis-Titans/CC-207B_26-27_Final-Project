@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../config/external_links.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/url_helper.dart';
+import '../../widgets/responsive_layout.dart';
 
 /// Describes the account information page to display.
 enum AccountInfoPage {
@@ -162,17 +163,14 @@ class AccountInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_title)),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.space16),
-            itemCount: _sections.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(height: AppSpacing.space12),
-            itemBuilder: (context, index) =>
-                _InfoSectionCard(section: _sections[index]),
-          ),
+      body: ResponsiveContentBox(
+        child: ListView.separated(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          itemCount: _sections.length,
+          separatorBuilder: (_, _) =>
+              const SizedBox(height: AppSpacing.space12),
+          itemBuilder: (context, index) =>
+              _InfoSectionCard(section: _sections[index]),
         ),
       ),
     );

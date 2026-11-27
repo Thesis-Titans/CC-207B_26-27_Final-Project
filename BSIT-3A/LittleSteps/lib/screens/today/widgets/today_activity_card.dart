@@ -36,7 +36,7 @@ class TodayActivityCard extends StatelessWidget {
       useSafeArea: true,
       showDragHandle: true,
       isScrollControlled: true,
-      constraints: const BoxConstraints(maxWidth: 600),
+      constraints: const BoxConstraints(maxWidth: AppSizes.sheetMaxWidth),
       builder: (sheetContext) => SafeArea(
         top: false,
         child: SingleChildScrollView(

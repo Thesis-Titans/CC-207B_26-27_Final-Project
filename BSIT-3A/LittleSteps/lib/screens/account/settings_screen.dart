@@ -10,6 +10,7 @@ import '../../services/account_service.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
+import '../../widgets/responsive_layout.dart';
 
 /// Account, child profile, and data rights settings.
 class SettingsScreen extends StatefulWidget {
@@ -145,144 +146,139 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
-          child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.space16),
-            children: [
-              _SettingsGroup(
-                title: 'Account',
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.email_outlined),
-                    title: Text(email ?? 'Account details'),
-                    subtitle: Text(
-                      email == null
-                          ? 'Sign in to view caregiver details.'
-                          : 'Signed-in caregiver',
-                    ),
-                  ),
-                  _SettingsAction(
-                    icon: Icons.logout,
-                    title: 'Sign out',
-                    subtitle: 'Sign out when you are done on a shared phone.',
-                    onTap: signOutAction ?? _showSignInUnavailable,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              _SettingsGroup(
-                title: 'Children',
-                children: [
-                  if (_children.isEmpty)
-                    ListTile(
-                      leading: const Icon(Icons.child_care_outlined),
-                      title: Text(
-                        email == null
-                            ? 'Sign in to view child profiles'
-                            : 'No children added yet',
-                      ),
-                    )
-                  else
-                    for (final child in _children)
-                      _SettingsAction(
-                        icon: Icons.delete_outline,
-                        title: 'Delete ${child.nickname}’s records',
-                        subtitle: 'Remove this child and their saved records.',
-                        isLoading: _deletingChildren.contains(child.id),
-                        isDestructive: true,
-                        onTap: childrenService == null
-                            ? _showSignInUnavailable
-                            : () => _confirmDeleteChild(child),
-                      ),
-                  _SettingsAction(
-                    icon: Icons.person_add_alt_1_outlined,
-                    title: 'Add a child',
-                    onTap: () =>
-                        Navigator.pushNamed(context, AppRoutes.childrenAdd),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              _SettingsGroup(
-                title: 'Your data',
-                children: [
-                  _SettingsAction(
-                    icon: Icons.download_outlined,
-                    title: 'Download my data',
-                    subtitle: 'Get a JSON copy of your account and child data, including journal notes.',
-                    isLoading: _isExporting,
-                    onTap: _downloadData,
-                  ),
-                  _SettingsAction(
-                    icon: Icons.delete_forever_outlined,
-                    title: 'Delete my account',
-                    subtitle:
-                        'Permanently remove your account and its records.',
-                    isLoading: _isDeletingAccount,
-                    isDestructive: true,
-                    onTap: accountService == null
-                        ? _showSignInUnavailable
-                        : _confirmDeleteAccount,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              _SettingsGroup(
-                title: 'Weather for activity ideas',
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.space16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DropdownButtonFormField<String>(
-                          key: const ValueKey('settings_weather_city_dropdown'),
-                          isExpanded: true,
-                          initialValue:
-                              _currentWeatherLocation(context)?.name ?? '',
-                          decoration: const InputDecoration(
-                            labelText: 'City',
-                            prefixIcon: Icon(Icons.wb_sunny_outlined),
-                          ),
-                          items: [
-                            const DropdownMenuItem<String>(
-                              value: '',
-                              child: Text('Off (no weather hints)'),
-                            ),
-                            for (final city
-                                in WeatherLocation.philippinesCities)
-                              DropdownMenuItem<String>(
-                                value: city.name,
-                                child: Text(city.name),
-                              ),
-                          ],
-                          onChanged: (value) =>
-                              _updateWeatherLocation(context, value),
-                        ),
-                        const SizedBox(height: AppSpacing.space8),
-                        Text(
-                          'Weather data by Open-Meteo.com. No location data is stored beyond your chosen city.',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (accountService == null || childrenService == null)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.space12),
-                  child: Text(
-                    'Account actions will be available after sign-in is connected.',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: AppColors.textSecondary),
+      body: ResponsiveContentBox(
+        child: ListView(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          children: [
+            _SettingsGroup(
+              title: 'Account',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.email_outlined),
+                  title: Text(email ?? 'Account details'),
+                  subtitle: Text(
+                    email == null
+                        ? 'Sign in to view caregiver details.'
+                        : 'Signed-in caregiver',
                   ),
                 ),
-            ],
-          ),
+                _SettingsAction(
+                  icon: Icons.logout,
+                  title: 'Sign out',
+                  subtitle: 'Sign out when you are done on a shared phone.',
+                  onTap: signOutAction ?? _showSignInUnavailable,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            _SettingsGroup(
+              title: 'Children',
+              children: [
+                if (_children.isEmpty)
+                  ListTile(
+                    leading: const Icon(Icons.child_care_outlined),
+                    title: Text(
+                      email == null
+                          ? 'Sign in to view child profiles'
+                          : 'No children added yet',
+                    ),
+                  )
+                else
+                  for (final child in _children)
+                    _SettingsAction(
+                      icon: Icons.delete_outline,
+                      title: 'Delete ${child.nickname}’s records',
+                      subtitle: 'Remove this child and their saved records.',
+                      isLoading: _deletingChildren.contains(child.id),
+                      isDestructive: true,
+                      onTap: childrenService == null
+                          ? _showSignInUnavailable
+                          : () => _confirmDeleteChild(child),
+                    ),
+                _SettingsAction(
+                  icon: Icons.person_add_alt_1_outlined,
+                  title: 'Add a child',
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.childrenAdd),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            _SettingsGroup(
+              title: 'Your data',
+              children: [
+                _SettingsAction(
+                  icon: Icons.download_outlined,
+                  title: 'Download my data',
+                  subtitle: 'Get a JSON copy of your account and child data, including journal notes.',
+                  isLoading: _isExporting,
+                  onTap: _downloadData,
+                ),
+                _SettingsAction(
+                  icon: Icons.delete_forever_outlined,
+                  title: 'Delete my account',
+                  subtitle: 'Permanently remove your account and its records.',
+                  isLoading: _isDeletingAccount,
+                  isDestructive: true,
+                  onTap: accountService == null
+                      ? _showSignInUnavailable
+                      : _confirmDeleteAccount,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.space16),
+            _SettingsGroup(
+              title: 'Weather for activity ideas',
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.space16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        key: const ValueKey('settings_weather_city_dropdown'),
+                        isExpanded: true,
+                        initialValue:
+                            _currentWeatherLocation(context)?.name ?? '',
+                        decoration: const InputDecoration(
+                          labelText: 'City',
+                          prefixIcon: Icon(Icons.wb_sunny_outlined),
+                        ),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: '',
+                            child: Text('Off (no weather hints)'),
+                          ),
+                          for (final city in WeatherLocation.philippinesCities)
+                            DropdownMenuItem<String>(
+                              value: city.name,
+                              child: Text(city.name),
+                            ),
+                        ],
+                        onChanged: (value) =>
+                            _updateWeatherLocation(context, value),
+                      ),
+                      const SizedBox(height: AppSpacing.space8),
+                      Text(
+                        'Weather data by Open-Meteo.com. No location data is stored beyond your chosen city.',
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (accountService == null || childrenService == null)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.space12),
+                child: Text(
+                  'Account actions will be available after sign-in is connected.',
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: AppColors.textSecondary),
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -164,14 +164,38 @@ abstract final class AppSizes {
   /// Maximum width for primary desktop two-column workspace layouts.
   static const double wideContentMaxWidth = 1320;
 
+  /// Maximum width for modal bottom sheets on tablet and desktop viewports.
+  static const double sheetMaxWidth = 600;
+
+  /// Maximum width for modal dialogs.
+  static const double dialogMaxWidth = 480;
+
+  /// Maximum readable width for centered empty-state and onboarding cards.
+  static const double emptyStateMaxWidth = 440;
+
+  /// Viewport width below which the mobile app bar uses a compact icon logo.
+  static const double compactHeaderBreakpoint = 380;
+
+  /// Card width at or above which action buttons align inline.
+  static const double wideCardBreakpoint = 520;
+
+  /// Minimum viewport width classified as Medium (Material 3 window class).
+  static const double mediumLayoutBreakpoint = 600;
+
   /// Minimum viewport width that switches from bottom bar to side navigation.
   static const double wideLayoutBreakpoint = 840;
 
   /// Minimum content width that switches single-column tabs to two columns.
   static const double twoColumnBreakpoint = 860;
 
+  /// Minimum viewport width that expands the side navigation rail with labels.
+  static const double extendedRailBreakpoint = 1080;
+
   /// Standard width of the secondary right-hand card column on wide screens.
   static const double sidePanelWidth = 340;
+
+  /// Maximum tile width for responsive multi-column storybook grids.
+  static const double bookGridMaxTileExtent = 220;
 }
 
 /// Animation durations, feedback timers, and curve constants.
