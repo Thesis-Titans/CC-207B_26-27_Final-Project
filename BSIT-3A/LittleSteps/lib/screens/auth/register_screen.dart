@@ -174,7 +174,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   AuthPrivacyNoticeCard(
                     points: _privacyPoints,
                     accepted: _acceptedPrivacy,
-                    contactLabel: 'Thesis Titans · github.com/Thesis-Titans',
+                    contactTitle: 'Thesis Titans',
+                    contactDomain: 'github.com/Thesis-Titans',
                     onContactTap: () =>
                         openExternalUrl(context, AppLinks.githubOrg),
                     onChanged: (accepted) {

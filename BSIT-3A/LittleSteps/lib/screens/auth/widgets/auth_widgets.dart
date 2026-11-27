@@ -553,7 +553,8 @@ class AuthPrivacyNoticeCard extends StatelessWidget {
     required this.points,
     required this.accepted,
     required this.onChanged,
-    this.contactLabel,
+    this.contactTitle,
+    this.contactDomain,
     this.onContactTap,
   });
 
@@ -566,10 +567,13 @@ class AuthPrivacyNoticeCard extends StatelessWidget {
   /// Callback invoked when the acceptance checkbox changes.
   final ValueChanged<bool> onChanged;
 
-  /// Optional contact label rendered beneath [points].
-  final String? contactLabel;
+  /// Optional contact organization title shown beneath [points].
+  final String? contactTitle;
 
-  /// Optional callback invoked when the caregiver taps [contactLabel].
+  /// Optional domain caption shown beneath [contactTitle].
+  final String? contactDomain;
+
+  /// Optional callback invoked when the caregiver taps the contact link tile.
   final VoidCallback? onContactTap;
 
   @override
@@ -628,7 +632,7 @@ class AuthPrivacyNoticeCard extends StatelessWidget {
                 ],
               ),
             ),
-          if (contactLabel != null)
+          if (contactTitle != null)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.space8),
               child: Column(
@@ -641,21 +645,45 @@ class AuthPrivacyNoticeCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  InkWell(
-                    onTap: onContactTap,
-                    borderRadius: BorderRadius.circular(AppRadius.badge),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.space4,
+                  const SizedBox(height: AppSpacing.space4),
+                  Semantics(
+                    link: true,
+                    hint: 'Opens external website',
+                    child: Material(
+                      color: AppColors.surfaceCard,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                        side: const BorderSide(color: AppColors.borderSubtle),
                       ),
-                      child: Text(
-                        contactLabel!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.forest,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                          decorationColor: AppColors.forest,
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        dense: true,
+                        minTileHeight: AppSizes.touchTarget,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space12,
+                          vertical: AppSpacing.space4,
                         ),
+                        title: Text(
+                          contactTitle!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        subtitle: contactDomain != null
+                            ? Text(
+                                contactDomain!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.forest,
+                                ),
+                              )
+                            : null,
+                        trailing: const Icon(
+                          Icons.open_in_new,
+                          size: 16,
+                          color: AppColors.forest,
+                        ),
+                        onTap: onContactTap,
                       ),
                     ),
                   ),
