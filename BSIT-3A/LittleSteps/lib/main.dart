@@ -78,6 +78,17 @@ class _LittleStepsAppState extends State<LittleStepsApp> {
   }
 
   @override
+  void dispose() {
+    if (widget.apiClient == null) {
+      _apiClient.dispose();
+    }
+    if (widget.sessionState == null) {
+      _sessionState.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AuthScope(
       sessionState: _sessionState,

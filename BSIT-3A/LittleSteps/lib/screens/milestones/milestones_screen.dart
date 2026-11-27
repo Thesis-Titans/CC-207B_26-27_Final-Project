@@ -231,7 +231,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       context: context,
       backgroundColor: AppColors.surfaceCard,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.sheet),
+        ),
       ),
       builder: (context) {
         return SafeArea(
@@ -349,7 +351,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       isScrollControlled: true,
       backgroundColor: AppColors.surfaceCard,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.sheet),
+        ),
       ),
       builder: (context) {
         return ObservationFormSheet(

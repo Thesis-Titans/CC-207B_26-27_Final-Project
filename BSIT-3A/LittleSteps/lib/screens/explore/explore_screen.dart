@@ -13,6 +13,7 @@ import '../../services/books_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/date_formatting.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
@@ -428,9 +429,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       return;
     }
 
-    final now = DateTime.now();
-    final date =
-        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final date = todayIsoDate();
     final isCustomNonCatalog =
         activity.type == 'story' ||
         activity.type == 'rhyme' ||

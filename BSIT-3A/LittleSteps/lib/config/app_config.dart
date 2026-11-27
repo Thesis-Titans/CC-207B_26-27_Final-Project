@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 /// so the same codebase supports local Firebase emulators during development
 /// and HTTPS cloud endpoints in production without code changes.
 abstract final class AppConfig {
+  static const String _defaultEmulatorApiKey = 'fake-api-key';
+
   /// Whether authentication and API calls target local Firebase emulators.
   static const bool useFirebaseEmulator = bool.fromEnvironment(
     'USE_FIREBASE_EMULATOR',
@@ -28,7 +30,7 @@ abstract final class AppConfig {
   /// Firebase Web API key used for Identity Toolkit authentication requests.
   static const String firebaseApiKey = String.fromEnvironment(
     'FIREBASE_API_KEY',
-    defaultValue: 'fake-api-key',
+    defaultValue: _defaultEmulatorApiKey,
   );
 
   /// Resolves the active local emulator host for the current runtime platform.
@@ -60,7 +62,7 @@ abstract final class AppConfig {
         'Pass --dart-define-from-file=config/production.json.',
       );
     }
-    if (firebaseApiKey.isEmpty || firebaseApiKey == 'fake-api-key') {
+    if (firebaseApiKey.isEmpty || firebaseApiKey == _defaultEmulatorApiKey) {
       throw StateError(
         'Release builds require a valid FIREBASE_API_KEY. '
         'Pass --dart-define-from-file=config/production.json.',

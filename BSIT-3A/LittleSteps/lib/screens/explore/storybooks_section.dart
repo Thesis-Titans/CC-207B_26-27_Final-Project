@@ -13,6 +13,7 @@ import '../../services/books_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/date_formatting.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/state_views.dart';
 import 'play_companion_dialog.dart';
@@ -485,7 +486,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
       await planService.addActivityToPlan(
         childId: childId,
         activityId: activity.id,
-        scheduledDate: DateTime.now().toIso8601String().substring(0, 10),
+        scheduledDate: todayIsoDate(),
         durationMinutes: activity.durationMinutes,
         customActivity: CustomPlanActivity.fromActivity(
           activity,
@@ -532,7 +533,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
       await planService.addActivityToPlan(
         childId: childId,
         activityId: activity.id,
-        scheduledDate: DateTime.now().toIso8601String().substring(0, 10),
+        scheduledDate: todayIsoDate(),
         durationMinutes: activity.durationMinutes,
         customActivity: CustomPlanActivity.fromActivity(
           activity,

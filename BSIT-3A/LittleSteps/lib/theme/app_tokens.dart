@@ -18,7 +18,7 @@ abstract final class AppColors {
   static const orange = Color(0xFFEC6A2C);
 
   /// Warning and advisory accent color.
-  static const warning = Color(0xFFEC6A2C);
+  static const warning = orange;
 
   /// Card and container background surface.
   static const surfaceCard = Color(0xFFFFFFFF);
@@ -66,10 +66,10 @@ abstract final class AppColors {
   static const borderError = Color(0xFFB83D33);
 
   /// Focus outline color for interactive controls.
-  static const focus = Color(0xFF1F634D);
+  static const focus = forest;
 
   /// Critical error color.
-  static const error = Color(0xFF853029);
+  static const error = textError;
 
   /// Info status background color for metadata and provenance badges.
   static const statusInfo = Color(0xFFD9E8F7);
@@ -78,10 +78,10 @@ abstract final class AppColors {
   static const infoIcon = Color(0xFF2B6CB0);
 
   /// Caution status background color.
-  static const statusCaution = Color(0xFFFAE8A8);
+  static const statusCaution = surfaceAdvisory;
 
   /// Offline status indicator color.
-  static const statusOffline = Color(0xFFF1F5F9);
+  static const statusOffline = surfaceOffline;
 
   /// Primary soft shadow tint for elevated cards.
   static const shadowCard = Color(0x0F1A2B29);
@@ -130,6 +130,15 @@ abstract final class AppRadius {
 
   /// Radius for pill tags and chips.
   static const double chip = 20;
+
+  /// Top corner radius for modal bottom sheets.
+  static const double sheet = 20;
+}
+
+/// Typography token constants.
+abstract final class AppTypography {
+  /// Primary sans-serif font family used across the application.
+  static const String fontFamily = 'Inter';
 }
 
 /// Layout and interactive dimension constants.

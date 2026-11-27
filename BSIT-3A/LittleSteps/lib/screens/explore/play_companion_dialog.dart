@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/activity.dart';
 import '../../models/book.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/domain_labels.dart';
 
 /// Dialog presenting a storybook play idea with an option to add it to today's
 /// plan.
@@ -45,21 +46,7 @@ class PlayCompanionDialog extends StatelessWidget {
   final bool isAdding;
 
   /// Maps a backend [domain] key to its caregiver-facing label.
-  static String domainLabel(String domain) {
-    switch (domain.toLowerCase()) {
-      case 'motor':
-        return 'Moving';
-      case 'cognitive':
-        return 'Thinking';
-      case 'language':
-        return 'Talking';
-      case 'socioemotional':
-      case 'socio_emotional':
-        return 'Feelings';
-      default:
-        return 'Talking';
-    }
-  }
+  static String domainLabel(String domain) => friendlyDomainLabel(domain);
 
   /// Builds an [Activity] from this play idea so it can be added to a plan.
   Activity toActivity({String? childNickname}) {

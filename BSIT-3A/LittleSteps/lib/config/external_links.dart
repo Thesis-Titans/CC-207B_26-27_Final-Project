@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// External reference, attribution, and support URLs used across LittleSteps.
 abstract final class AppLinks {
   /// Philippine Early Childhood Care and Development (ECCD) Council portal.
@@ -25,6 +27,7 @@ abstract final class AppLinks {
 }
 
 /// Resolved presentation metadata for an external framework citation.
+@immutable
 class ProvenanceLinkInfo {
   /// Creates a [ProvenanceLinkInfo].
   const ProvenanceLinkInfo({

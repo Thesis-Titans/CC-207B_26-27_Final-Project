@@ -13,6 +13,8 @@ import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/date_formatting.dart';
+import '../../utils/domain_labels.dart';
 import '../../widgets/auth_scope.dart';
 import 'widgets/ai_play_block_banner.dart';
 import 'widgets/ai_suggestion_card.dart';
@@ -342,7 +344,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
         widget.apiClient != null ||
         (session?.isAuthenticated ?? false);
     if (childId == null || !canFetch) return;
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final today = todayIsoDate();
     try {
       final plans = await _resolvePlanService().getPlans(childId, date: today);
       if (!mounted) return;
@@ -396,7 +398,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     final childId = _effectiveChild?.id ?? widget.initialChild?.id;
     final planActivityId = _planActivityId(item);
     if (childId == null || _addedActivityIds.contains(planActivityId)) return;
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final today = todayIsoDate();
 
     try {
       await _resolvePlanService().addActivityToPlan(
@@ -436,7 +438,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     if (pending.isEmpty) return;
 
     setState(() => _isAddingAll = true);
-    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final today = todayIsoDate();
     final service = _resolvePlanService();
     var addedCount = 0;
     Object? lastError;
@@ -1049,18 +1051,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
     );
   }
 
-  String _formatSetting(String setting) {
-    switch (setting) {
-      case 'indoor':
-        return 'Indoor';
-      case 'outdoor':
-        return 'Outdoor';
-      case 'either':
-        return 'Indoor or outdoor';
-      default:
-        return setting;
-    }
-  }
+  String _formatSetting(String setting) => formatSettingLabel(setting);
 
   Widget _buildPlayBlockBanner(List<Recommendation> suggestions) {
     final allAdded =

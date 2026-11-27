@@ -9,6 +9,7 @@ import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/date_formatting.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
@@ -381,13 +382,7 @@ class _TodayScreenState extends State<TodayScreen> {
     } catch (_) {}
   }
 
-  // Formats a DateTime object as YYYY-MM-DD.
-  String _formatDate(DateTime date) {
-    final year = date.year.toString().padLeft(4, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
-  }
+  String _formatDate(DateTime date) => formatIsoDate(date);
 
   // Loads today's planned activities and optional weather hint from the backend services.
   Future<void> _loadTodayPlan({String? childIdOverride}) async {

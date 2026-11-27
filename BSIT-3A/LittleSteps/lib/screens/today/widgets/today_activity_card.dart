@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/activity.dart';
 import '../../../models/plan.dart';
 import '../../../theme/app_tokens.dart';
+import '../../../utils/domain_labels.dart';
 
 /// Card displaying a scheduled play activity on the Today screen.
 class TodayActivityCard extends StatelessWidget {
@@ -23,36 +24,9 @@ class TodayActivityCard extends StatelessWidget {
   /// Callback invoked when the caregiver toggles activity completion.
   final VoidCallback onCompleteToggle;
 
-  String _formatDomain(String domain) {
-    switch (domain.toLowerCase()) {
-      case 'socioemotional':
-      case 'socio-emotional':
-        return 'Socio-emotional';
-      case 'cognitive':
-        return 'Cognitive';
-      case 'motor':
-        return 'Motor';
-      case 'language':
-        return 'Language';
-      default:
-        return domain.isEmpty
-            ? domain
-            : '${domain[0].toUpperCase()}${domain.substring(1)}';
-    }
-  }
+  String _formatDomain(String domain) => formalDomainLabel(domain);
 
-  String _formatSetting(String setting) {
-    switch (setting.toLowerCase()) {
-      case 'indoor':
-        return 'Indoor';
-      case 'outdoor':
-        return 'Outdoor';
-      case 'either':
-        return 'Indoor or outdoor';
-      default:
-        return setting;
-    }
-  }
+  String _formatSetting(String setting) => formatSettingLabel(setting);
 
   void _showActivityDetails(BuildContext context) {
     final theme = Theme.of(context);
