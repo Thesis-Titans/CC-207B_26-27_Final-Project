@@ -172,10 +172,10 @@ class TodayQuickFilterChips extends StatelessWidget {
     super.key,
     required this.under10Mins,
     required this.noMaterials,
-    required this.indoorOnly,
+    required this.selectedSetting,
     required this.onUnder10MinsChanged,
     required this.onNoMaterialsChanged,
-    required this.onIndoorChanged,
+    required this.onSettingChanged,
   });
 
   /// Whether the "Under 10 mins" chip is selected.
@@ -184,8 +184,8 @@ class TodayQuickFilterChips extends StatelessWidget {
   /// Whether the "No materials needed" chip is selected.
   final bool noMaterials;
 
-  /// Whether the indoor setting filter is selected.
-  final bool indoorOnly;
+  /// Currently selected play setting filter (`indoor` or `outdoor`), or `null`.
+  final String? selectedSetting;
 
   /// Callback invoked when the duration filter changes.
   final ValueChanged<bool> onUnder10MinsChanged;
@@ -193,8 +193,8 @@ class TodayQuickFilterChips extends StatelessWidget {
   /// Callback invoked when the materials filter changes.
   final ValueChanged<bool> onNoMaterialsChanged;
 
-  /// Callback invoked when the indoor filter changes.
-  final ValueChanged<bool> onIndoorChanged;
+  /// Callback invoked when the indoor or outdoor setting filter changes.
+  final ValueChanged<String?> onSettingChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -216,11 +216,16 @@ class TodayQuickFilterChips extends StatelessWidget {
               selected: noMaterials,
               onSelected: onNoMaterialsChanged,
             ),
-            const SizedBox(width: AppSpacing.space8),
-            FilterChip(
-              label: Text(formatSettingLabel(PlaySetting.indoor)),
-              selected: indoorOnly,
-              onSelected: onIndoorChanged,
+            ...PlaySetting.filterLabels.entries.map(
+              (entry) => Padding(
+                padding: const EdgeInsets.only(left: AppSpacing.space8),
+                child: FilterChip(
+                  label: Text(entry.value),
+                  selected: selectedSetting == entry.key,
+                  onSelected: (selected) =>
+                      onSettingChanged(selected ? entry.key : null),
+                ),
+              ),
             ),
           ],
         ),

@@ -9,10 +9,10 @@ import '../utils/url_helper.dart';
 /// Weather guidance banner with Open-Meteo attribution and optional play-idea
 /// call to action.
 ///
-/// Renders standardized indoor or outdoor play guidance derived from [hint].
-/// Supports an optional dismiss button ([onDismiss]), city attribution
+/// Renders standardized indoor, outdoor, or general play guidance derived from
+/// [hint]. Supports an optional dismiss button ([onDismiss]), city attribution
 /// ([cityLabel]), and a unified [onFindIdeas] action passing the recommended
-/// play setting (`indoor` or `outdoor`).
+/// play setting (`indoor`, `outdoor`, or `either`).
 class WeatherHintBanner extends StatelessWidget {
   /// Creates a [WeatherHintBanner].
   const WeatherHintBanner({
@@ -34,8 +34,8 @@ class WeatherHintBanner extends StatelessWidget {
   /// Optional callback invoked when the caregiver dismisses the banner.
   final VoidCallback? onDismiss;
 
-  /// Optional callback invoked with [WeatherHint.suggestedSetting] when the
-  /// caregiver taps the indoor or outdoor play-idea action button.
+  /// Optional callback invoked with the normalized play setting (`indoor`,
+  /// `outdoor`, or `either`) when the caregiver taps the play-idea action button.
   final ValueChanged<String>? onFindIdeas;
 
   /// Whether to use the warm advisory surface instead of soft green.
@@ -50,13 +50,20 @@ class WeatherHintBanner extends StatelessWidget {
     return Icons.wb_sunny_outlined;
   }
 
-  bool get _hasAction =>
-      onFindIdeas != null &&
-      (hint.isIndoorSuggested || hint.isOutdoorSuggested);
+  bool get _hasAction => onFindIdeas != null;
+
+  String get _resolvedSetting {
+    if (hint.isIndoorSuggested) return PlaySetting.indoor;
+    if (hint.isOutdoorSuggested) return PlaySetting.outdoor;
+    return PlaySetting.either;
+  }
 
   String _actionLabel() {
-    final settingWord = formatSettingLabel(hint.suggestedSetting).toLowerCase();
-    return 'Find $settingWord ideas';
+    if (hint.isIndoorSuggested || hint.isOutdoorSuggested) {
+      final settingWord = formatSettingLabel(_resolvedSetting).toLowerCase();
+      return 'Find $settingWord ideas';
+    }
+    return 'Find play ideas';
   }
 
   @override
@@ -171,7 +178,7 @@ class WeatherHintBanner extends StatelessWidget {
                       ),
                       minimumSize: const Size(0, AppSizes.touchTarget),
                     ),
-                    onPressed: () => onFindIdeas!(hint.suggestedSetting),
+                    onPressed: () => onFindIdeas!(_resolvedSetting),
                     icon: const Icon(Icons.arrow_forward, size: 16),
                     label: Text(_actionLabel()),
                   ),

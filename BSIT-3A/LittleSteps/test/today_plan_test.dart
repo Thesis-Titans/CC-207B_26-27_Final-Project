@@ -546,7 +546,7 @@ void main() {
 
   group('TodayScreen Weather Hint Guidance Tests', () {
     testWidgets(
-      'shows dismissible weather hint with Open-Meteo attribution and indoor filter action',
+      'shows dismissible weather hint with Open-Meteo attribution and indoor play-idea action',
       (tester) async {
         String? requestedSetting;
         const weather = WeatherHint(
@@ -631,6 +631,82 @@ void main() {
           find.widgetWithText(ChoiceChip, 'Outdoor'),
         );
         expect(outdoorChip.selected, isTrue);
+      },
+    );
+
+    testWidgets(
+      'navigates to Idea Helper with Indoor preselected when indoor CTA is tapped',
+      (tester) async {
+        const weather = WeatherHint(
+          condition: 'rain',
+          rainChance: 80,
+          heatFlag: false,
+          suggestedSetting: 'indoor',
+          hint: 'Rain likely this afternoon · Indoor ideas',
+          attribution: 'Weather data by Open-Meteo.com',
+        );
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            onGenerateRoute: AppRouter.onGenerateRoute,
+            home: TodayScreen(
+              initialState: TodayViewState.empty,
+              initialPlans: [],
+              initialWeatherHint: weather,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Rain likely this afternoon'), findsOneWidget);
+        expect(find.text('Find indoor ideas'), findsOneWidget);
+
+        await tester.tap(find.text('Find indoor ideas'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Idea helper'), findsWidgets);
+        final indoorChip = tester.widget<ChoiceChip>(
+          find.widgetWithText(ChoiceChip, 'Indoor'),
+        );
+        expect(indoorChip.selected, isTrue);
+      },
+    );
+
+    testWidgets(
+      'navigates to Idea Helper with Indoor or outdoor preselected when either CTA is tapped',
+      (tester) async {
+        const weather = WeatherHint(
+          condition: 'cloudy',
+          rainChance: 15,
+          heatFlag: false,
+          suggestedSetting: 'either',
+          hint: 'Mild weather today',
+          attribution: 'Weather data by Open-Meteo.com',
+        );
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            onGenerateRoute: AppRouter.onGenerateRoute,
+            home: TodayScreen(
+              initialState: TodayViewState.empty,
+              initialPlans: [],
+              initialWeatherHint: weather,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Mild weather today'), findsOneWidget);
+        expect(find.text('Find play ideas'), findsOneWidget);
+
+        await tester.tap(find.text('Find play ideas'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Idea helper'), findsWidgets);
+        final eitherChip = tester.widget<ChoiceChip>(
+          find.widgetWithText(ChoiceChip, 'Indoor or outdoor'),
+        );
+        expect(eitherChip.selected, isTrue);
       },
     );
 

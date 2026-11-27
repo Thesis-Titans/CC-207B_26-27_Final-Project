@@ -134,7 +134,7 @@ class _TodayScreenState extends State<TodayScreen> {
 
   bool _filterUnder10Mins = false;
   bool _filterNoMaterials = false;
-  bool _filterIndoor = false;
+  String? _selectedSettingFilter;
   bool _advisorySeen = false;
   bool _weatherDismissed = false;
   bool _initialLoadStarted = false;
@@ -248,7 +248,7 @@ class _TodayScreenState extends State<TodayScreen> {
         _milestoneCues = const [];
         _filterUnder10Mins = false;
         _filterNoMaterials = false;
-        _filterIndoor = false;
+        _selectedSettingFilter = null;
       }
       if (nextChildId == null) {
         _viewState = TodayViewState.empty;
@@ -591,14 +591,16 @@ class _TodayScreenState extends State<TodayScreen> {
     setState(() {
       _filterUnder10Mins = false;
       _filterNoMaterials = false;
-      _filterIndoor = false;
+      _selectedSettingFilter = null;
     });
     _announce('All activity filters cleared');
   }
 
   Future<void> _openWeatherIdeaHelper(String setting) async {
-    final settingLabel = formatSettingLabel(setting).toLowerCase();
-    _announce('Opening Idea helper for $settingLabel play ideas');
+    final settingLabel = setting == PlaySetting.either
+        ? 'play'
+        : formatSettingLabel(setting).toLowerCase();
+    _announce('Opening Idea helper for $settingLabel ideas');
     if (widget.onOpenIdeaHelper != null) {
       widget.onOpenIdeaHelper!(setting);
       return;
@@ -626,8 +628,8 @@ class _TodayScreenState extends State<TodayScreen> {
       }
 
       final setting = activity.setting.toLowerCase();
-      if (_filterIndoor &&
-          setting != PlaySetting.indoor &&
+      if (_selectedSettingFilter != null &&
+          setting != _selectedSettingFilter &&
           setting != PlaySetting.either) {
         return false;
       }
@@ -696,7 +698,9 @@ class _TodayScreenState extends State<TodayScreen> {
         ? const <PlanItem>[]
         : _getFilteredPlans();
     final hasActiveFilters =
-        _filterUnder10Mins || _filterNoMaterials || _filterIndoor;
+        _filterUnder10Mins ||
+        _filterNoMaterials ||
+        _selectedSettingFilter != null;
     final completedCount = isEmptyState
         ? 0
         : _plans.where((plan) => plan.isCompleted).length;
@@ -733,7 +737,7 @@ class _TodayScreenState extends State<TodayScreen> {
           TodayQuickFilterChips(
             under10Mins: _filterUnder10Mins,
             noMaterials: _filterNoMaterials,
-            indoorOnly: _filterIndoor,
+            selectedSetting: _selectedSettingFilter,
             onUnder10MinsChanged: (selected) {
               setState(() => _filterUnder10Mins = selected);
               _announce(
@@ -750,13 +754,16 @@ class _TodayScreenState extends State<TodayScreen> {
                     : 'No materials filter removed',
               );
             },
-            onIndoorChanged: (selected) {
-              setState(() => _filterIndoor = selected);
-              _announce(
-                selected
-                    ? 'Filtered to indoor activities'
-                    : 'Indoor filter removed',
-              );
+            onSettingChanged: (setting) {
+              final previous = _selectedSettingFilter;
+              setState(() => _selectedSettingFilter = setting);
+              if (setting != null) {
+                final label = formatSettingLabel(setting).toLowerCase();
+                _announce('Filtered to $label activities');
+              } else if (previous != null) {
+                final label = formatSettingLabel(previous);
+                _announce('$label filter removed');
+              }
             },
           ),
         ],
