@@ -13,9 +13,10 @@ import '../../services/books_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
-import '../../widgets/book_card.dart';
 import '../../widgets/state_views.dart';
 import 'play_companion_dialog.dart';
+import 'widgets/rhymes_shelf.dart';
+import 'widgets/storybook_grid.dart';
 
 /// Shelf tabs available inside [StorybooksSection].
 enum BookshelfShelf {
@@ -589,7 +590,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
                   )
                 : null,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.surfaceCard,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 12,
@@ -602,7 +603,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
           onChanged: (value) {
             setState(() => _searchQuery = value);
             _searchDebounce?.cancel();
-            _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+            _searchDebounce = Timer(AppMotion.searchDebounce, () {
               if (mounted) _loadOpenLibraryBooks();
             });
           },
@@ -702,7 +703,7 @@ class _StorybooksSectionState extends State<StorybooksSection> {
         },
         selectedColor: AppColors.forest,
         labelStyle: TextStyle(
-          color: isSelected ? Colors.white : AppColors.textPrimary,
+          color: isSelected ? AppColors.surfaceCard : AppColors.textPrimary,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -774,167 +775,10 @@ class _StorybooksSectionState extends State<StorybooksSection> {
   }
 
   Widget _buildRhymesShelf() {
-    final childNickname = widget.activeChild?.nickname ?? 'your child';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-          child: Text(
-            'Traditional songs and rhythm games with $childNickname',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-        ...philippineRhymes.map((rhyme) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: AppSpacing.space16),
-            decoration: ShapeDecoration(
-              color: AppColors.surfaceCard,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                side: const BorderSide(color: AppColors.borderSubtle),
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _showRhymeDetails(rhyme),
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.space16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.softGreen,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        rhyme.domainLabel,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.forest,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${rhyme.durationMinutes} mins',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  rhyme.title,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                Text(
-                                  rhyme.subtitle,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.space12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceCanvas,
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.control,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Lyrics snippet:',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              rhyme.lyrics.take(4).join('\n'),
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontStyle: FontStyle.italic,
-                                color: AppColors.textPrimary,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-                      Text(
-                        'How to play: ${rhyme.actionPrompt}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-                      OutlinedButton(
-                        onPressed: () => _scheduleRhyme(rhyme),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.forest,
-                          side: const BorderSide(color: AppColors.borderInput),
-                          minimumSize: const Size.fromHeight(44),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AppRadius.control,
-                            ),
-                          ),
-                        ),
-                        child: const Text(
-                          "Add to today's plan",
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ],
+    return RhymesShelf(
+      childNickname: widget.activeChild?.nickname ?? 'your child',
+      onShowDetails: _showRhymeDetails,
+      onScheduleRhyme: _scheduleRhyme,
     );
   }
 
@@ -943,56 +787,14 @@ class _StorybooksSectionState extends State<StorybooksSection> {
     required int visibleCount,
     required VoidCallback onLoadMore,
   }) {
-    final visibleBooks = books.take(visibleCount).toList();
-    return Column(
-      children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final crossAxisCount = constraints.maxWidth > 500 ? 3 : 2;
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: AppSpacing.space12,
-                mainAxisSpacing: AppSpacing.space16,
-                mainAxisExtent:
-                    280 + MediaQuery.textScalerOf(context).scale(70),
-              ),
-              itemCount: visibleBooks.length,
-              itemBuilder: (context, index) {
-                final book = visibleBooks[index];
-                final isSaved = _isBookSaved(book.id);
-                final isSaving = _pendingSaves.contains(book.id);
-
-                return BookCard(
-                  book: book,
-                  isSaved: isSaved,
-                  isSaving: isSaving,
-                  onToggleSave: () => _handleToggleSave(book),
-                  onGetPlayIdea: () => _handleGetPlayIdea(book),
-                );
-              },
-            );
-          },
-        ),
-        if (books.length > visibleCount) ...[
-          const SizedBox(height: AppSpacing.space16),
-          Text(
-            'Showing ${visibleBooks.length} of ${books.length} books',
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.space8),
-          OutlinedButton(
-            onPressed: onLoadMore,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(AppSizes.touchTarget),
-              foregroundColor: AppColors.forest,
-            ),
-            child: const Text('Load more books'),
-          ),
-        ],
-      ],
+    return StorybookGrid(
+      books: books,
+      visibleCount: visibleCount,
+      isBookSaved: _isBookSaved,
+      pendingSaveIds: _pendingSaves,
+      onToggleSave: _handleToggleSave,
+      onGetPlayIdea: _handleGetPlayIdea,
+      onLoadMore: onLoadMore,
     );
   }
 

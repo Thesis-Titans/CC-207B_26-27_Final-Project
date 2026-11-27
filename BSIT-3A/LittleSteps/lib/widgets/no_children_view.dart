@@ -77,20 +77,16 @@ class NoChildrenView extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.space24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.surfaceCard,
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   border: Border.all(color: AppColors.borderSubtle),
                 ),
                 child: Column(
                   children: [
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 26,
                       backgroundColor: AppColors.softGreen,
-                      child: const Icon(
-                        Icons.add,
-                        color: AppColors.forest,
-                        size: 28,
-                      ),
+                      child: Icon(Icons.add, color: AppColors.forest, size: 28),
                     ),
                     const SizedBox(height: AppSpacing.space16),
                     Text(

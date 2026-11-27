@@ -399,7 +399,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
                         height: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          color: Colors.white,
+                          color: AppColors.surfaceCard,
                         ),
                       )
                     : const Text('Save'),

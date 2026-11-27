@@ -9,10 +9,11 @@ import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
-import '../../utils/url_helper.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
+import 'widgets/today_activity_card.dart';
+import 'widgets/today_weather_banner.dart';
 
 /// Interaction states displayed by [TodayScreen].
 enum TodayViewState {
@@ -31,80 +32,6 @@ enum TodayViewState {
   /// Cached activities are displayed while offline.
   offline,
 }
-
-/// Default sample activities used when catalog items are resolved offline.
-final List<Activity> defaultTodayActivities = [
-  const Activity(
-    id: 'act-stack-cups',
-    title: 'Stack the cups',
-    type: 'activity',
-    language: 'en',
-    domain: 'motor',
-    ageBand: '12-23m',
-    durationMinutes: 10,
-    durationEstimate: 'Under 10 mins',
-    setting: 'indoor',
-    materials: ['plastic cups'],
-    instructions: [
-      'Show how to stack two cups.',
-      'Encourage knocking them down.',
-    ],
-    limitations: 'Watch small children near stacks.',
-    status: 'synthetic_fixture',
-    provenanceSource: 'LittleSteps',
-  ),
-  const Activity(
-    id: 'act-shadow-dancing',
-    title: 'Shadow dancing',
-    type: 'activity',
-    language: 'en',
-    domain: 'socioEmotional',
-    ageBand: '12-23m',
-    durationMinutes: 8,
-    durationEstimate: 'Under 10 mins',
-    setting: 'indoor',
-    materials: [],
-    instructions: [
-      'Turn off bright lights.',
-      'Move hands to create animal shadows.',
-    ],
-    limitations: 'Keep floor clear of trip hazards.',
-    status: 'synthetic_fixture',
-    provenanceSource: 'LittleSteps',
-  ),
-  const Activity(
-    id: 'act-nature-hunt',
-    title: 'Nature treasure hunt',
-    type: 'activity',
-    language: 'en',
-    domain: 'cognitive',
-    ageBand: '12-23m',
-    durationMinutes: 20,
-    durationEstimate: '15-30 mins',
-    setting: 'outdoor',
-    materials: ['basket'],
-    instructions: ['Look for two dry leaves.', 'Find a smooth pebble.'],
-    limitations: 'Supervise outdoor exploration.',
-    status: 'synthetic_fixture',
-    provenanceSource: 'LittleSteps',
-  ),
-  const Activity(
-    id: 'act-animal-sounds',
-    title: 'Animal sound guessing',
-    type: 'activity',
-    language: 'en',
-    domain: 'language',
-    ageBand: '12-23m',
-    durationMinutes: 5,
-    durationEstimate: 'Under 10 mins',
-    setting: 'indoor',
-    materials: [],
-    instructions: ['Make a cow sound.', 'Ask child who makes that sound.'],
-    limitations: 'Keep volume comfortable.',
-    status: 'synthetic_fixture',
-    provenanceSource: 'LittleSteps',
-  ),
-];
 
 /// In-memory store recording whether the non-diagnostic advisory was dismissed.
 class TodayAdvisoryStorage {
@@ -302,10 +229,6 @@ class _TodayScreenState extends State<TodayScreen> {
 
     if (widget.initialActivities != null) {
       _activityLookup = Map.from(widget.initialActivities!);
-    } else {
-      for (final act in defaultTodayActivities) {
-        _activityLookup[act.id] = act;
-      }
     }
 
     if (widget.initialWeatherHint != null) {
@@ -585,7 +508,7 @@ class _TodayScreenState extends State<TodayScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("This activity wasn't marked complete"),
-          duration: Duration(seconds: 4),
+          duration: AppMotion.snackbarDefault,
           backgroundColor: AppColors.error,
         ),
       );
@@ -628,7 +551,7 @@ class _TodayScreenState extends State<TodayScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${activity.title} marked complete'),
-          duration: const Duration(seconds: 10),
+          duration: AppMotion.snackbarUndo,
           action: SnackBarAction(
             label: 'Undo',
             textColor: AppColors.cream,
@@ -649,7 +572,7 @@ class _TodayScreenState extends State<TodayScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("This activity wasn't marked complete"),
-          duration: Duration(seconds: 4),
+          duration: AppMotion.snackbarDefault,
           backgroundColor: AppColors.error,
         ),
       );
@@ -691,7 +614,7 @@ class _TodayScreenState extends State<TodayScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Could not undo completion. Please try again.'),
-          duration: Duration(seconds: 4),
+          duration: AppMotion.snackbarDefault,
         ),
       );
     }
@@ -923,10 +846,10 @@ class _TodayScreenState extends State<TodayScreen> {
                           materials: const [],
                           instructions: const [],
                           limitations: '',
-                          status: 'synthetic_fixture',
+                          status: 'source_checked',
                           provenanceSource: 'LittleSteps',
                         );
-                    return _TodayActivityCard(
+                    return TodayActivityCard(
                       plan: plan,
                       activity: activity,
                       onCompleteToggle: () => _markComplete(plan, activity),
@@ -1226,128 +1149,23 @@ class _TodayScreenState extends State<TodayScreen> {
       return const SizedBox.shrink();
     }
 
-    final showIndoorAction =
-        hint.suggestedSetting == 'indoor' ||
-        (hint.hint?.contains('Indoor') ?? false);
-    // Strip trailing action suffix when the banner already renders an explicit
-    // indoor action button so the label is not repeated twice.
-    final rawHint = hint.hint!;
-    final displayHint = showIndoorAction
-        ? rawHint.replaceFirst(
-            RegExp(r'\s*·\s*Indoor ideas$', caseSensitive: false),
-            '',
-          )
-        : rawHint;
-    final indoorActionLabel = _plans.isEmpty
-        ? 'Find indoor ideas'
-        : 'Filter indoor';
-
-    return Semantics(
-      liveRegion: true,
-      label: 'Weather guidance: $displayHint',
-      child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.space16),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space8,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.softGreen,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.borderSubtle),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(
-                  hint.isRainy ? Icons.cloud_outlined : Icons.wb_sunny_outlined,
-                  size: 18,
-                  color: AppColors.forest,
-                ),
-                const SizedBox(width: AppSpacing.space8),
-                Expanded(
-                  child: Text(
-                    displayHint,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  tooltip: 'Dismiss weather hint',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _weatherDismissed = true;
-                    });
-                  },
-                ),
-              ],
-            ),
-            Wrap(
-              spacing: AppSpacing.space12,
-              runSpacing: AppSpacing.space4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                InkWell(
-                  onTap: () =>
-                      openExternalUrl(context, 'https://open-meteo.com'),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.space8,
-                    ),
-                    child: Text(
-                      hint.attribution,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ),
-                if (showIndoorAction)
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.space8,
-                      ),
-                      minimumSize: const Size(0, AppSizes.touchTarget),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _filterIndoor = true;
-                      });
-                      if (_plans.isEmpty) {
-                        if (widget.onOpenIndoorIdeas != null) {
-                          widget.onOpenIndoorIdeas!();
-                        } else if (widget.onNavigateTab != null) {
-                          widget.onNavigateTab!(1);
-                        }
-                        _announce(
-                          'Opening Explore filtered to indoor play ideas',
-                        );
-                      } else {
-                        _announce('Indoor filter applied from weather hint');
-                      }
-                    },
-                    icon: const Icon(Icons.arrow_forward, size: 16),
-                    label: Text(indoorActionLabel),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    return TodayWeatherBanner(
+      hint: hint,
+      hasPlans: _plans.isNotEmpty,
+      onDismiss: () => setState(() => _weatherDismissed = true),
+      onApplyIndoorAction: () {
+        setState(() => _filterIndoor = true);
+        if (_plans.isEmpty) {
+          if (widget.onOpenIndoorIdeas != null) {
+            widget.onOpenIndoorIdeas!();
+          } else if (widget.onNavigateTab != null) {
+            widget.onNavigateTab!(1);
+          }
+          _announce('Opening Explore filtered to indoor play ideas');
+        } else {
+          _announce('Indoor filter applied from weather hint');
+        }
+      },
     );
   }
 
@@ -1439,376 +1257,6 @@ class _TodayScreenState extends State<TodayScreen> {
             child: const Text('Clear filters'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Card widget rendering a planned activity with duration, domain, completion badge, and action.
-class _TodayActivityCard extends StatelessWidget {
-  // Creates a [_TodayActivityCard] with the given plan and activity data.
-  const _TodayActivityCard({
-    required this.plan,
-    required this.activity,
-    required this.onCompleteToggle,
-  });
-
-  // The plan item tracking schedule and completion state.
-  final PlanItem plan;
-
-  // The resolved catalog activity details.
-  final Activity activity;
-
-  // Callback invoked when the caregiver toggles completion.
-  final VoidCallback onCompleteToggle;
-
-  String _formatDomain(String domain) {
-    switch (domain.toLowerCase()) {
-      case 'socioemotional':
-      case 'socio-emotional':
-        return 'Socio-emotional';
-      case 'cognitive':
-        return 'Cognitive';
-      case 'motor':
-        return 'Motor';
-      case 'language':
-        return 'Language';
-      default:
-        return domain.isEmpty
-            ? domain
-            : '${domain[0].toUpperCase()}${domain.substring(1)}';
-    }
-  }
-
-  String _formatSetting(String setting) {
-    switch (setting.toLowerCase()) {
-      case 'indoor':
-        return 'Indoor';
-      case 'outdoor':
-        return 'Outdoor';
-      case 'either':
-        return 'Indoor or outdoor';
-      default:
-        return setting;
-    }
-  }
-
-  void _showActivityDetails(BuildContext context) {
-    final theme = Theme.of(context);
-    final sourceLabel = plan.customActivity?.sourceLabel;
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      isScrollControlled: true,
-      constraints: const BoxConstraints(maxWidth: 600),
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space24,
-            AppSpacing.space8,
-            AppSpacing.space24,
-            AppSpacing.space24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (sourceLabel != null && sourceLabel.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space8,
-                    vertical: AppSpacing.space4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAdvisory,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                    border: Border.all(color: AppColors.borderAdvisory),
-                  ),
-                  child: Text(
-                    sourceLabel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space8),
-              ],
-              Text(
-                activity.title,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Wrap(
-                spacing: AppSpacing.space8,
-                runSpacing: AppSpacing.space4,
-                children: [
-                  _TagBadge(label: _formatDomain(activity.domain)),
-                  _TagBadge(label: '${activity.durationMinutes} mins'),
-                  _TagBadge(label: _formatSetting(activity.setting)),
-                ],
-              ),
-              if (activity.materials.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space16),
-                Text(
-                  'Materials needed',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  activity.materials.join(', '),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-              if (activity.instructions.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space16),
-                Text(
-                  'Steps to play',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space8),
-                ...activity.instructions.asMap().entries.map(
-                  (entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${entry.key + 1}. ',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            entry.value,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              if (activity.limitations.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.space12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAdvisory,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                    border: Border.all(color: AppColors.borderAdvisory),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.shield_outlined,
-                        size: 18,
-                        color: AppColors.artworkForest,
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      Expanded(
-                        child: Text(
-                          activity.limitations,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              if (activity.provenanceSource.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Text(
-                  'Source: ${activity.provenanceSource}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isCompleted = plan.isCompleted;
-    final hasDetails = activity.instructions.isNotEmpty;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      color: AppColors.surfaceCard,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        side: const BorderSide(color: AppColors.borderSubtle),
-      ),
-      child: InkWell(
-        onTap: hasDetails ? () => _showActivityDetails(context) : null,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          activity.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space4),
-                        Wrap(
-                          spacing: AppSpacing.space8,
-                          runSpacing: AppSpacing.space4,
-                          children: [
-                            _TagBadge(label: _formatDomain(activity.domain)),
-                            _TagBadge(
-                              label: '${activity.durationMinutes} mins',
-                            ),
-                            _TagBadge(label: _formatSetting(activity.setting)),
-                            if (activity.materials.isEmpty ||
-                                activity.materials.every(
-                                  (m) => m.toLowerCase() == 'none',
-                                ))
-                              const _TagBadge(label: 'No materials')
-                            else
-                              _TagBadge(
-                                label:
-                                    '${activity.materials.length} ${activity.materials.length == 1 ? 'material' : 'materials'}',
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.space8),
-                  _buildCompletionAction(context),
-                ],
-              ),
-              if (isCompleted) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space12,
-                    vertical: AppSpacing.space4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.softGreen,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                    border: Border.all(
-                      color: AppColors.forest.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: AppColors.forest,
-                      ),
-                      const SizedBox(width: AppSpacing.space4),
-                      Text(
-                        'Completed today',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.forest,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Renders the accessible 48x48dp button or checkbox for completing an activity.
-  Widget _buildCompletionAction(BuildContext context) {
-    if (plan.isCompleted) {
-      return Semantics(
-        label: 'Marked complete. Tapping will toggle status.',
-        child: IconButton(
-          icon: const Icon(
-            Icons.check_circle,
-            color: AppColors.forest,
-            size: 28,
-          ),
-          tooltip: 'Completed today',
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          onPressed: onCompleteToggle,
-        ),
-      );
-    }
-
-    return Semantics(
-      label: 'Mark ${activity.title} complete',
-      child: OutlinedButton(
-        onPressed: onCompleteToggle,
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space12),
-          side: const BorderSide(color: AppColors.forest),
-        ),
-        child: const Text('Mark complete'),
-      ),
-    );
-  }
-}
-
-// Badge widget rendering a metadata tag chip.
-class _TagBadge extends StatelessWidget {
-  // Creates a [_TagBadge] with a text label.
-  const _TagBadge({required this.label});
-
-  // Label text displayed inside the badge.
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space4,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCanvas,
-        borderRadius: BorderRadius.circular(AppRadius.chip),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall
-            ?.copyWith(color: AppColors.textSecondary),
       ),
     );
   }

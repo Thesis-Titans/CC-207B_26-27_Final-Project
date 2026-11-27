@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../config/external_links.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 
@@ -35,10 +36,10 @@ class AccountScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.space16),
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      const CircleAvatar(
                         radius: 28,
                         backgroundColor: AppColors.softGreen,
-                        child: const Icon(
+                        child: Icon(
                           Icons.person_outline,
                           color: AppColors.forest,
                           size: 32,
@@ -154,10 +155,8 @@ class AccountScreen extends StatelessWidget {
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text(
-                        'Support: https://github.com/Thesis-Titans',
-                      ),
-                      duration: Duration(seconds: 4),
+                      content: Text('Support: ${AppLinks.githubOrg}'),
+                      duration: AppMotion.snackbarDefault,
                     ),
                   );
                 },

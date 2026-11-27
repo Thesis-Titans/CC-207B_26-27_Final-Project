@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:littlesteps/data/milestone_prompts.dart';
 import 'package:littlesteps/models/milestone.dart';
 import 'package:littlesteps/screens/milestones/milestones_screen.dart';
 
@@ -120,7 +121,7 @@ void main() {
         'fail',
       ];
 
-      for (final prompt in sampleMilestonePrompts) {
+      for (final prompt in defaultMilestonePrompts) {
         for (final word in bannedWords) {
           expect(
             prompt.title.toLowerCase().contains(word),

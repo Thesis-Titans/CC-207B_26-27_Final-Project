@@ -109,7 +109,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text('Switched to ${child.nickname}'),
-          duration: const Duration(seconds: 2),
+          duration: AppMotion.snackbarShort,
         ),
       );
   }
@@ -209,7 +209,7 @@ class _ChildProfileScreenState extends State<ChildProfileScreen> {
         Container(
           padding: const EdgeInsets.all(AppSpacing.space16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surfaceCard,
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: AppColors.borderSubtle),
           ),

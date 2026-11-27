@@ -220,11 +220,16 @@ void main() {
         ),
         findsOneWidget,
       );
+      expect(
+        find.textContaining('DepEd MATATAG Kindergarten Curriculum'),
+        findsOneWidget,
+      );
       expect(find.textContaining('cdc.gov'), findsOneWidget);
       expect(find.textContaining('healthychildren.org'), findsOneWidget);
       expect(find.textContaining('eccdcouncil.gov.ph'), findsOneWidget);
+      expect(find.textContaining('deped.gov.ph'), findsOneWidget);
       expect(find.textContaining('https://'), findsNothing);
-      expect(find.byIcon(Icons.open_in_new), findsNWidgets(4));
+      expect(find.byIcon(Icons.open_in_new), findsNWidgets(5));
     },
   );
 

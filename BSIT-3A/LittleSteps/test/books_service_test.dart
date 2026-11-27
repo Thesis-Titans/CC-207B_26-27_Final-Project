@@ -142,11 +142,11 @@ void main() {
       final savedList = await service.fetchSavedBooks('child-c1');
       expect(savedList.length, 1);
 
-      final newBook = Book(
+      final newBook = const Book(
         id: 'OL151798W',
         title: 'Goodnight Moon',
-        authors: const ['Margaret Wise Brown'],
-        subjects: const ['bedtime'],
+        authors: ['Margaret Wise Brown'],
+        subjects: ['bedtime'],
       );
       final saved = await service.saveBookToShelf('child-c1', newBook);
       expect(saved.id, 'OL151798W');

@@ -352,7 +352,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   height: 22,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
-                                    color: Colors.white,
+                                    color: AppColors.surfaceCard,
                                   ),
                                 )
                               : const Text('Create account'),

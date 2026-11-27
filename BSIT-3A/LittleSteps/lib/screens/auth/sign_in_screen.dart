@@ -341,12 +341,12 @@ class _SignInScreenState extends State<SignInScreen> {
             border: Border.all(color: AppColors.borderSubtle),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x0F1A2B29),
+                color: AppColors.shadowCard,
                 blurRadius: 14,
                 offset: Offset(0, 4),
               ),
               BoxShadow(
-                color: Color(0x0A1A2B29),
+                color: AppColors.shadowSubtle,
                 blurRadius: 2,
                 offset: Offset(0, 1),
               ),
@@ -513,7 +513,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         content: Text(
                           'Password reset instructions will be sent to your registered email address.',
                         ),
-                        duration: Duration(seconds: 4),
+                        duration: AppMotion.snackbarDefault,
                       ),
                     );
                   },
@@ -533,7 +533,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           height: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            color: Colors.white,
+                            color: AppColors.surfaceCard,
                           ),
                         )
                       : const Text('Sign in'),

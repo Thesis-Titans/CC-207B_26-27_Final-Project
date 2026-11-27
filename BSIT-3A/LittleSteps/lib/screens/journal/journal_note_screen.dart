@@ -296,7 +296,7 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
           // Place the privacy boundary notice above the text input.
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surfaceCard,
               borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(color: AppColors.borderSubtle),
             ),
@@ -400,7 +400,7 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
                       height: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        color: Colors.white,
+                        color: AppColors.surfaceCard,
                       ),
                     )
                   : const Text('Save note'),

@@ -227,7 +227,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                 vertical: AppSpacing.space8,
               ),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surfaceCard,
                 border: Border.all(color: AppColors.borderSubtle),
                 borderRadius: BorderRadius.circular(AppRadius.control),
               ),
@@ -296,7 +296,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                         'I saw it',
                         style: TextStyle(
                           color: _isObserved
-                              ? Colors.white
+                              ? AppColors.surfaceCard
                               : AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
@@ -327,7 +327,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                         'Not seen yet',
                         style: TextStyle(
                           color: !_isObserved
-                              ? Colors.white
+                              ? AppColors.surfaceCard
                               : AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
@@ -354,7 +354,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                   horizontal: AppSpacing.space12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surfaceCard,
                   border: Border.all(color: AppColors.borderSubtle),
                   borderRadius: BorderRadius.circular(AppRadius.control),
                 ),
@@ -393,7 +393,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
                   fontSize: 14,
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: AppColors.surfaceCard,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppRadius.control),
                   borderSide: const BorderSide(color: AppColors.borderSubtle),
@@ -424,7 +424,7 @@ class _ObservationFormSheetState extends State<ObservationFormSheet> {
               child: FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.forest,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.surfaceCard,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadius.control),
                   ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../config/external_links.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/url_helper.dart';
 
@@ -86,23 +87,28 @@ class AccountInfoScreen extends StatelessWidget {
           _ExternalResourceLink(
             title: 'CDC Developmental Milestones (Learn the Signs. Act Early.)',
             domainLabel: 'cdc.gov',
-            url: 'https://www.cdc.gov/ncbddd/actearly/milestones/',
+            url: AppLinks.cdcMilestones,
           ),
           _ExternalResourceLink(
             title: 'American Academy of Pediatrics (AAP)',
             domainLabel: 'healthychildren.org',
-            url: 'https://www.healthychildren.org',
+            url: AppLinks.aapHealthyChildren,
           ),
           _ExternalResourceLink(
             title:
                 'WHO Nurturing Care Framework for Early Childhood Development',
             domainLabel: 'nurturing-care.org',
-            url: 'https://nurturing-care.org',
+            url: AppLinks.whoNurturingCare,
           ),
           _ExternalResourceLink(
             title: 'Philippine Early Learning Standards (ECCD Council)',
             domainLabel: 'eccdcouncil.gov.ph',
-            url: 'https://eccdcouncil.gov.ph',
+            url: AppLinks.eccdCouncil,
+          ),
+          _ExternalResourceLink(
+            title: 'DepEd MATATAG Kindergarten Curriculum',
+            domainLabel: 'deped.gov.ph',
+            url: AppLinks.depedMatatag,
           ),
         ],
       ),
@@ -145,7 +151,7 @@ class AccountInfoScreen extends StatelessWidget {
           _ExternalResourceLink(
             title: 'Thesis Titans on GitHub',
             domainLabel: 'github.com/Thesis-Titans',
-            url: 'https://github.com/Thesis-Titans',
+            url: AppLinks.githubOrg,
           ),
         ],
       ),

@@ -40,4 +40,31 @@ abstract final class AppConfig {
     } catch (_) {}
     return 'localhost';
   }
+
+  /// Validates that release builds are configured for live HTTPS endpoints.
+  ///
+  /// Throws a [StateError] in release mode when `USE_FIREBASE_EMULATOR` is
+  /// still enabled, `API_BASE_URL` is missing an `https://` scheme, or the
+  /// placeholder emulator API key is still in use.
+  static void validateForRelease() {
+    if (!kReleaseMode) return;
+    if (useFirebaseEmulator) {
+      throw StateError(
+        'Release builds cannot target local Firebase emulators. '
+        'Pass --dart-define-from-file=config/production.json.',
+      );
+    }
+    if (!configuredApiBaseUrl.startsWith('https://')) {
+      throw StateError(
+        'Release builds require an HTTPS API_BASE_URL. '
+        'Pass --dart-define-from-file=config/production.json.',
+      );
+    }
+    if (firebaseApiKey.isEmpty || firebaseApiKey == 'fake-api-key') {
+      throw StateError(
+        'Release builds require a valid FIREBASE_API_KEY. '
+        'Pass --dart-define-from-file=config/production.json.',
+      );
+    }
+  }
 }

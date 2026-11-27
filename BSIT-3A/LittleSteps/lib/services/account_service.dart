@@ -12,7 +12,7 @@ class AccountService {
   Future<Map<String, dynamic>> exportData() async {
     final data = await apiClient.get('/api/v1/me/export');
     if (data is! Map<String, dynamic>) {
-      throw FormatException('The data export response was invalid.');
+      throw const FormatException('The data export response was invalid.');
     }
     return data;
   }

@@ -1,5 +1,5 @@
-import '../models/book.dart';
 import '../data/fallback_books.dart';
+import '../models/book.dart';
 import 'api_client.dart';
 
 /// Loads catalog books and manages a child's saved bookshelf.

@@ -120,7 +120,9 @@ class PlayCompanionDialog extends StatelessWidget {
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.softGreen,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.badge,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -173,7 +175,7 @@ class PlayCompanionDialog extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceCanvas,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(AppRadius.badge),
                       border: Border.all(color: AppColors.borderSubtle),
                     ),
                     child: Text(
@@ -299,7 +301,7 @@ class PlayCompanionDialog extends StatelessWidget {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: AppColors.surfaceCard,
                               ),
                             )
                           : const Text(

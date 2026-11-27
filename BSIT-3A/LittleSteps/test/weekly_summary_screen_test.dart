@@ -14,6 +14,8 @@ import 'package:littlesteps/services/auth_session_state.dart';
 import 'package:littlesteps/services/summary_service.dart';
 import 'package:littlesteps/widgets/auth_scope.dart';
 
+import 'fixtures/sample_weekly_summaries.dart';
+
 class _FakeAuthService implements AuthService {
   @override
   Future<AuthUser> signInWithEmailAndPassword({

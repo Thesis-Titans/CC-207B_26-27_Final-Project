@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/milestone_prompts.dart';
 import '../../models/milestone.dart';
 import '../../services/api_client.dart';
 import '../../services/milestones_service.dart';
@@ -7,6 +8,7 @@ import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import 'observation_form_sheet.dart';
+import 'widgets/milestone_prompt_card.dart';
 
 /// View states for the milestones screen.
 enum MilestonesViewState {
@@ -32,7 +34,7 @@ class MilestonesScreen extends StatefulWidget {
   const MilestonesScreen({
     super.key,
     this.initialState = MilestonesViewState.ready,
-    this.prompts = sampleMilestonePrompts,
+    this.prompts = defaultMilestonePrompts,
     this.initialObservations = const {},
     this.milestonesService,
   });
@@ -167,7 +169,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
   void _showAgeBandPicker() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surfaceCard,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -285,7 +287,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surfaceCard,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -358,7 +360,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                         vertical: AppSpacing.space8,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.surfaceCard,
                         border: Border.all(color: AppColors.borderSubtle),
                         borderRadius: BorderRadius.circular(AppRadius.control),
                       ),
@@ -408,7 +410,7 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
               height: 72,
               padding: const EdgeInsets.all(AppSpacing.space16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.surfaceCard,
                 borderRadius: BorderRadius.circular(AppRadius.card),
                 border: Border.all(color: AppColors.borderSubtle),
               ),
@@ -424,7 +426,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                           height: 12,
                           decoration: BoxDecoration(
                             color: AppColors.borderSubtle,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.skeleton,
+                            ),
                           ),
                         ),
                         const SizedBox(height: AppSpacing.space8),
@@ -435,7 +439,9 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                             color: AppColors.borderSubtle.withValues(
                               alpha: 0.6,
                             ),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(
+                              AppRadius.skeleton,
+                            ),
                           ),
                         ),
                       ],
@@ -555,29 +561,29 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       margin: const EdgeInsets.only(bottom: AppSpacing.space12),
       padding: const EdgeInsets.all(AppSpacing.space20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surfaceCard,
         borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(color: AppColors.borderSubtle),
       ),
-      child: Center(
+      child: const Center(
         child: Column(
           children: [
             CircleAvatar(
               backgroundColor: AppColors.softGreen,
               radius: 24,
-              child: const Icon(
+              child: Icon(
                 Icons.eco_outlined,
                 color: AppColors.forest,
                 size: 24,
               ),
             ),
-            const SizedBox(height: AppSpacing.space12),
-            const Text(
+            SizedBox(height: AppSpacing.space12),
+            Text(
               'Nothing noted yet',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: AppSpacing.space4),
-            const Text(
+            SizedBox(height: AppSpacing.space4),
+            Text(
               'Look for small moments during play.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
@@ -649,10 +655,10 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
             label: const Text('All'),
             selected: _selectedDomainFilter == null,
             selectedColor: AppColors.forest,
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.surfaceCard,
             labelStyle: TextStyle(
               color: _selectedDomainFilter == null
-                  ? Colors.white
+                  ? AppColors.surfaceCard
                   : AppColors.textPrimary,
               fontWeight: FontWeight.w600,
             ),
@@ -676,9 +682,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
                 label: Text(domain.label),
                 selected: isSelected,
                 selectedColor: AppColors.forest,
-                backgroundColor: Colors.white,
+                backgroundColor: AppColors.surfaceCard,
                 labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                  color: isSelected
+                      ? AppColors.surfaceCard
+                      : AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
                 shape: RoundedRectangleBorder(
@@ -714,7 +722,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
               shaderCallback: (bounds) => const LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: [Colors.white, Colors.white, Colors.transparent],
+                colors: [
+                  AppColors.surfaceCard,
+                  AppColors.surfaceCard,
+                  Colors.transparent,
+                ],
                 stops: [0.0, 0.9, 1.0],
               ).createShader(bounds),
               blendMode: BlendMode.dstIn,
@@ -759,158 +771,11 @@ class _MilestonesScreenState extends State<MilestonesScreen> {
       );
 
       for (final prompt in domainPrompts) {
-        final obs = _observations[prompt.id];
-        final isObserved = obs?.isObserved ?? false;
-
         widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.space12),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.space16),
-              decoration: BoxDecoration(
-                color: isObserved ? AppColors.softGreen : AppColors.surfaceCard,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                border: Border.all(
-                  color: isObserved
-                      ? AppColors.forest.withValues(alpha: 0.3)
-                      : AppColors.borderSubtle,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          prompt.title,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      SizedBox(
-                        height: 36,
-                        child: isObserved
-                            ? OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.space16,
-                                  ),
-                                  side: const BorderSide(
-                                    color: AppColors.forest,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.control,
-                                    ),
-                                  ),
-                                ),
-                                onPressed: () => _openObservationSheet(prompt),
-                                child: const Text(
-                                  'Update',
-                                  style: TextStyle(
-                                    color: AppColors.forest,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              )
-                            : FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.forest,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.space16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppRadius.control,
-                                    ),
-                                  ),
-                                ),
-                                onPressed: () => _openObservationSheet(prompt),
-                                child: const Text(
-                                  'Add',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.space8),
-
-                  Text(
-                    'Look for: ${prompt.lookFor.join(' · ')}',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: AppSpacing.space8),
-                  if (isObserved) ...[
-                    if (obs?.notes != null && obs!.notes!.isNotEmpty)
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.all(AppSpacing.space8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(
-                            AppRadius.control,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.note_outlined,
-                              size: 14,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: AppSpacing.space4),
-                            Expanded(
-                              child: Text(
-                                obs.notes!,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(fontStyle: FontStyle.italic),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ] else ...[
-                    Text(
-                      'Not seen yet',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                  ],
-
-                  // Provenance source indicator with blue info icon
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        size: 14,
-                        color: Color(0xFF2B6CB0),
-                      ),
-                      const SizedBox(width: AppSpacing.space4),
-                      Expanded(
-                        child: Text(
-                          prompt.provenance,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: AppColors.textTertiary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          MilestonePromptCard(
+            prompt: prompt,
+            observation: _observations[prompt.id],
+            onTapAction: () => _openObservationSheet(prompt),
           ),
         );
       }

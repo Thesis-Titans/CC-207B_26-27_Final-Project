@@ -14,6 +14,8 @@ import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
+import 'widgets/ai_play_block_banner.dart';
+import 'widgets/ai_suggestion_card.dart';
 
 /// Screen that hosts the Idea Helper play activity recommendation flow.
 ///
@@ -215,7 +217,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
             domain: _domain,
             count: 3,
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(AppMotion.aiRequestTimeout);
 
       if (!mounted) return;
       var resolved = result;
@@ -411,7 +413,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Added "${item.title}" to today\'s plan'),
-          duration: const Duration(seconds: 4),
+          duration: AppMotion.snackbarDefault,
         ),
       );
     } catch (error) {
@@ -419,7 +421,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_addToPlanErrorMessage(error, isBatch: false)),
-          duration: const Duration(seconds: 4),
+          duration: AppMotion.snackbarDefault,
         ),
       );
     }
@@ -469,7 +471,7 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
         ? _addToPlanErrorMessage(lastError, isBatch: true)
         : 'Could not add activities to today\'s plan. Please try again.';
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
+      SnackBar(content: Text(message), duration: AppMotion.snackbarDefault),
     );
   }
 
@@ -1061,277 +1063,29 @@ class _AiSuggestionsScreenState extends State<AiSuggestionsScreen> {
   }
 
   Widget _buildPlayBlockBanner(List<Recommendation> suggestions) {
-    final totalMinutes = suggestions.fold<int>(
-      0,
-      (sum, item) => sum + (item.activity?.durationMinutes ?? 10),
-    );
-    final count = suggestions.length;
-    final hasCustom = suggestions.any((item) => item.isCustom);
-    final saveable = suggestions;
     final allAdded =
-        saveable.isNotEmpty &&
-        saveable.every(
+        suggestions.isNotEmpty &&
+        suggestions.every(
           (item) => _addedActivityIds.contains(_planActivityId(item)),
         );
-    final itemLabel = hasCustom
-        ? (count == 1 ? 'play idea' : 'play ideas')
-        : (count == 1 ? 'reviewed activity' : 'reviewed activities');
-    final pacingSummary = totalMinutes < _timeMinutes
-        ? '$count short $itemLabel '
-              '(~$totalMinutes mins total) · repeat favorites or mix in free '
-              'play to fill $_timeMinutes min.'
-        : '$count short $itemLabel '
-              '(~$totalMinutes mins total) paced for young attention spans.';
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space12),
-      decoration: BoxDecoration(
-        color: AppColors.softGreen.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.schedule_outlined,
-                size: 18,
-                color: AppColors.forest,
-              ),
-              const SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  'Play block for $_timeMinutes min',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppColors.forest,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space4),
-          Text(
-            pacingSummary,
-            style: Theme.of(context).textTheme.bodySmall
-                ?.copyWith(color: AppColors.textPrimary),
-          ),
-          if (saveable.length >= 2 && _effectiveChild != null) ...[
-            const SizedBox(height: AppSpacing.space12),
-            OutlinedButton.icon(
-              onPressed: (allAdded || _isAddingAll)
-                  ? null
-                  : () => _addAllToPlan(saveable),
-              icon: Icon(allAdded ? Icons.check : Icons.playlist_add, size: 18),
-              label: Text(
-                allAdded
-                    ? "All added to today's plan"
-                    : "Add all to today's plan",
-              ),
-            ),
-          ],
-        ],
-      ),
+    return AiPlayBlockBanner(
+      suggestions: suggestions,
+      timeMinutes: _timeMinutes,
+      hasActiveChild: _effectiveChild != null,
+      allAdded: allAdded,
+      isAddingAll: _isAddingAll,
+      onAddAll: () => _addAllToPlan(suggestions),
     );
   }
 
   Widget _buildSuggestionCard(Recommendation suggestion) {
-    final activity = suggestion.activity;
-
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: AppSpacing.space16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        side: const BorderSide(color: AppColors.borderSubtle),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (activity != null)
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AppSpacing.space8,
-                runSpacing: AppSpacing.space4,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space8,
-                      vertical: AppSpacing.space4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceCanvas,
-                      borderRadius: BorderRadius.circular(AppRadius.chip),
-                    ),
-                    child: Text(
-                      activity.domain.toUpperCase(),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${activity.durationEstimate} · ${_formatSetting(activity.setting)}',
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: AppColors.textSecondary),
-                  ),
-                  if (suggestion.isCustom)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.space8,
-                        vertical: AppSpacing.space4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceAdvisory,
-                        borderRadius: BorderRadius.circular(AppRadius.chip),
-                        border: Border.all(color: AppColors.borderAdvisory),
-                      ),
-                      child: Text(
-                        'Material adaptation',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            const SizedBox(height: AppSpacing.space8),
-
-            Text(
-              suggestion.title,
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: AppSpacing.space8),
-
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.space12),
-              decoration: BoxDecoration(
-                color: AppColors.softGreen.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(AppRadius.chip),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.lightbulb_outline,
-                    size: 18,
-                    color: AppColors.forest,
-                  ),
-                  const SizedBox(width: AppSpacing.space8),
-                  Expanded(
-                    child: Text(
-                      'Why this fits: ${suggestion.whyPicked}',
-                      style: Theme.of(context).textTheme.bodySmall
-                          ?.copyWith(color: AppColors.textPrimary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space12),
-
-            if (activity != null) ...[
-              if (activity.materials.isNotEmpty) ...[
-                Text(
-                  'Materials needed:',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  activity.materials.join(', '),
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: AppSpacing.space8),
-              ],
-              if (activity.instructions.isNotEmpty) ...[
-                Text(
-                  'Steps to play:',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                ...activity.instructions.asMap().entries.map((entry) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.space4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${entry.key + 1}. ',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        Expanded(
-                          child: Text(
-                            entry.value,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                const SizedBox(height: AppSpacing.space12),
-              ],
-            ],
-
-            if (suggestion.isCustom &&
-                activity != null &&
-                activity.limitations.isNotEmpty) ...[
-              Text(
-                'Safety note: ${activity.limitations}',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-            ],
-
-            if (_effectiveChild == null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-                child: Text(
-                  'Choose a child to add this to a plan.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: AppColors.textSecondary),
-                ),
-              ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Builder(
-                builder: (context) {
-                  final alreadyAdded = _addedActivityIds.contains(
-                    _planActivityId(suggestion),
-                  );
-                  return FilledButton.icon(
-                    onPressed: (_effectiveChild == null || alreadyAdded)
-                        ? null
-                        : () => _addToPlan(suggestion),
-                    icon: Icon(
-                      alreadyAdded ? Icons.check : Icons.add,
-                      size: 18,
-                    ),
-                    label: Text(
-                      alreadyAdded
-                          ? "Added to today's plan"
-                          : "Add to today's plan",
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+    final setting = suggestion.activity?.setting ?? '';
+    return AiSuggestionCard(
+      suggestion: suggestion,
+      settingLabel: _formatSetting(setting),
+      hasActiveChild: _effectiveChild != null,
+      alreadyAdded: _addedActivityIds.contains(_planActivityId(suggestion)),
+      onAddToPlan: () => _addToPlan(suggestion),
     );
   }
 }

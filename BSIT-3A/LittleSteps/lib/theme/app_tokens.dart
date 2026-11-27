@@ -74,11 +74,20 @@ abstract final class AppColors {
   /// Info status background color for metadata and provenance badges.
   static const statusInfo = Color(0xFFD9E8F7);
 
+  /// Info icon foreground color used alongside provenance citations.
+  static const infoIcon = Color(0xFF2B6CB0);
+
   /// Caution status background color.
   static const statusCaution = Color(0xFFFAE8A8);
 
   /// Offline status indicator color.
   static const statusOffline = Color(0xFFF1F5F9);
+
+  /// Primary soft shadow tint for elevated cards.
+  static const shadowCard = Color(0x0F1A2B29);
+
+  /// Subtle contact shadow tint for elevated cards.
+  static const shadowSubtle = Color(0x0A1A2B29);
 }
 
 /// Spacing scale constants based on an 8-point grid.
@@ -107,6 +116,12 @@ abstract final class AppSpacing {
 
 /// Corner radius values for controls, containers, and chips.
 abstract final class AppRadius {
+  /// Radius for shimmer and skeleton placeholders.
+  static const double skeleton = 4;
+
+  /// Radius for compact inline badges and small status tags.
+  static const double badge = 6;
+
   /// Radius for buttons, text fields, and inputs.
   static const double control = 10;
 
@@ -144,13 +159,34 @@ abstract final class AppSizes {
   static const double wideLayoutBreakpoint = 840;
 }
 
-/// Animation durations and curve constants.
+/// Animation durations, feedback timers, and curve constants.
 abstract final class AppMotion {
   /// Duration for quick interactive feedback like presses and hover states.
   static const Duration durationFast = Duration(milliseconds: 120);
 
   /// Duration for modal transitions and expanding views.
   static const Duration durationBase = Duration(milliseconds: 200);
+
+  /// Debounce delay for interactive catalog search inputs.
+  static const Duration searchDebounce = Duration(milliseconds: 350);
+
+  /// Brief splash screen delay before initial route resolution.
+  static const Duration splashDelay = Duration(milliseconds: 500);
+
+  /// Short snackbar duration for routine confirmations.
+  static const Duration snackbarShort = Duration(seconds: 2);
+
+  /// Default snackbar duration for notices and error messages.
+  static const Duration snackbarDefault = Duration(seconds: 4);
+
+  /// Extended snackbar duration when an Undo action is offered.
+  static const Duration snackbarUndo = Duration(seconds: 10);
+
+  /// Timeout bound for AI recommendation requests.
+  static const Duration aiRequestTimeout = Duration(seconds: 8);
+
+  /// Default timeout bound for standard API requests.
+  static const Duration apiRequestTimeout = Duration(seconds: 10);
 
   /// Standard ease-out animation curve.
   static const Curve easingStandard = Cubic(0.2, 0.0, 0.0, 1.0);

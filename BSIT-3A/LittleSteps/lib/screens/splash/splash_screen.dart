@@ -38,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     // Wait briefly so the fade-in completes before replacing the splash route.
-    _navigationTimer = Timer(const Duration(milliseconds: 500), _navigateNext);
+    _navigationTimer = Timer(AppMotion.splashDelay, _navigateNext);
   }
 
   // Routes signed-in caregivers to the main shell and others to sign-in.

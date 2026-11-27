@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/testing.dart';
 import 'package:littlesteps/models/activity.dart';
+import 'package:littlesteps/screens/explore/explore_screen.dart';
 import 'package:littlesteps/services/api_client.dart';
 import 'package:littlesteps/services/catalog_service.dart';
 import 'package:littlesteps/services/local_cache.dart';
 import 'package:littlesteps/services/plan_service.dart';
-import 'package:littlesteps/screens/explore/explore_screen.dart';
 import 'package:littlesteps/theme/app_theme.dart';
 
 void main() {
@@ -173,7 +173,7 @@ void main() {
   testWidgets(
     'citation sheet shows non-diagnostic copy, dynamic framework title, and website CTA',
     (tester) async {
-      final eccdActivity = Activity(
+      final eccdActivity = const Activity(
         id: 'act-eccd-nelf',
         title: 'Stack the Plastic Cups',
         type: 'activity',
@@ -183,8 +183,8 @@ void main() {
         durationMinutes: 10,
         durationEstimate: '10 mins',
         setting: 'indoor',
-        materials: const ['plastic cups'],
-        instructions: const ['Stack plastic cups together.'],
+        materials: ['plastic cups'],
+        instructions: ['Stack plastic cups together.'],
         limitations: 'Supervise closely.',
         status: 'reviewed_approved',
         provenanceSource: 'ECCD Council NELF (2010), Annex 4, p. 78',
@@ -216,7 +216,7 @@ void main() {
   testWidgets(
     'citation sheet omits external portal button for unmapped sources',
     (tester) async {
-      final genericActivity = Activity(
+      final genericActivity = const Activity(
         id: 'act-generic',
         title: 'Water Pouring',
         type: 'activity',
@@ -226,8 +226,8 @@ void main() {
         durationMinutes: 10,
         durationEstimate: '10 mins',
         setting: 'indoor',
-        materials: const ['cups'],
-        instructions: const ['Pour water between cups.'],
+        materials: ['cups'],
+        instructions: ['Pour water between cups.'],
         limitations: 'Supervise around water.',
         status: 'reviewed_approved',
         provenanceSource: 'Community Early Play Handbook (2024)',

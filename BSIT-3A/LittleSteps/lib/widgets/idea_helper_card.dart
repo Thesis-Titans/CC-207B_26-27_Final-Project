@@ -37,10 +37,10 @@ class IdeaHelperCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
+              const CircleAvatar(
                 radius: 18,
                 backgroundColor: AppColors.softGreen,
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome,
                   size: 20,
                   color: AppColors.forest,
@@ -88,7 +88,7 @@ class IdeaHelperCard extends StatelessWidget {
               label: const Text('Find ideas'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.forest,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.surfaceCard,
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.space20,
                   vertical: AppSpacing.space12,

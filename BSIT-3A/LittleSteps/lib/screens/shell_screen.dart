@@ -14,11 +14,11 @@ import '../widgets/child_chip.dart';
 import '../widgets/no_children_view.dart';
 import '../widgets/state_views.dart';
 import 'account/settings_screen.dart';
-import 'today/today_screen.dart';
 import 'explore/explore_screen.dart';
-import 'milestones/milestones_screen.dart';
 import 'journal/journal_screen.dart';
+import 'milestones/milestones_screen.dart';
 import 'reflection/weekly_summary_screen.dart';
+import 'today/today_screen.dart';
 
 /// Main navigation shell hosting adaptive navigation and the shared app header.
 ///
