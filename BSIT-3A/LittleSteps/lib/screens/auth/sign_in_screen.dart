@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
+import '../../routing/app_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/children_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/accessibility.dart';
 import '../../widgets/auth_scope.dart';
-import '../../widgets/brand_logo.dart';
+import 'widgets/auth_widgets.dart';
 
 /// Screen that allows caregivers to sign in with their email and password.
 ///
@@ -24,8 +25,6 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  static const double _wideLayoutMinWidth = 840;
-
   static const List<String> _desktopHighlights = [
     'Plan play and note what you can.',
     'Your journal stays private.',
@@ -47,12 +46,7 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
-  void _announce(String message) {
-    final view = View.maybeOf(context);
-    if (view != null) {
-      SemanticsService.sendAnnouncement(view, message, TextDirection.ltr);
-    }
-  }
+  void _announce(String message) => announceForAccessibility(context, message);
 
   Future<void> _submit([
     String? overrideEmail,
@@ -84,7 +78,11 @@ class _SignInScreenState extends State<SignInScreen> {
       } catch (_) {}
       if (!mounted) return;
       _announce('Signed in successfully');
-      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.home,
+        (route) => false,
+      );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -115,459 +113,91 @@ class _SignInScreenState extends State<SignInScreen> {
             : null);
 
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth >= _wideLayoutMinWidth) {
-              return _buildWideLayout(
-                context,
-                theme,
-                constraints,
-                activeNotice,
-              );
-            }
-            return _buildCompactLayout(
-              context,
-              theme,
-              constraints,
-              activeNotice,
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCompactLayout(
-    BuildContext context,
-    ThemeData theme,
-    BoxConstraints constraints,
-    String? activeNotice,
-  ) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space24,
-        vertical: AppSpacing.space16,
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minHeight: (constraints.maxHeight - (AppSpacing.space16 * 2)).clamp(
-            0.0,
-            double.infinity,
-          ),
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Center(child: GrowthSymbol(size: 48)),
-                const SizedBox(height: AppSpacing.space8),
-                Text(
-                  'LittleSteps',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: AppColors.forest,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.3,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  'Small steps. Brighter tomorrows.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.forest,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.space20),
-                _buildFormCard(context, theme, activeNotice),
-                const SizedBox(height: AppSpacing.space16),
-                _buildAccountFooter(context, theme),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWideLayout(
-    BuildContext context,
-    ThemeData theme,
-    BoxConstraints constraints,
-    String? activeNotice,
-  ) {
-    final panelWidth = (constraints.maxWidth * 0.40).clamp(340.0, 460.0);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Left brand panel on warm cream
-        Container(
-          width: panelWidth,
-          decoration: const BoxDecoration(
-            color: AppColors.cream,
-            border: Border(right: BorderSide(color: AppColors.borderSubtle)),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: (constraints.maxHeight - 72).clamp(
-                  0.0,
-                  double.infinity,
-                ),
-              ),
+      body: AuthResponsiveLayout(
+        panelTitle: 'Welcome back',
+        panelSubtitle: 'Plan short play ideas, notice small moments, and keep private notes for the children you care for.',
+        panelHighlights: _desktopHighlights,
+        wideFormMaxWidth: 420,
+        card: AutofillGroup(
+          child: Form(
+            key: _formKey,
+            child: AuthFormCard(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const BrandLogo(symbolSize: 38, showTagline: true),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.space24,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome back',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space12),
-                        Text(
-                          'Plan short play ideas, notice small moments, and keep private notes for the children you care for.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space20),
-                        for (final item in _desktopHighlights)
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.space8,
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 2),
-                                  child: Icon(
-                                    Icons.check,
-                                    size: 16,
-                                    color: AppColors.forest,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.space8),
-                                Expanded(
-                                  child: Text(
-                                    item,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
+                  Text(
+                    'Sign in',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                  const Center(child: ParentChildIllustration(height: 168)),
+                  const SizedBox(height: AppSpacing.space4),
+                  Text(
+                    'Sign in to your caregiver account',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  if (activeNotice != null) ...[
+                    AuthMessageBanner(
+                      message: activeNotice,
+                      tone: AuthMessageTone.notice,
+                    ),
+                    const SizedBox(height: AppSpacing.space12),
+                  ],
+                  if (_errorMessage != null) ...[
+                    AuthMessageBanner(
+                      message: _errorMessage!,
+                      tone: AuthMessageTone.error,
+                    ),
+                    const SizedBox(height: AppSpacing.space12),
+                  ],
+                  AuthEmailField(controller: _emailController),
+                  const SizedBox(height: AppSpacing.space12),
+                  AuthPasswordField(
+                    controller: _passwordController,
+                    showPassword: _showPassword,
+                    onToggleVisibility: () {
+                      setState(() => _showPassword = !_showPassword);
+                    },
+                    onSubmitted: _submit,
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Password reset instructions will be sent to your registered email address.',
+                            ),
+                            duration: AppMotion.snackbarDefault,
+                          ),
+                        );
+                      },
+                      child: const Text('Forgot password?'),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space12),
+                  AuthSubmitButton(
+                    label: 'Sign in',
+                    loading: _submitting,
+                    onPressed: _submit,
+                  ),
                 ],
               ),
             ),
           ),
         ),
-
-        // Right sign-in form pane
-        Expanded(
-          child: ColoredBox(
-            color: AppColors.surfaceCard,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space32,
-                vertical: AppSpacing.space24,
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: (constraints.maxHeight - (AppSpacing.space24 * 2))
-                      .clamp(0.0, double.infinity),
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildFormCard(context, theme, activeNotice),
-                        const SizedBox(height: AppSpacing.space16),
-                        _buildAccountFooter(context, theme),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFormCard(
-    BuildContext context,
-    ThemeData theme,
-    String? activeNotice,
-  ) {
-    return AutofillGroup(
-      child: Form(
-        key: _formKey,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0F1A2B29),
-                blurRadius: 14,
-                offset: Offset(0, 4),
-              ),
-              BoxShadow(
-                color: Color(0x0A1A2B29),
-                blurRadius: 2,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Sign in',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space4),
-              Text(
-                'Sign in to your caregiver account',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space16),
-
-              // Notice banner (if any)
-              if (activeNotice != null) ...[
-                Semantics(
-                  liveRegion: true,
-                  child: Container(
-                    padding: const EdgeInsets.all(AppSpacing.space12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAdvisory,
-                      borderRadius: BorderRadius.circular(AppRadius.control),
-                      border: Border.all(color: AppColors.borderAdvisory),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          size: 20,
-                          color: AppColors.textPrimary,
-                        ),
-                        const SizedBox(width: AppSpacing.space8),
-                        Expanded(
-                          child: Text(
-                            activeNotice,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space12),
-              ],
-
-              // Error banner (if any)
-              if (_errorMessage != null) ...[
-                Semantics(
-                  liveRegion: true,
-                  child: Container(
-                    padding: const EdgeInsets.all(AppSpacing.space12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceError,
-                      borderRadius: BorderRadius.circular(AppRadius.control),
-                      border: Border.all(color: AppColors.borderError),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 20,
-                          color: AppColors.error,
-                        ),
-                        const SizedBox(width: AppSpacing.space8),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textError,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space12),
-              ],
-
-              // Email input
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                textInputAction: TextInputAction.next,
-                enableInteractiveSelection: true,
-                autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'you@example.com',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter your email.';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Please enter a valid email address.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: AppSpacing.space12),
-
-              // Password input
-              TextFormField(
-                controller: _passwordController,
-                obscureText: !_showPassword,
-                textInputAction: TextInputAction.done,
-                enableInteractiveSelection: true,
-                autofillHints: const [AutofillHints.password],
-                onFieldSubmitted: (_) => _submit(),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: Semantics(
-                    label: _showPassword ? 'Hide password' : 'Show password',
-                    child: IconButton(
-                      icon: Icon(
-                        _showPassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _showPassword = !_showPassword;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: AppSpacing.space4),
-
-              // Forgot password link
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Password reset instructions will be sent to your registered email address.',
-                        ),
-                        duration: Duration(seconds: 4),
-                      ),
-                    );
-                  },
-                  child: const Text('Forgot password?'),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-
-              // Primary sign-in CTA
-              SizedBox(
-                height: AppSizes.touchTarget,
-                child: FilledButton(
-                  onPressed: _submitting ? null : () => _submit(),
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Sign in'),
-                ),
-              ),
-            ],
-          ),
+        footer: AuthAccountFooter(
+          prompt: 'New to LittleSteps?',
+          actionLabel: 'Create account',
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
         ),
       ),
-    );
-  }
-
-  Widget _buildAccountFooter(BuildContext context, ThemeData theme) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: AppSpacing.space4,
-      children: [
-        Text(
-          'New to LittleSteps?',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        TextButton(
-          style: TextButton.styleFrom(
-            minimumSize: const Size(AppSizes.touchTarget, AppSizes.touchTarget),
-          ),
-          onPressed: () {
-            Navigator.pushNamed(context, '/register');
-          },
-          child: const Text('Create account'),
-        ),
-      ],
     );
   }
 }

@@ -1,4 +1,7 @@
-/// A book returned by the catalog.
+import 'package:flutter/foundation.dart';
+
+/// A picture book returned by the catalog API.
+@immutable
 class BookItem {
   /// Creates a [BookItem].
   const BookItem({
@@ -8,6 +11,17 @@ class BookItem {
     this.coverUrl,
     required this.subjects,
   });
+
+  /// Creates a [BookItem] from a decoded JSON object.
+  factory BookItem.fromJson(Map<String, dynamic> json) {
+    return BookItem(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? 'Untitled Book',
+      authors: _stringList(json['authors']),
+      coverUrl: json['coverUrl'] as String?,
+      subjects: _stringList(json['subjects']),
+    );
+  }
 
   /// Unique catalog identifier for the book.
   final String id;
@@ -24,17 +38,6 @@ class BookItem {
   /// Thematic subject tags associated with the book.
   final List<String> subjects;
 
-  /// Creates a [BookItem] from a decoded JSON object.
-  factory BookItem.fromJson(Map<String, dynamic> json) {
-    return BookItem(
-      id: json['id'] as String,
-      title: json['title'] as String? ?? 'Untitled Book',
-      authors: _stringList(json['authors']),
-      coverUrl: json['coverUrl'] as String?,
-      subjects: _stringList(json['subjects']),
-    );
-  }
-
   /// Serializes this [BookItem] to a JSON map.
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -45,31 +48,11 @@ class BookItem {
   };
 }
 
-/// Catalog book kept for compatibility with existing service API.
-class Book extends BookItem {
-  /// Creates a [Book].
-  const Book({
-    required super.id,
-    required super.title,
-    required super.authors,
-    super.coverUrl,
-    required super.subjects,
-  });
+/// Alias for [BookItem] used by catalog services.
+typedef Book = BookItem;
 
-  /// Creates a [Book] from a decoded JSON object.
-  factory Book.fromJson(Map<String, dynamic> json) {
-    final item = BookItem.fromJson(json);
-    return Book(
-      id: item.id,
-      title: item.title,
-      authors: item.authors,
-      coverUrl: item.coverUrl,
-      subjects: item.subjects,
-    );
-  }
-}
-
-/// A book saved to a child's bookshelf.
+/// A picture book saved to a child's bookshelf.
+@immutable
 class SavedBook extends BookItem {
   /// Creates a [SavedBook].
   const SavedBook({
@@ -82,15 +65,6 @@ class SavedBook extends BookItem {
     required this.createdAt,
     required this.updatedAt,
   });
-
-  /// Child profile identifier owning this saved book record.
-  final String childId;
-
-  /// Timestamp when the book was saved to the shelf.
-  final DateTime createdAt;
-
-  /// Timestamp when the saved book record was last updated.
-  final DateTime updatedAt;
 
   /// Creates a [SavedBook] from a decoded JSON object.
   factory SavedBook.fromJson(Map<String, dynamic> json) {
@@ -106,6 +80,15 @@ class SavedBook extends BookItem {
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
   }
+
+  /// Child profile identifier owning this saved book record.
+  final String childId;
+
+  /// Timestamp when the book was saved to the shelf.
+  final DateTime createdAt;
+
+  /// Timestamp when the saved book record was last updated.
+  final DateTime updatedAt;
 
   /// Converts this [SavedBook] back to a base [BookItem].
   BookItem toBook() => BookItem(

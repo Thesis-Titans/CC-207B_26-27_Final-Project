@@ -5,16 +5,12 @@ import 'package:url_launcher/url_launcher.dart';
 Future<void> openExternalUrl(BuildContext context, String url) async {
   final uri = Uri.tryParse(url);
   if (uri == null || !uri.hasScheme) return;
+  var launched = false;
   try {
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not open $url')));
-    }
-  } catch (_) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not open $url')));
-    }
+    launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {}
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.maybeOf(context)
+        ?.showSnackBar(SnackBar(content: Text('Could not open $url')));
   }
 }

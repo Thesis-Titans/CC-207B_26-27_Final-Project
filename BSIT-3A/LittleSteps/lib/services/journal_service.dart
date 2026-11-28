@@ -35,7 +35,7 @@ class JournalService {
   }
 
   /// Updates the content of an existing journal entry, and its date when
-  /// [entryDate] ('YYYY-MM-DD') is given.
+  /// [entryDate] (`YYYY-MM-DD`) is given.
   Future<JournalEntry> updateJournalEntry({
     required String childId,
     required String entryId,

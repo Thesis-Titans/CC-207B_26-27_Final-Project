@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-/// In-memory cache for child profiles, catalog activities, and daily plans.
+/// In-memory cache for child profiles, plans, saved books, and public catalogs.
 class LocalDataCache {
   /// Creates a [LocalDataCache] with optional pre-populated [initialCache] data.
   LocalDataCache({Map<String, dynamic>? initialCache})
@@ -15,6 +15,8 @@ class LocalDataCache {
   static const List<String> _permittedPrefixes = [
     '/api/v1/children',
     '/api/v1/catalog/activities',
+    '/api/v1/catalog/milestones',
+    '/api/v1/catalog/rhymes',
     '/api/v1/catalog/books',
   ];
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/activity.dart';
 import '../models/child.dart';
+import '../routing/app_router.dart';
 import '../services/account_service.dart';
 import '../services/api_client.dart';
 import '../services/auth_session_state.dart';
@@ -12,19 +13,21 @@ import '../widgets/auth_scope.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/child_chip.dart';
 import '../widgets/no_children_view.dart';
+import '../widgets/responsive_layout.dart';
+import '../widgets/shell_navigation_sidebar.dart';
 import '../widgets/state_views.dart';
 import 'account/settings_screen.dart';
-import 'today/today_screen.dart';
 import 'explore/explore_screen.dart';
-import 'milestones/milestones_screen.dart';
 import 'journal/journal_screen.dart';
+import 'milestones/milestones_screen.dart';
 import 'reflection/weekly_summary_screen.dart';
+import 'today/today_screen.dart';
 
 /// Main navigation shell hosting adaptive navigation and the shared app header.
 ///
 /// Uses a bottom [NavigationBar] on compact viewports and switches to a side
-/// [NavigationRail] at or above [AppSizes.wideLayoutBreakpoint] while keeping
-/// tab content centered within [AppSizes.contentMaxWidth].
+/// [ShellNavigationSidebar] at or above [AppSizes.wideLayoutBreakpoint] while
+/// keeping tab content centered within [AppSizes.contentMaxWidth].
 class ShellScreen extends StatefulWidget {
   /// Creates a [ShellScreen].
   const ShellScreen({
@@ -72,19 +75,28 @@ class ShellScreen extends StatefulWidget {
 }
 
 class _ShellScreenState extends State<ShellScreen> {
-  static const double _extendedRailBreakpoint = 1080;
-
-  static const List<({IconData icon, IconData selectedIcon, String label})>
-  _destinations = [
-    (icon: Icons.today_outlined, selectedIcon: Icons.today, label: 'Today'),
-    (
+  static const List<ShellDestination> _destinations = [
+    ShellDestination(
+      icon: Icons.today_outlined,
+      selectedIcon: Icons.today,
+      label: 'Today',
+    ),
+    ShellDestination(
       icon: Icons.explore_outlined,
       selectedIcon: Icons.explore,
       label: 'Explore',
     ),
-    (icon: Icons.flag_outlined, selectedIcon: Icons.flag, label: 'Milestones'),
-    (icon: Icons.book_outlined, selectedIcon: Icons.book, label: 'Journal'),
-    (
+    ShellDestination(
+      icon: Icons.flag_outlined,
+      selectedIcon: Icons.flag,
+      label: 'Milestones',
+    ),
+    ShellDestination(
+      icon: Icons.book_outlined,
+      selectedIcon: Icons.book,
+      label: 'Journal',
+    ),
+    ShellDestination(
       icon: Icons.insights_outlined,
       selectedIcon: Icons.insights,
       label: 'This week',
@@ -93,8 +105,6 @@ class _ShellScreenState extends State<ShellScreen> {
 
   int _currentIndex = 0;
   int _todayPlanRefreshKey = 0;
-  String? _exploreSettingFilter;
-  int _exploreSettingFilterKey = 0;
   List<Child> _children = [];
   Map<String, Activity> _scheduledActivityDetails = {};
   bool _isLoadingChildren = false;
@@ -108,7 +118,7 @@ class _ShellScreenState extends State<ShellScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadChildrenIfNeeded();
+    _refreshChildren();
   }
 
   ChildrenService _resolveChildrenService() {
@@ -130,8 +140,7 @@ class _ShellScreenState extends State<ShellScreen> {
     _isLoadingChildren = true;
 
     try {
-      final service = _resolveChildrenService();
-      final fetched = await service.getChildren();
+      final fetched = await _resolveChildrenService().getChildren();
       if (!mounted) return;
 
       setState(() {
@@ -155,11 +164,9 @@ class _ShellScreenState extends State<ShellScreen> {
     }
   }
 
-  Future<void> _loadChildrenIfNeeded() => _refreshChildren();
-
-  void _goToToday() {
+  void _selectDestination(int index) {
     setState(() {
-      _currentIndex = 0;
+      _currentIndex = index;
     });
   }
 
@@ -173,17 +180,31 @@ class _ShellScreenState extends State<ShellScreen> {
     });
   }
 
-  void _openExploreWithSetting(String setting) {
-    setState(() {
-      _exploreSettingFilter = setting;
-      _exploreSettingFilterKey++;
-      _currentIndex = 1;
-    });
+  Widget _buildAuthGatedTab({
+    required bool isAuthenticated,
+    required Child? activeChild,
+    required Widget noChildView,
+    required Widget authenticatedChild,
+    required String signInTitle,
+    required String signInMessage,
+    required IconData signInIcon,
+  }) {
+    if (!isAuthenticated) {
+      return EmptyStateView(
+        title: signInTitle,
+        message: signInMessage,
+        icon: signInIcon,
+        actionLabel: 'Sign in',
+        onAction: () => Navigator.pushNamed(context, AppRoutes.signIn),
+      );
+    }
+    return activeChild != null ? authenticatedChild : noChildView;
   }
 
   @override
   Widget build(BuildContext context) {
-    final compactHeader = MediaQuery.sizeOf(context).width < 380;
+    final compactHeader =
+        MediaQuery.sizeOf(context).width < AppSizes.compactHeaderBreakpoint;
     final sessionState = AuthScope.maybeOf(context);
     final isAuthenticated = sessionState?.isAuthenticated ?? false;
     final activeChild = sessionState?.activeChild;
@@ -198,124 +219,90 @@ class _ShellScreenState extends State<ShellScreen> {
 
     final noChildView = NoChildrenView(
       caregiverName: formattedCaregiver,
-      onAddChild: () => Navigator.pushNamed(context, '/children/add'),
+      onAddChild: () => Navigator.pushNamed(context, AppRoutes.childrenAdd),
     );
 
-    void onDestinationSelected(int index) {
-      setState(() {
-        _currentIndex = index;
-      });
-    }
+    final exploreScreen = ExploreScreen(onPlanAdded: _handlePlanAdded);
 
     final screens = <Widget>[
-      isAuthenticated
-          ? (activeChild != null
-                ? TodayScreen(
-                    onNavigateTab: onDestinationSelected,
-                    onOpenIndoorIdeas: () => _openExploreWithSetting('indoor'),
-                    planRefreshKey: _todayPlanRefreshKey,
-                    initialActivities: _scheduledActivityDetails,
-                  )
-                : noChildView)
-          : EmptyStateView(
-              title: "Sign in to see today's plan",
-              message: 'Sign in with your caregiver account to view and plan play activities.',
-              icon: Icons.lock_outline,
-              actionLabel: 'Sign in',
-              onAction: () => Navigator.pushNamed(context, '/sign-in'),
-            ),
-      isAuthenticated
-          ? (activeChild != null
-                ? ExploreScreen(
-                    onPlanAdded: _handlePlanAdded,
-                    initialSetting: _exploreSettingFilter,
-                    settingTriggerKey: _exploreSettingFilterKey,
-                  )
-                : noChildView)
-          : ExploreScreen(
-              onPlanAdded: _handlePlanAdded,
-              initialSetting: _exploreSettingFilter,
-              settingTriggerKey: _exploreSettingFilterKey,
-            ),
-      isAuthenticated
-          ? (activeChild != null ? const MilestonesScreen() : noChildView)
-          : EmptyStateView(
-              title: 'Sign in to view milestones',
-              message: 'Milestone observations are private to your caregiver account.',
-              icon: Icons.flag_outlined,
-              actionLabel: 'Sign in',
-              onAction: () => Navigator.pushNamed(context, '/sign-in'),
-            ),
-      isAuthenticated
-          ? (activeChild != null ? const JournalScreen() : noChildView)
-          : EmptyStateView(
-              title: 'Sign in for private journal',
-              message: 'Your caregiver notes are private and encrypted in your account.',
-              icon: Icons.book_outlined,
-              actionLabel: 'Sign in',
-              onAction: () => Navigator.pushNamed(context, '/sign-in'),
-            ),
-      isAuthenticated
-          ? (activeChild != null
-                ? WeeklySummaryScreen(
-                    onFindIdea: () => onDestinationSelected(1),
-                  )
-                : noChildView)
-          : EmptyStateView(
-              title: 'Sign in for weekly summary',
-              message: 'Weekly play progress is available when signed in.',
-              icon: Icons.insights_outlined,
-              actionLabel: 'Sign in',
-              onAction: () => Navigator.pushNamed(context, '/sign-in'),
-            ),
+      _buildAuthGatedTab(
+        isAuthenticated: isAuthenticated,
+        activeChild: activeChild,
+        noChildView: noChildView,
+        authenticatedChild: TodayScreen(
+          onNavigateTab: _selectDestination,
+          planRefreshKey: _todayPlanRefreshKey,
+          initialActivities: _scheduledActivityDetails,
+        ),
+        signInTitle: "Sign in to see today's plan",
+        signInMessage: 'Sign in with your caregiver account to view and plan play activities.',
+        signInIcon: Icons.lock_outline,
+      ),
+      isAuthenticated && activeChild == null ? noChildView : exploreScreen,
+      _buildAuthGatedTab(
+        isAuthenticated: isAuthenticated,
+        activeChild: activeChild,
+        noChildView: noChildView,
+        authenticatedChild: const MilestonesScreen(),
+        signInTitle: 'Sign in to view milestones',
+        signInMessage:
+            'Milestone observations are private to your caregiver account.',
+        signInIcon: Icons.flag_outlined,
+      ),
+      _buildAuthGatedTab(
+        isAuthenticated: isAuthenticated,
+        activeChild: activeChild,
+        noChildView: noChildView,
+        authenticatedChild: const JournalScreen(),
+        signInTitle: 'Sign in for private journal',
+        signInMessage:
+            'Your caregiver notes are private and encrypted in your account.',
+        signInIcon: Icons.book_outlined,
+      ),
+      _buildAuthGatedTab(
+        isAuthenticated: isAuthenticated,
+        activeChild: activeChild,
+        noChildView: noChildView,
+        authenticatedChild: WeeklySummaryScreen(
+          onFindIdea: () => _selectDestination(1),
+        ),
+        signInTitle: 'Sign in for weekly summary',
+        signInMessage: 'Weekly play progress is available when signed in.',
+        signInIcon: Icons.insights_outlined,
+      ),
     ];
 
     Future<void> onChildChipTap() async {
       if (!isAuthenticated) {
         await Navigator.pushNamed(
           context,
-          '/sign-in',
+          AppRoutes.signIn,
           arguments: 'Please sign in to select or manage child profiles.',
         );
       } else {
-        await Navigator.pushNamed(context, '/children');
+        await Navigator.pushNamed(context, AppRoutes.children);
         if (mounted) {
           await _refreshChildren(force: true);
         }
       }
     }
 
-    Widget buildAccountIcon() => const Icon(
-      Icons.account_circle_outlined,
-      size: 26,
-      color: AppColors.forest,
-    );
-
     // IndexedStack keeps all five tab subtrees mounted so scroll position and
     // filter inputs persist when switching tabs.
     final tabStack = IndexedStack(index: _currentIndex, children: screens);
-    final compactContent = Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
-        child: tabStack,
-      ),
-    );
-    final wideContent = Align(
+    final compactContent = ResponsiveContentBox(child: tabStack);
+    final wideContent = ResponsiveContentBox(
       alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: AppSizes.wideContentMaxWidth,
-        ),
-        child: tabStack,
-      ),
+      maxWidth: AppSizes.wideContentMaxWidth,
+      child: tabStack,
     );
 
-    // LayoutBuilder inspects available width to switch between compact mobile
-    // bottom navigation (< 840dp) and wide side navigation (>= 840dp).
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= AppSizes.wideLayoutBreakpoint;
-        final isExtendedRail = constraints.maxWidth >= _extendedRailBreakpoint;
+        final windowSize = AppWindowSize.fromWidth(constraints.maxWidth);
+        final isWide = windowSize == AppWindowSize.expanded;
+        final isExtendedRail =
+            constraints.maxWidth >= AppSizes.extendedRailBreakpoint;
 
         return Scaffold(
           appBar: isWide
@@ -324,10 +311,10 @@ class _ShellScreenState extends State<ShellScreen> {
                   title: compactHeader
                       ? IconButton(
                           tooltip: 'LittleSteps home',
-                          onPressed: _goToToday,
+                          onPressed: () => _selectDestination(0),
                           icon: const GrowthSymbol(size: 26),
                         )
-                      : BrandLogo(onTap: _goToToday),
+                      : BrandLogo(onTap: () => _selectDestination(0)),
                   actions: [
                     if (activeChild != null)
                       ConstrainedBox(
@@ -341,7 +328,11 @@ class _ShellScreenState extends State<ShellScreen> {
                         ),
                       ),
                     IconButton(
-                      icon: buildAccountIcon(),
+                      icon: const Icon(
+                        Icons.account_circle_outlined,
+                        size: 26,
+                        color: AppColors.forest,
+                      ),
                       tooltip: 'Account',
                       onPressed: () => _showAccountMenu(sessionState),
                     ),
@@ -351,176 +342,16 @@ class _ShellScreenState extends State<ShellScreen> {
           body: isWide
               ? Row(
                   children: [
-                    Material(
-                      color: AppColors.surfaceCard,
-                      child: SizedBox(
-                        width: isExtendedRail ? AppSizes.sidebarWidth : 80,
-                        child: Column(
-                          crossAxisAlignment: isExtendedRail
-                              ? CrossAxisAlignment.stretch
-                              : CrossAxisAlignment.center,
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                isExtendedRail
-                                    ? AppSpacing.space16
-                                    : AppSpacing.space8,
-                                AppSpacing.space20,
-                                isExtendedRail
-                                    ? AppSpacing.space16
-                                    : AppSpacing.space8,
-                                AppSpacing.space12,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: isExtendedRail
-                                    ? CrossAxisAlignment.start
-                                    : CrossAxisAlignment.center,
-                                children: [
-                                  if (isExtendedRail)
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      alignment: Alignment.centerLeft,
-                                      child: BrandLogo(onTap: _goToToday),
-                                    )
-                                  else
-                                    IconButton(
-                                      tooltip: 'LittleSteps home',
-                                      onPressed: _goToToday,
-                                      icon: const GrowthSymbol(size: 28),
-                                    ),
-                                  if (activeChild != null &&
-                                      isExtendedRail) ...[
-                                    const SizedBox(height: AppSpacing.space16),
-                                    ChildChip(
-                                      activeChild: activeChild,
-                                      onTap: onChildChipTap,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: LayoutBuilder(
-                                builder: (context, railConstraints) {
-                                  return SingleChildScrollView(
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        minHeight: railConstraints.maxHeight,
-                                      ),
-                                      child: IntrinsicHeight(
-                                        child: NavigationRail(
-                                          selectedIndex: _currentIndex,
-                                          extended: isExtendedRail,
-                                          minExtendedWidth:
-                                              AppSizes.sidebarWidth,
-                                          labelType: isExtendedRail
-                                              ? NavigationRailLabelType.none
-                                              : NavigationRailLabelType.all,
-                                          backgroundColor:
-                                              AppColors.surfaceCard,
-                                          useIndicator: true,
-                                          indicatorColor: AppColors.softGreen,
-                                          indicatorShape:
-                                              RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      AppRadius.control,
-                                                    ),
-                                              ),
-                                          selectedIconTheme:
-                                              const IconThemeData(
-                                                color: AppColors.forest,
-                                                size: 22,
-                                              ),
-                                          unselectedIconTheme:
-                                              const IconThemeData(
-                                                color: AppColors.textSecondary,
-                                                size: 22,
-                                              ),
-                                          selectedLabelTextStyle:
-                                              const TextStyle(
-                                                color: AppColors.forest,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                              ),
-                                          unselectedLabelTextStyle:
-                                              const TextStyle(
-                                                color: AppColors.textSecondary,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 14,
-                                              ),
-                                          onDestinationSelected:
-                                              onDestinationSelected,
-                                          destinations: _destinations
-                                              .map(
-                                                (d) =>
-                                                    NavigationRailDestination(
-                                                      icon: Icon(d.icon),
-                                                      selectedIcon: Icon(
-                                                        d.selectedIcon,
-                                                      ),
-                                                      label: Text(d.label),
-                                                    ),
-                                              )
-                                              .toList(),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const Divider(
-                              height: 1,
-                              thickness: 1,
-                              color: AppColors.borderSubtle,
-                            ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isExtendedRail
-                                    ? AppSpacing.space12
-                                    : AppSpacing.space8,
-                                vertical: AppSpacing.space12,
-                              ),
-                              child: isExtendedRail
-                                  ? TextButton.icon(
-                                      onPressed: () =>
-                                          _showAccountMenu(sessionState),
-                                      style: TextButton.styleFrom(
-                                        alignment: Alignment.centerLeft,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: AppSpacing.space8,
-                                          vertical: AppSpacing.space8,
-                                        ),
-                                      ),
-                                      icon: const Icon(
-                                        Icons.person_outline,
-                                        size: 20,
-                                        color: AppColors.forest,
-                                      ),
-                                      label: Text(
-                                        formattedCaregiver ?? 'Account',
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: AppColors.textPrimary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    )
-                                  : IconButton(
-                                      icon: const Icon(
-                                        Icons.person_outline,
-                                        size: 20,
-                                        color: AppColors.forest,
-                                      ),
-                                      tooltip: 'Account',
-                                      onPressed: () =>
-                                          _showAccountMenu(sessionState),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    ShellNavigationSidebar(
+                      destinations: _destinations,
+                      selectedIndex: _currentIndex,
+                      isExtended: isExtendedRail,
+                      onDestinationSelected: _selectDestination,
+                      onHomeTap: () => _selectDestination(0),
+                      onAccountTap: () => _showAccountMenu(sessionState),
+                      activeChild: activeChild,
+                      onChildTap: onChildChipTap,
+                      accountLabel: formattedCaregiver,
                     ),
                     const VerticalDivider(
                       width: 1,
@@ -543,7 +374,7 @@ class _ShellScreenState extends State<ShellScreen> {
               ? null
               : NavigationBar(
                   selectedIndex: _currentIndex,
-                  onDestinationSelected: onDestinationSelected,
+                  onDestinationSelected: _selectDestination,
                   destinations: _destinations
                       .map(
                         (d) => NavigationDestination(
@@ -565,7 +396,11 @@ class _ShellScreenState extends State<ShellScreen> {
     }
     widget.onSignOut?.call();
     if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, '/sign-in', (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.signIn,
+        (route) => false,
+      );
     }
   }
 

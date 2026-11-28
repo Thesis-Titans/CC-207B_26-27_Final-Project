@@ -2,14 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../routing/app_router.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/brand_logo.dart';
 
-/// Initial splash screen displayed on application launch.
+/// Initial launch screen displaying the LittleSteps brand identity while
+/// resolving the caregiver's authentication route.
 ///
-/// Animates the brand logo and checks authentication state before routing to
-/// the appropriate initial screen.
+/// Matches the native launch canvas ([AppColors.surfaceCanvas]), respects
+/// system reduce-motion preferences via [MediaQuery.disableAnimationsOf], and
+/// routes immediately after [AppMotion.splashDelay].
 class SplashScreen extends StatefulWidget {
   /// Creates a [SplashScreen].
   const SplashScreen({super.key});
@@ -20,9 +23,15 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
+  static const double _emblemContainerSize = 96;
+  static const double _emblemIconSize = 56;
+  static const double _initialScale = 0.94;
+
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
+  late final Animation<double> _scaleAnimation;
   Timer? _navigationTimer;
+  bool _animationStarted = false;
 
   @override
   void initState() {
@@ -31,33 +40,43 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: AppMotion.durationBase,
     );
-    _fadeAnimation = CurvedAnimation(
+    final curved = CurvedAnimation(
       parent: _controller,
       curve: AppMotion.easingStandard,
     );
-    _controller.forward();
+    _fadeAnimation = curved;
+    _scaleAnimation = Tween<double>(
+      begin: _initialScale,
+      end: 1.0,
+    ).animate(curved);
 
-    // Wait briefly so the fade-in completes before replacing the splash route.
-    _navigationTimer = Timer(const Duration(milliseconds: 500), _navigateNext);
+    _navigationTimer = Timer(AppMotion.splashDelay, _navigateNext);
   }
 
-  // Routes signed-in caregivers to the main shell and others to sign-in.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_animationStarted) return;
+    _animationStarted = true;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.value = 1.0;
+    } else {
+      _controller.forward();
+    }
+  }
+
   void _navigateNext() {
     if (!mounted) return;
-    final sessionState = AuthScope.maybeOf(context);
-    final isAuthenticated = sessionState?.isAuthenticated ?? false;
-
-    if (isAuthenticated) {
-      Navigator.pushReplacementNamed(context, '/');
-    } else {
-      Navigator.pushReplacementNamed(context, '/sign-in');
-    }
+    final isAuthenticated =
+        AuthScope.maybeOf(context)?.isAuthenticated ?? false;
+    Navigator.pushReplacementNamed(
+      context,
+      isAuthenticated ? AppRoutes.home : AppRoutes.signIn,
+    );
   }
 
   @override
   void dispose() {
-    // Cancel the pending timer and dispose the animation controller to avoid
-    // callbacks firing after this widget leaves the tree.
     _navigationTimer?.cancel();
     _controller.dispose();
     super.dispose();
@@ -65,19 +84,88 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       backgroundColor: AppColors.surfaceCanvas,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GrowthSymbol(size: 64),
-              SizedBox(height: AppSpacing.space16),
-              BrandLogo(symbolSize: 0, showTagline: true),
-            ],
-          ),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.space24),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: (constraints.maxHeight - (AppSpacing.space24 * 2))
+                      .clamp(0.0, double.infinity),
+                ),
+                child: Semantics(
+                  label: 'LittleSteps. Small steps. Brighter tomorrows.',
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: AppSpacing.space16),
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: ScaleTransition(
+                          scale: _scaleAnimation,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: _emblemContainerSize,
+                                height: _emblemContainerSize,
+                                decoration: BoxDecoration(
+                                  color: AppColors.softGreen,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.borderSubtle,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: const GrowthSymbol(
+                                  size: _emblemIconSize,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.space20),
+                              Text(
+                                'LittleSteps',
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.headlineMedium?.copyWith(
+                                  color: AppColors.forest,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.space8),
+                              Text(
+                                'Small steps. Brighter tomorrows.',
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.space24),
+                        child: Text(
+                          'Play & observation companion for caregivers',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

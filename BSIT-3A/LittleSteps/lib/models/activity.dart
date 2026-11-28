@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 /// A play or learning activity in the catalog.
+@immutable
 class Activity {
   /// Creates an [Activity].
   const Activity({
@@ -17,6 +20,35 @@ class Activity {
     required this.status,
     required this.provenanceSource,
   });
+
+  /// Creates an [Activity] from a decoded JSON object.
+  factory Activity.fromJson(Map<String, dynamic> json) {
+    return Activity(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      type: json['type'] as String,
+      language: json['language'] as String,
+      domain: json['domain'] as String,
+      ageBand: json['ageBand'] as String,
+      durationMinutes: (json['durationMinutes'] as num).toInt(),
+      durationEstimate: json['durationEstimate'] as String,
+      setting: json['setting'] as String,
+      materials: (json['materials'] as List<dynamic>).cast<String>(),
+      instructions: (json['instructions'] as List<dynamic>).cast<String>(),
+      limitations: json['limitations'] as String,
+      status: json['status'] as String,
+      provenanceSource: json['provenanceSource'] as String,
+    );
+  }
+
+  /// Wire status for formally reviewed and approved catalog activities.
+  static const String statusReviewedApproved = 'reviewed_approved';
+
+  /// Wire status for source-checked catalog entries and rhymes.
+  static const String statusSourceChecked = 'source_checked';
+
+  /// Wire status for custom inline plan snapshots.
+  static const String statusCustomSnapshot = 'custom_snapshot';
 
   /// Unique catalog activity identifier.
   final String id;
@@ -59,26 +91,6 @@ class Activity {
 
   /// Published early-learning framework or citation backing the activity.
   final String provenanceSource;
-
-  /// Creates an [Activity] from a decoded JSON object.
-  factory Activity.fromJson(Map<String, dynamic> json) {
-    return Activity(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      type: json['type'] as String,
-      language: json['language'] as String,
-      domain: json['domain'] as String,
-      ageBand: json['ageBand'] as String,
-      durationMinutes: json['durationMinutes'] as int,
-      durationEstimate: json['durationEstimate'] as String,
-      setting: json['setting'] as String,
-      materials: (json['materials'] as List<dynamic>).cast<String>(),
-      instructions: (json['instructions'] as List<dynamic>).cast<String>(),
-      limitations: json['limitations'] as String,
-      status: json['status'] as String,
-      provenanceSource: json['provenanceSource'] as String,
-    );
-  }
 
   /// Serializes this [Activity] to a JSON map.
   Map<String, dynamic> toJson() {

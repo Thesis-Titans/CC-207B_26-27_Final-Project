@@ -139,9 +139,9 @@ abstract final class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.forest,
       primary: AppColors.forest,
-      onPrimary: Colors.white,
+      onPrimary: AppColors.surfaceCard,
       error: AppColors.error,
-      onError: Colors.white,
+      onError: AppColors.surfaceCard,
       surface: AppColors.surfaceCard,
       onSurface: AppColors.textPrimary,
       onSurfaceVariant: AppColors.textSecondary,
@@ -159,7 +159,7 @@ abstract final class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: 'Inter',
+      fontFamily: AppTypography.fontFamily,
       scaffoldBackgroundColor: AppColors.surfaceCanvas,
       extensions: const [AppStatusColors.light],
       appBarTheme: const AppBarTheme(
@@ -169,7 +169,7 @@ abstract final class AppTheme {
         toolbarHeight: AppSizes.topBarHeight,
         iconTheme: IconThemeData(color: AppColors.forest),
         titleTextStyle: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: AppTypography.fontFamily,
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
@@ -202,6 +202,11 @@ abstract final class AppTheme {
         }),
       ),
       textTheme: const TextTheme(
+        displaySmall: TextStyle(
+          fontSize: 28,
+          height: 34 / 28,
+          fontWeight: FontWeight.w700,
+        ),
         headlineMedium: TextStyle(
           fontSize: 26,
           height: 32 / 26,
@@ -236,6 +241,11 @@ abstract final class AppTheme {
           fontSize: 14,
           height: 20 / 14,
           fontWeight: FontWeight.w600,
+        ),
+        labelMedium: TextStyle(
+          fontSize: 12,
+          height: 16 / 12,
+          fontWeight: FontWeight.w500,
         ),
       ),
       cardTheme: CardThemeData(
@@ -274,6 +284,14 @@ abstract final class AppTheme {
         focusedBorder: inputBorder(AppColors.forest, 2),
         errorBorder: inputBorder(AppColors.error),
         focusedErrorBorder: inputBorder(AppColors.error, 2),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surfaceCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.sheet),
+          ),
+        ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,

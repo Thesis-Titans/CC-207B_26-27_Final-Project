@@ -1,5 +1,4 @@
 import '../models/book.dart';
-import '../data/fallback_books.dart';
 import 'api_client.dart';
 
 /// Loads catalog books and manages a child's saved bookshelf.
@@ -101,31 +100,5 @@ class BooksService {
   /// Removes [bookId] from the bookshelf for [childId].
   Future<void> removeBookFromShelf(String childId, String bookId) async {
     await apiClient.delete('/api/v1/children/$childId/books/$bookId');
-  }
-
-  /// Filters local fallback books by [subject] or [query] when offline.
-  static List<BookItem> filterFallbackBooks([
-    String? subject = 'picture_books',
-    String? query,
-  ]) {
-    final cleanQuery = query?.trim().toLowerCase();
-    if (cleanQuery != null && cleanQuery.isNotEmpty) {
-      final matches = fallbackBooks.where((book) {
-        return book.title.toLowerCase().contains(cleanQuery) ||
-            book.authors.any(
-              (author) => author.toLowerCase().contains(cleanQuery),
-            ) ||
-            book.subjects.any((tag) => tag.toLowerCase().contains(cleanQuery));
-      }).toList();
-      return matches;
-    }
-
-    if (subject == null) return fallbackBooks;
-    final cleanSubject = subject.replaceAll('_', ' ').toLowerCase();
-    final matching = fallbackBooks.where((book) {
-      return book.subjects.any((s) => s.toLowerCase().contains(cleanSubject));
-    }).toList();
-
-    return matching.isNotEmpty ? matching : fallbackBooks;
   }
 }

@@ -142,11 +142,11 @@ void main() {
       final savedList = await service.fetchSavedBooks('child-c1');
       expect(savedList.length, 1);
 
-      final newBook = Book(
+      final newBook = const Book(
         id: 'OL151798W',
         title: 'Goodnight Moon',
-        authors: const ['Margaret Wise Brown'],
-        subjects: const ['bedtime'],
+        authors: ['Margaret Wise Brown'],
+        subjects: ['bedtime'],
       );
       final saved = await service.saveBookToShelf('child-c1', newBook);
       expect(saved.id, 'OL151798W');
@@ -196,20 +196,6 @@ void main() {
 
       expect(cachedBooks.single.title, 'The Very Hungry Caterpillar');
       expect(requestCount, 1);
-    });
-
-    test('filterFallbackBooks returns subject matches or default catalog', () {
-      final bedtimeBooks = BooksService.filterFallbackBooks('bedtime');
-      expect(bedtimeBooks.any((b) => b.title == 'Goodnight Moon'), isTrue);
-
-      final fallback = BooksService.filterFallbackBooks('nonexistent');
-      expect(fallback.isNotEmpty, isTrue);
-
-      final searched = BooksService.filterFallbackBooks(
-        'picture_books',
-        'caterpillar',
-      );
-      expect(searched.single.title, 'The Very Hungry Caterpillar');
     });
   });
 }

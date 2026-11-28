@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
+import '../../config/external_links.dart';
+import '../../routing/app_router.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/accessibility.dart';
+import '../../utils/url_helper.dart';
 import '../../widgets/auth_scope.dart';
+import 'widgets/auth_widgets.dart';
 
 /// Caregiver registration screen.
 ///
-/// Displays the privacy notice before account creation, supports password
-/// managers and paste input through [AutofillGroup], and announces validation
-/// and submission status changes to assistive technologies.
+/// Displays the privacy notice before account creation, uses
+/// [AuthResponsiveLayout] for consistent responsive presentation, and
+/// announces validation and submission status changes to assistive
+/// technologies.
 class RegisterScreen extends StatefulWidget {
   /// Creates a [RegisterScreen].
   const RegisterScreen({super.key});
@@ -19,14 +24,11 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  bool _showPassword = false;
-  bool _acceptedPrivacy = false;
-  bool _submitting = false;
-  String? _errorMessage;
+  static const List<String> _desktopHighlights = [
+    'Use only a child nickname and age band.',
+    'Private notes stay with your account.',
+    'Offline reading for saved daily plans.',
+  ];
 
   static const List<MapEntry<String, String>> _privacyPoints = [
     MapEntry(
@@ -49,8 +51,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       'If something goes wrong',
       'We aim to notify you and the National Privacy Commission within 72 hours.',
     ),
-    MapEntry('Contact', 'privacy@littlesteps.local / Data Protection Officer'),
   ];
+
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  bool _showPassword = false;
+  bool _acceptedPrivacy = false;
+  bool _submitting = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -59,21 +69,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _announce(String message) {
-    final view = View.maybeOf(context);
-    if (view != null) {
-      SemanticsService.sendAnnouncement(view, message, TextDirection.ltr);
-    }
-  }
+  void _announce(String message) => announceForAccessibility(context, message);
 
   Future<void> _submit() async {
     if (!_acceptedPrivacy) {
-      setState(() {
-        _errorMessage = 'Please read and accept the privacy notice before creating an account.';
-      });
-      _announce(
-        'Please read and accept the privacy notice before creating an account.',
-      );
+      const msg =
+          'Please read and accept the privacy notice before creating an account.';
+      setState(() => _errorMessage = msg);
+      _announce(msg);
       return;
     }
 
@@ -95,7 +98,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (!mounted) return;
       _announce('Account created successfully');
-      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.home,
+        (route) => false,
+      );
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -120,262 +127,90 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.space24,
-              vertical: AppSpacing.space16,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: AutofillGroup(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Create an account',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSpacing.space8),
-                      Text(
-                        "For parents and guardians who add their own child's details.",
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSpacing.space20),
-
-                      // Privacy Notice Box
-                      Container(
-                        padding: const EdgeInsets.all(AppSpacing.space16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceCard,
-                          borderRadius: BorderRadius.circular(AppRadius.card),
-                          border: Border.all(
-                            color: AppColors.forest,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.lock_outline,
-                                  size: 20,
-                                  color: AppColors.forest,
-                                ),
-                                const SizedBox(width: AppSpacing.space8),
-                                Text(
-                                  'Privacy Notice',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    color: AppColors.forest,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.space12),
-                            ..._privacyPoints.map((point) {
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                  bottom: AppSpacing.space8,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      point.key,
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: AppColors.textPrimary,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                    Text(
-                                      point.value,
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: AppColors.textSecondary,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                            const Divider(),
-                            Material(
-                              color: Colors.transparent,
-                              child: CheckboxListTile(
-                                value: _acceptedPrivacy,
-                                onChanged: (val) {
-                                  setState(() {
-                                    _acceptedPrivacy = val ?? false;
-                                    if (_acceptedPrivacy) _errorMessage = null;
-                                  });
-                                },
-                                title: Text(
-                                  'I have read the privacy summary above',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                contentPadding: EdgeInsets.zero,
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.space16),
-
-                      // Error Banner (if any)
-                      if (_errorMessage != null) ...[
-                        Semantics(
-                          liveRegion: true,
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.space12),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceError,
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.control,
-                              ),
-                              border: Border.all(color: AppColors.borderError),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(
-                                  Icons.error_outline,
-                                  size: 20,
-                                  color: AppColors.error,
-                                ),
-                                const SizedBox(width: AppSpacing.space8),
-                                Expanded(
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textError,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space16),
-                      ],
-
-                      // Email field
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        enableInteractiveSelection: true,
-                        autofillHints: const [AutofillHints.email],
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'you@example.com',
-                          prefixIcon: Icon(Icons.email_outlined),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your email.';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Please enter a valid email address.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.space16),
-
-                      // Password field
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: !_showPassword,
-                        textInputAction: TextInputAction.done,
-                        enableInteractiveSelection: true,
-                        autofillHints: const [AutofillHints.newPassword],
-                        onFieldSubmitted: (_) => _submit(),
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          helperText: 'At least 8 characters. Password managers are welcome.',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: Semantics(
-                            label: _showPassword
-                                ? 'Hide password'
-                                : 'Show password',
-                            child: IconButton(
-                              icon: Icon(
-                                _showPassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _showPassword = !_showPassword;
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.length < 8) {
-                            return 'Password must be at least 8 characters.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.space24),
-
-                      // Submit button
-                      SizedBox(
-                        height: AppSizes.touchTarget,
-                        child: FilledButton(
-                          onPressed: _submitting ? null : _submit,
-                          child: _submitting
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text('Create account'),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.space12),
-
-                      // Link back to sign in
-                      SizedBox(
-                        height: AppSizes.touchTarget,
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: const Text('Already have an account? Sign in'),
-                        ),
-                      ),
-                    ],
+      body: AuthResponsiveLayout(
+        panelTitle: 'Create your account',
+        panelSubtitle: "For parents and guardians who add their own child's details and keep everyday play notes.",
+        panelHighlights: _desktopHighlights,
+        compactMaxWidth: 460,
+        wideFormMaxWidth: 460,
+        card: AutofillGroup(
+          child: Form(
+            key: _formKey,
+            child: AuthFormCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Create an account',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: AppSpacing.space4),
+                  Text(
+                    "For parents and guardians who add their own child's details.",
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  if (_errorMessage != null) ...[
+                    AuthMessageBanner(
+                      message: _errorMessage!,
+                      tone: AuthMessageTone.error,
+                    ),
+                    const SizedBox(height: AppSpacing.space12),
+                  ],
+                  AuthEmailField(controller: _emailController),
+                  const SizedBox(height: AppSpacing.space12),
+                  AuthPasswordField(
+                    controller: _passwordController,
+                    showPassword: _showPassword,
+                    autofillHint: AutofillHints.newPassword,
+                    helperText: 'At least 8 characters',
+                    minLength: 8,
+                    onToggleVisibility: () {
+                      setState(() => _showPassword = !_showPassword);
+                    },
+                    onSubmitted: _submit,
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  AuthPrivacyNoticeCard(
+                    points: _privacyPoints,
+                    accepted: _acceptedPrivacy,
+                    contactTitle: 'Thesis Titans',
+                    contactDomain: 'github.com/Thesis-Titans',
+                    onContactTap: () =>
+                        openExternalUrl(context, AppLinks.githubOrg),
+                    onChanged: (accepted) {
+                      setState(() {
+                        _acceptedPrivacy = accepted;
+                        if (_acceptedPrivacy) _errorMessage = null;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.space16),
+                  AuthSubmitButton(
+                    label: 'Create account',
+                    loading: _submitting,
+                    onPressed: _submit,
+                  ),
+                ],
               ),
             ),
           ),
+        ),
+        footer: AuthAccountFooter(
+          prompt: 'Already have an account?',
+          actionLabel: 'Sign in',
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, AppRoutes.signIn);
+            }
+          },
         ),
       ),
     );

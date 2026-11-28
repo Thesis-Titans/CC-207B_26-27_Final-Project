@@ -100,6 +100,16 @@ void main() {
       expect(rainyHint.isRainy, isTrue);
       expect(sunnyHint.isRainy, isFalse);
       expect(highChanceCloudy.isRainy, isTrue);
+      expect(rainyHint.isIndoorSuggested, isTrue);
+      expect(sunnyHint.isOutdoorSuggested, isTrue);
+      expect(
+        rainyHint.displayMessage(stripActionSuffix: true),
+        'Rain likely this afternoon',
+      );
+      expect(
+        sunnyHint.displayMessage(stripActionSuffix: true),
+        'Good weather for outdoor play',
+      );
     });
   });
 
@@ -269,19 +279,15 @@ void main() {
         expect(catalog.callCount, 1);
         expect(catalog.lastLatitude, closeTo(14.5995, 0.001));
         expect(catalog.lastLongitude, closeTo(120.9842, 0.001));
-        expect(
-          find.text('Good weather for outdoor play · Outdoor ideas'),
-          findsOneWidget,
-        );
+        expect(find.text('Good weather for outdoor play'), findsOneWidget);
+        expect(find.text('Find outdoor ideas'), findsOneWidget);
 
         session.setWeatherLocation(null);
         await tester.pumpAndSettle();
 
         expect(catalog.callCount, 1);
-        expect(
-          find.text('Good weather for outdoor play · Outdoor ideas'),
-          findsNothing,
-        );
+        expect(find.text('Good weather for outdoor play'), findsNothing);
+        expect(find.text('Find outdoor ideas'), findsNothing);
       },
     );
   });

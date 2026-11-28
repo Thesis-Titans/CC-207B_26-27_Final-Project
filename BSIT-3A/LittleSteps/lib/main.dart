@@ -2,6 +2,7 @@ import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
 
+import 'config/app_config.dart';
 import 'routing/app_router.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
@@ -24,6 +25,7 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 }
 
 void main() {
+  AppConfig.validateForRelease();
   runApp(const LittleStepsApp());
 }
 
@@ -67,12 +69,23 @@ class _LittleStepsAppState extends State<LittleStepsApp> {
           onSessionExpired: () {
             _sessionState.handleSessionExpired();
             _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-              '/signed-out',
+              AppRoutes.signedOut,
               (route) => false,
               arguments: 'Please sign in again to continue',
             );
           },
         );
+  }
+
+  @override
+  void dispose() {
+    if (widget.apiClient == null) {
+      _apiClient.dispose();
+    }
+    if (widget.sessionState == null) {
+      _sessionState.dispose();
+    }
+    super.dispose();
   }
 
   @override

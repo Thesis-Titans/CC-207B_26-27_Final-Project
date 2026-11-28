@@ -5,10 +5,12 @@ import '../../models/journal_entry.dart';
 import '../../services/api_client.dart';
 import '../../services/journal_service.dart';
 import '../../theme/app_tokens.dart';
+import '../../utils/date_formatting.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
 import 'journal_note_screen.dart';
+import 'widgets/journal_widgets.dart';
 
 /// Displays private observation notes for the active child, newest first.
 ///
@@ -20,7 +22,7 @@ class JournalScreen extends StatefulWidget {
   /// Supply [journalService] in tests to override the signed-in API client.
   const JournalScreen({super.key, this.journalService});
 
-  /// Service used to load notes, or null to use the signed-in client.
+  /// Service used to load notes, or `null` to use the signed-in client.
   final JournalService? journalService;
 
   @override
@@ -43,9 +45,7 @@ class _JournalScreenState extends State<JournalScreen> {
   List<JournalEntry> _filtered(List<JournalEntry> entries) {
     final query = _searchController.text.trim().toLowerCase();
     final filterDate = _filterDate;
-    final day = filterDate == null
-        ? null
-        : DateFormat('yyyy-MM-dd').format(filterDate);
+    final day = filterDate == null ? null : formatIsoDate(filterDate);
 
     return entries.where((entry) {
       final matchesQuery =
@@ -56,19 +56,9 @@ class _JournalScreenState extends State<JournalScreen> {
   }
 
   Future<void> _pickFilterDate() async {
-    final now = DateTime.now();
-    final firstDate = DateTime(now.year - 6);
-    var initialDate = _filterDate ?? now;
-    if (initialDate.isBefore(firstDate)) {
-      initialDate = firstDate;
-    } else if (initialDate.isAfter(now)) {
-      initialDate = now;
-    }
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: now,
+    final picked = await pickJournalDate(
+      context,
+      initialDate: _filterDate ?? DateTime.now(),
       helpText: 'Show notes from',
     );
     if (picked != null && mounted) {
@@ -184,7 +174,7 @@ class _JournalScreenState extends State<JournalScreen> {
               return Column(
                 children: [
                   for (final entry in shown)
-                    _JournalEntryCard(
+                    JournalEntryCard(
                       entry: entry,
                       onTap: () => _openNote(entry),
                     ),
@@ -276,7 +266,11 @@ class _JournalScreenState extends State<JournalScreen> {
   // Omits raw exception text so note or child details are never revealed.
   Widget _buildError(Object? error) {
     if (error is NoConnectionApiException) {
-      return _OfflineView(onRetry: _reload);
+      return OfflineStatusCard(
+        message: 'Your notes will show when you reconnect.',
+        retryLabel: 'Try again',
+        onRetry: _reload,
+      );
     }
     // Treat 403 and 404 identically to avoid leaking profile existence.
     final denied =
@@ -292,150 +286,6 @@ class _JournalScreenState extends State<JournalScreen> {
     return ErrorView(
       message: "Couldn't load your notes. Please try again.",
       onRetry: _reload,
-    );
-  }
-}
-
-class _JournalEntryCard extends StatelessWidget {
-  const _JournalEntryCard({required this.entry, required this.onTap});
-
-  final JournalEntry entry;
-  final VoidCallback onTap;
-
-  String get _formattedDate {
-    final date = DateTime.tryParse(entry.entryDate);
-    return date == null ? entry.entryDate : DateFormat.yMMMd().format(date);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        side: const BorderSide(color: AppColors.borderSubtle),
-      ),
-      // Clip so the tap ripple stays inside the rounded corners.
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _formattedDate,
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const _PrivateBadge(),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                entry.content,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrivateBadge extends StatelessWidget {
-  const _PrivateBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space4,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.softGreen,
-        borderRadius: BorderRadius.circular(AppRadius.chip),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.lock_outline, size: 14, color: AppColors.forest),
-          const SizedBox(width: AppSpacing.space4),
-          Text(
-            'Private',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppColors.forest,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OfflineView extends StatelessWidget {
-  const _OfflineView({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOffline,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.wifi_off, color: AppColors.textOffline, size: 20),
-              SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  "You're offline",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textOffline,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space4),
-          const Text(
-            'Your notes will show when you reconnect.',
-            style: TextStyle(color: AppColors.textOffline),
-          ),
-          const SizedBox(height: AppSpacing.space12),
-          SizedBox(
-            height: AppSizes.touchTarget,
-            child: OutlinedButton(
-              onPressed: onRetry,
-              child: const Text('Try again'),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

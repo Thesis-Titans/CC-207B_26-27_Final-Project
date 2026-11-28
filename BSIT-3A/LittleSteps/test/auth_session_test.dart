@@ -39,7 +39,7 @@ class MockAuthService implements AuthService {
   @override
   Future<AuthUser> refreshToken(String refreshToken) async {
     lastRefreshedToken = refreshToken;
-    return AuthUser(
+    return const AuthUser(
       id: 'u1',
       email: 'caregiver@example.com',
       idToken: 'refreshed-id-token',

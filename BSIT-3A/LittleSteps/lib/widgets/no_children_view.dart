@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../routing/app_router.dart';
 import '../theme/app_tokens.dart';
 import 'brand_logo.dart';
+import 'responsive_layout.dart';
 
 /// Empty state view presented when no child profiles have been registered.
 ///
@@ -47,8 +49,8 @@ class NoChildrenView extends StatelessWidget {
           horizontal: AppSpacing.space24,
           vertical: AppSpacing.space24,
         ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
+        child: ResponsiveContentBox(
+          maxWidth: AppSizes.emptyStateMaxWidth,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -77,20 +79,16 @@ class NoChildrenView extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.space24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.surfaceCard,
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   border: Border.all(color: AppColors.borderSubtle),
                 ),
                 child: Column(
                   children: [
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 26,
                       backgroundColor: AppColors.softGreen,
-                      child: const Icon(
-                        Icons.add,
-                        color: AppColors.forest,
-                        size: 28,
-                      ),
+                      child: Icon(Icons.add, color: AppColors.forest, size: 28),
                     ),
                     const SizedBox(height: AppSpacing.space16),
                     Text(
@@ -115,7 +113,10 @@ class NoChildrenView extends StatelessWidget {
                       child: FilledButton(
                         onPressed:
                             onAddChild ??
-                            () => Navigator.pushNamed(context, '/children/add'),
+                            () => Navigator.pushNamed(
+                              context,
+                              AppRoutes.childrenAdd,
+                            ),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(
                             AppSizes.touchTarget,

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../config/external_links.dart';
 import '../../theme/app_tokens.dart';
 import '../../utils/url_helper.dart';
+import '../../widgets/responsive_layout.dart';
 
 /// Describes the account information page to display.
 enum AccountInfoPage {
@@ -86,23 +88,28 @@ class AccountInfoScreen extends StatelessWidget {
           _ExternalResourceLink(
             title: 'CDC Developmental Milestones (Learn the Signs. Act Early.)',
             domainLabel: 'cdc.gov',
-            url: 'https://www.cdc.gov/ncbddd/actearly/milestones/',
+            url: AppLinks.cdcMilestones,
           ),
           _ExternalResourceLink(
             title: 'American Academy of Pediatrics (AAP)',
             domainLabel: 'healthychildren.org',
-            url: 'https://www.healthychildren.org',
+            url: AppLinks.aapHealthyChildren,
           ),
           _ExternalResourceLink(
             title:
                 'WHO Nurturing Care Framework for Early Childhood Development',
             domainLabel: 'nurturing-care.org',
-            url: 'https://nurturing-care.org',
+            url: AppLinks.whoNurturingCare,
           ),
           _ExternalResourceLink(
             title: 'Philippine Early Learning Standards (ECCD Council)',
             domainLabel: 'eccdcouncil.gov.ph',
-            url: 'https://eccdcouncil.gov.ph',
+            url: AppLinks.eccdCouncil,
+          ),
+          _ExternalResourceLink(
+            title: 'DepEd MATATAG Kindergarten Curriculum',
+            domainLabel: 'deped.gov.ph',
+            url: AppLinks.depedMatatag,
           ),
         ],
       ),
@@ -145,7 +152,7 @@ class AccountInfoScreen extends StatelessWidget {
           _ExternalResourceLink(
             title: 'Thesis Titans on GitHub',
             domainLabel: 'github.com/Thesis-Titans',
-            url: 'https://github.com/Thesis-Titans',
+            url: AppLinks.githubOrg,
           ),
         ],
       ),
@@ -156,17 +163,14 @@ class AccountInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_title)),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppSizes.contentMaxWidth),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.space16),
-            itemCount: _sections.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(height: AppSpacing.space12),
-            itemBuilder: (context, index) =>
-                _InfoSectionCard(section: _sections[index]),
-          ),
+      body: ResponsiveContentBox(
+        child: ListView.separated(
+          padding: const EdgeInsets.all(AppSpacing.space16),
+          itemCount: _sections.length,
+          separatorBuilder: (_, _) =>
+              const SizedBox(height: AppSpacing.space12),
+          itemBuilder: (context, index) =>
+              _InfoSectionCard(section: _sections[index]),
         ),
       ),
     );

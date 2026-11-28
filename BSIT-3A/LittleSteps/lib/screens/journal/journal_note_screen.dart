@@ -9,6 +9,7 @@ import '../../services/journal_service.dart';
 import '../../theme/app_tokens.dart';
 import '../../widgets/auth_scope.dart';
 import '../../widgets/state_views.dart';
+import 'widgets/journal_widgets.dart';
 
 /// Displays a form for creating, editing, or deleting a private journal note.
 ///
@@ -22,10 +23,10 @@ class JournalNoteScreen extends StatefulWidget {
   /// override the signed-in API client.
   const JournalNoteScreen({super.key, this.entry, this.journalService});
 
-  /// Existing note being edited, or null when creating a new note.
+  /// Existing note being edited, or `null` when creating a new note.
   final JournalEntry? entry;
 
-  /// Service used to save or delete notes, or null to use the signed-in client.
+  /// Service used to save or delete notes, or `null` to use the signed-in client.
   final JournalService? journalService;
 
   @override
@@ -65,19 +66,9 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
   }
 
   Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final firstDate = DateTime(now.year - 6);
-    var initialDate = _date;
-    if (initialDate.isBefore(firstDate)) {
-      initialDate = firstDate;
-    } else if (initialDate.isAfter(now)) {
-      initialDate = now;
-    }
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: now,
+    final picked = await pickJournalDate(
+      context,
+      initialDate: _date,
       helpText: 'When did you notice it?',
     );
     if (picked != null && mounted) {
@@ -294,43 +285,7 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
         padding: const EdgeInsets.all(AppSpacing.space16),
         children: [
           // Place the privacy boundary notice above the text input.
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              border: Border.all(color: AppColors.borderSubtle),
-            ),
-            padding: const EdgeInsets.all(AppSpacing.space16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.lock_outline, color: AppColors.forest),
-                const SizedBox(width: AppSpacing.space8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Private to you',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.space4),
-                      Text(
-                        'Only you can see this note. It is never shared, '
-                        'used for AI ideas, or shown to anyone else.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const JournalPrivacyNotice(),
           const SizedBox(height: AppSpacing.space16),
           Align(
             alignment: Alignment.centerLeft,
@@ -378,7 +333,10 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
           ),
           const SizedBox(height: AppSpacing.space16),
           if (_offline) ...[
-            const _OfflineDraftNotice(),
+            const OfflineStatusCard(
+              message: 'Reconnect to save changes. Your note is kept here.',
+              trailing: JournalPrivateBadge(filled: false),
+            ),
             const SizedBox(height: AppSpacing.space16),
           ],
           if (_errorMessage != null) ...[
@@ -400,61 +358,11 @@ class _JournalNoteScreenState extends State<JournalNoteScreen> {
                       height: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        color: Colors.white,
+                        color: AppColors.surfaceCard,
                       ),
                     )
                   : const Text('Save note'),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OfflineDraftNotice extends StatelessWidget {
-  const _OfflineDraftNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOffline,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.wifi_off, color: AppColors.textOffline, size: 20),
-              SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  "You're offline",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textOffline,
-                  ),
-                ),
-              ),
-              Icon(Icons.lock_outline, color: AppColors.forest, size: 16),
-              SizedBox(width: AppSpacing.space4),
-              Text(
-                'Private',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.forest,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.space4),
-          Text(
-            'Reconnect to save changes. Your note is kept here.',
-            style: TextStyle(color: AppColors.textOffline),
           ),
         ],
       ),

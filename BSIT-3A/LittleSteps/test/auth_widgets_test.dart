@@ -371,5 +371,62 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+
+    testWidgets(
+      'RegisterScreen uses two-pane layout on wide viewports and clean helper copy',
+      (tester) async {
+        tester.view.physicalSize = const Size(1280, 800);
+        tester.view.devicePixelRatio = 1.0;
+
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          createTestApp(
+            sessionState: sessionState,
+            home: const RegisterScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Create your account'), findsOneWidget);
+        expect(find.text('At least 8 characters'), findsOneWidget);
+        expect(find.textContaining('Password managers'), findsNothing);
+        expect(find.text('Already have an account?'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'RegisterScreen renders cleanly without overflow at 200% text scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(375 * 2, 667 * 2);
+        tester.view.devicePixelRatio = 2.0;
+
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              size: Size(375, 667),
+              textScaler: TextScaler.linear(2.0),
+            ),
+            child: createTestApp(
+              sessionState: sessionState,
+              home: const RegisterScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Create an account'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }

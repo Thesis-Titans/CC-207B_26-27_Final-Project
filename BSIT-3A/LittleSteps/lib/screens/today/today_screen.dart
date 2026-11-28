@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 
 import '../../models/activity.dart';
+import '../../models/age_band.dart';
 import '../../models/child.dart';
+import '../../models/milestone.dart';
 import '../../models/plan.dart';
 import '../../models/weather.dart';
+import '../../routing/app_router.dart';
 import '../../services/api_client.dart';
 import '../../services/catalog_service.dart';
 import '../../services/plan_service.dart';
 import '../../theme/app_tokens.dart';
-import '../../utils/url_helper.dart';
+import '../../utils/accessibility.dart';
+import '../../utils/date_formatting.dart';
+import '../../utils/domain_labels.dart';
 import '../../widgets/auth_scope.dart';
+import '../../widgets/responsive_layout.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
+import '../../widgets/weather_hint_banner.dart';
+import 'widgets/today_activity_card.dart';
+import 'widgets/today_sections.dart';
+import 'widgets/today_side_cards.dart';
 
 /// Interaction states displayed by [TodayScreen].
 enum TodayViewState {
@@ -32,85 +41,11 @@ enum TodayViewState {
   offline,
 }
 
-/// Default sample activities used when catalog items are resolved offline.
-final List<Activity> defaultTodayActivities = [
-  const Activity(
-    id: 'act-stack-cups',
-    title: 'Stack the cups',
-    type: 'activity',
-    language: 'en',
-    domain: 'motor',
-    ageBand: '12-23m',
-    durationMinutes: 10,
-    durationEstimate: 'Under 10 mins',
-    setting: 'indoor',
-    materials: ['plastic cups'],
-    instructions: [
-      'Show how to stack two cups.',
-      'Encourage knocking them down.',
-    ],
-    limitations: 'Watch small children near stacks.',
-    status: 'synthetic_fixture',
-    provenanceSource: 'LittleSteps',
-  ),
-  const Activity(
-    id: 'act-shadow-dancing',
-    title: 'Shadow dancing',
-    type: 'activity',
-    language: 'en',
-    domain: 'socioEmotional',
-    ageBand: '12-23m',
-    durationMinutes: 8,
-    durationEstimate: 'Under 10 mins',
-    setting: 'indoor',
-    materials: [],
-    instructions: [
-      'Turn off bright lights.',
-      'Move hands to create animal shadows.',
-    ],
-    limitations: 'Keep floor clear of trip hazards.',
-    status: 'synthetic_fixture',
-    provenanceSource: 'LittleSteps',
-  ),
-  const Activity(
-    id: 'act-nature-hunt',
-    title: 'Nature treasure hunt',
-    type: 'activity',
-    language: 'en',
-    domain: 'cognitive',
-    ageBand: '12-23m',
-    durationMinutes: 20,
-    durationEstimate: '15-30 mins',
-    setting: 'outdoor',
-    materials: ['basket'],
-    instructions: ['Look for two dry leaves.', 'Find a smooth pebble.'],
-    limitations: 'Supervise outdoor exploration.',
-    status: 'synthetic_fixture',
-    provenanceSource: 'LittleSteps',
-  ),
-  const Activity(
-    id: 'act-animal-sounds',
-    title: 'Animal sound guessing',
-    type: 'activity',
-    language: 'en',
-    domain: 'language',
-    ageBand: '12-23m',
-    durationMinutes: 5,
-    durationEstimate: 'Under 10 mins',
-    setting: 'indoor',
-    materials: [],
-    instructions: ['Make a cow sound.', 'Ask child who makes that sound.'],
-    limitations: 'Keep volume comfortable.',
-    status: 'synthetic_fixture',
-    provenanceSource: 'LittleSteps',
-  ),
-];
-
 /// In-memory store recording whether the non-diagnostic advisory was dismissed.
 class TodayAdvisoryStorage {
   static final Set<String> _seenKeys = <String>{};
 
-  /// Returns whether the advisory has been dismissed for [userKey].
+  /// Whether the advisory has been dismissed for [userKey].
   static bool hasSeen(String userKey) => _seenKeys.contains(userKey);
 
   /// Marks the advisory as dismissed for [userKey].
@@ -131,11 +66,12 @@ class TodayScreen extends StatefulWidget {
     this.initialPlans,
     this.initialActivities,
     this.initialWeatherHint,
+    this.initialMilestoneCues,
     this.activeChild,
     this.initialDate,
     this.isOffline = false,
     this.onNavigateTab,
-    this.onOpenIndoorIdeas,
+    this.onOpenIdeaHelper,
     this.planRefreshKey = 0,
   });
 
@@ -157,6 +93,9 @@ class TodayScreen extends StatefulWidget {
   /// Optional weather hint override for widget tests.
   final WeatherHint? initialWeatherHint;
 
+  /// Optional preloaded milestone cue titles for widget tests.
+  final List<String>? initialMilestoneCues;
+
   /// Currently selected active child profile.
   final Child? activeChild;
 
@@ -169,9 +108,12 @@ class TodayScreen extends StatefulWidget {
   /// Optional callback invoked to switch to another tab in the app shell.
   final ValueChanged<int>? onNavigateTab;
 
-  /// Optional callback invoked when the caregiver taps the weather hint CTA
-  /// to browse indoor activities in Explore.
-  final VoidCallback? onOpenIndoorIdeas;
+  /// Optional callback invoked with the suggested play setting (`indoor` or
+  /// `outdoor`) when the caregiver taps the weather hint play-idea CTA.
+  ///
+  /// When omitted, [TodayScreen] navigates to [AppRoutes.aiSuggest] with the
+  /// recommended setting preselected.
+  final ValueChanged<String>? onOpenIdeaHelper;
 
   /// Incremented when another tab adds a plan item.
   final int planRefreshKey;
@@ -180,7 +122,6 @@ class TodayScreen extends StatefulWidget {
   State<TodayScreen> createState() => _TodayScreenState();
 }
 
-// State container managing TodayScreen filters, completion requests, undo snackbars, and advisories.
 class _TodayScreenState extends State<TodayScreen> {
   late TodayViewState _viewState;
   late DateTime _currentDate;
@@ -188,24 +129,22 @@ class _TodayScreenState extends State<TodayScreen> {
 
   List<PlanItem> _plans = [];
   Map<String, Activity> _activityLookup = {};
+  List<String> _milestoneCues = const [];
   WeatherHint? _weatherHint;
   String? _errorMessage;
 
   bool _filterUnder10Mins = false;
   bool _filterNoMaterials = false;
-  bool _filterIndoor = false;
+  String? _selectedSettingFilter;
   bool _advisorySeen = false;
   bool _weatherDismissed = false;
   bool _initialLoadStarted = false;
   String? _loadedChildId;
   String? _loadedWeatherCityKey;
 
-  // Active child profile resolved from widget injection or session state.
   Child? get _resolvedChild =>
       widget.activeChild ?? AuthScope.maybeOf(context)?.activeChild;
 
-  // Child identifier used for plan requests, or null when a signed-in session
-  // has no active child profile (e.g., after deleting the last child).
   String? get _activeChildIdOrNull {
     final resolved = _resolvedChild;
     if (resolved != null) return resolved.id;
@@ -214,13 +153,10 @@ class _TodayScreenState extends State<TodayScreen> {
     return null;
   }
 
-  // Safe accessor for the child identifier used for plan requests.
   String get _effectiveChildId => _activeChildIdOrNull ?? 'c-maya-default';
 
-  // Display name of the active child profile.
   String get _childName => _resolvedChild?.nickname ?? 'Maya';
 
-  // Time-of-day greeting subtitle personalized for the active child.
   String get _greetingSubtitle {
     final hour = DateTime.now().hour;
     final greeting = hour < 12
@@ -231,64 +167,14 @@ class _TodayScreenState extends State<TodayScreen> {
     return "$greeting! Here's $_childName's play plan for today.";
   }
 
-  // Sample observational milestone cues tailored to the active child's age band.
-  List<String> get _milestoneCues {
-    switch (_resolvedChild?.ageBand) {
-      case '0-5m':
-        return const [
-          'Follows a moving face or toy with both eyes',
-          'Turns head toward familiar voices and sounds',
-          'Brings hands to mouth and kicks legs during play',
-        ];
-      case '6-11m':
-        return const [
-          'Passes a soft toy from one hand to the other',
-          'Looks when you call their name or play peekaboo',
-          'Babbles chains of vowel and consonant sounds',
-        ];
-      case '24-35m':
-        return const [
-          'Puts two or more words together during play',
-          'Pretends to feed a doll or stir a toy cup',
-          'Kicks a ball forward or climbs low steps with help',
-        ];
-      case '36-47m':
-        return const [
-          'Asks simple "what" or "where" questions while playing',
-          'Takes turns in short games with a caregiver',
-          'Sorts everyday objects by color or size',
-        ];
-      case '48-59m':
-        return const [
-          'Tells a short story about a drawing or pretend game',
-          'Hops or balances briefly on one foot',
-          'Counts a small group of household items together',
-        ];
-      case '60-71m':
-        return const [
-          'Follows two- or three-step game rules with ease',
-          'Shares ideas and solves simple puzzles during play',
-          'Draws shapes or letters and talks about what they mean',
-        ];
-      default:
-        return const [
-          'Explores toys by banging, shaking, or dropping',
-          'Reaches out or gestures to show you something interesting',
-          'Copies actions like waving goodbye or clapping',
-        ];
-    }
-  }
-
-  // Navigates to Explore or Idea Helper when requesting a play idea.
   void _openFindIdea() {
     if (widget.onNavigateTab != null) {
       widget.onNavigateTab!(1);
     } else {
-      Navigator.pushNamed(context, '/ai-suggest');
+      Navigator.pushNamed(context, AppRoutes.aiSuggest);
     }
   }
 
-  // Key used to persist advisory view state per child or install.
   String get _advisoryKey => 'advisory_$_effectiveChildId';
 
   @override
@@ -302,16 +188,13 @@ class _TodayScreenState extends State<TodayScreen> {
 
     if (widget.initialActivities != null) {
       _activityLookup = Map.from(widget.initialActivities!);
-    } else {
-      for (final act in defaultTodayActivities) {
-        _activityLookup[act.id] = act;
-      }
     }
-
     if (widget.initialWeatherHint != null) {
       _weatherHint = widget.initialWeatherHint;
     }
-
+    if (widget.initialMilestoneCues != null) {
+      _milestoneCues = List.of(widget.initialMilestoneCues!);
+    }
     if (widget.initialPlans != null) {
       _plans = List.from(widget.initialPlans!);
     }
@@ -363,9 +246,10 @@ class _TodayScreenState extends State<TodayScreen> {
       _loadedChildId = nextChildId;
       if (childChanged) {
         _plans = [];
+        _milestoneCues = const [];
         _filterUnder10Mins = false;
         _filterNoMaterials = false;
-        _filterIndoor = false;
+        _selectedSettingFilter = null;
       }
       if (nextChildId == null) {
         _viewState = TodayViewState.empty;
@@ -424,49 +308,23 @@ class _TodayScreenState extends State<TodayScreen> {
     }
   }
 
-  // Resolves the ApiClient using planService or context AuthScope.
   ApiClient _resolveApiClient() {
     return widget.planService?.apiClient ??
-        (AuthScope.maybeOf(context) != null
-            ? AuthScope.apiClientOf(context)
-            : ApiClient());
+        AuthScope.apiClientOrDefault(context);
   }
 
-  // Resolves the PlanService using widget injection or context-scoped ApiClient.
   PlanService _resolvePlanService() {
-    if (widget.planService != null) return widget.planService!;
-    final apiClient = AuthScope.maybeOf(context) != null
-        ? AuthScope.apiClientOf(context)
-        : ApiClient();
-    return PlanService(apiClient: apiClient);
+    return widget.planService ??
+        PlanService(apiClient: AuthScope.apiClientOrDefault(context));
   }
 
-  // Resolves the CatalogService using widget injection or context-scoped ApiClient.
   CatalogService _resolveCatalogService() {
-    if (widget.catalogService != null) return widget.catalogService!;
-    final apiClient = AuthScope.maybeOf(context) != null
-        ? AuthScope.apiClientOf(context)
-        : ApiClient();
-    return CatalogService(apiClient: apiClient);
+    return widget.catalogService ??
+        CatalogService(apiClient: AuthScope.apiClientOrDefault(context));
   }
 
-  // Sends an accessible announcement to screen readers and live regions.
-  void _announce(String message) {
-    try {
-      final view = View.of(context);
-      SemanticsService.sendAnnouncement(view, message, TextDirection.ltr);
-    } catch (_) {}
-  }
+  void _announce(String message) => announceForAccessibility(context, message);
 
-  // Formats a DateTime object as YYYY-MM-DD.
-  String _formatDate(DateTime date) {
-    final year = date.year.toString().padLeft(4, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
-  }
-
-  // Loads today's planned activities and optional weather hint from the backend services.
   Future<void> _loadTodayPlan({String? childIdOverride}) async {
     final targetChildId = childIdOverride ?? _activeChildIdOrNull;
     if (targetChildId == null) {
@@ -494,13 +352,14 @@ class _TodayScreenState extends State<TodayScreen> {
 
     final planService = _resolvePlanService();
     final catalogService = _resolveCatalogService();
-    final dateString = _formatDate(_currentDate);
+    final dateString = formatIsoDate(_currentDate);
     final session = AuthScope.maybeOf(context);
     final weatherLocation = session != null
         ? session.weatherLocation
         : WeatherLocation.iloiloCity;
     final requestedWeatherKey = weatherLocation?.name ?? '__off__';
     _loadedWeatherCityKey = requestedWeatherKey;
+    final milestoneAgeBand = milestoneAgeBandForCode(_resolvedChild?.ageBand);
 
     try {
       final results = await Future.wait([
@@ -512,10 +371,14 @@ class _TodayScreenState extends State<TodayScreen> {
           )
         else
           Future<WeatherHint?>.value(null),
+        catalogService
+            .getMilestones(ageBand: milestoneAgeBand, limit: 3)
+            .catchError((_) => const <MilestonePrompt>[]),
       ]);
 
       final fetchedPlans = results[0] as List<PlanItem>;
       final fetchedWeather = results[1] as WeatherHint?;
+      final fetchedMilestones = results[2] as List<MilestonePrompt>;
 
       for (final plan in fetchedPlans) {
         if (plan.customActivity != null) {
@@ -539,6 +402,11 @@ class _TodayScreenState extends State<TodayScreen> {
 
       setState(() {
         _plans = fetchedPlans;
+        _milestoneCues = fetchedMilestones
+            .map((prompt) => prompt.title)
+            .where((title) => title.isNotEmpty)
+            .take(3)
+            .toList();
         if (_loadedWeatherCityKey == requestedWeatherKey) {
           _weatherHint = fetchedWeather;
         }
@@ -567,7 +435,7 @@ class _TodayScreenState extends State<TodayScreen> {
         }
       });
       _announce(_errorMessage ?? 'An error occurred loading today plan');
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _viewState = _isOffline ? TodayViewState.offline : TodayViewState.error;
@@ -578,14 +446,13 @@ class _TodayScreenState extends State<TodayScreen> {
     }
   }
 
-  // Marks an activity complete and presents a 10-second undo snackbar.
   Future<void> _markComplete(PlanItem plan, Activity activity) async {
     if (_isOffline || _resolveApiClient().isOffline) {
       _announce("This activity wasn't marked complete");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("This activity wasn't marked complete"),
-          duration: Duration(seconds: 4),
+          duration: AppMotion.snackbarDefault,
           backgroundColor: AppColors.error,
         ),
       );
@@ -600,10 +467,11 @@ class _TodayScreenState extends State<TodayScreen> {
       childId: plan.childId,
       activityId: plan.activityId,
       scheduledDate: plan.scheduledDate,
-      status: 'completed',
+      status: PlanItem.statusCompleted,
       completedAt: DateTime.now(),
       durationMinutes: plan.durationMinutes,
       feedbackNote: plan.feedbackNote,
+      customActivity: plan.customActivity,
       createdAt: plan.createdAt,
       updatedAt: DateTime.now(),
     );
@@ -613,50 +481,43 @@ class _TodayScreenState extends State<TodayScreen> {
     });
 
     try {
-      final planService = _resolvePlanService();
-      await planService.updatePlanStatus(
+      await _resolvePlanService().updatePlanStatus(
         childId: _effectiveChildId,
         planId: plan.id,
-        status: 'completed',
+        status: PlanItem.statusCompleted,
       );
 
       _announce('${activity.title} marked complete');
-
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${activity.title} marked complete'),
-          duration: const Duration(seconds: 10),
+          duration: AppMotion.snackbarUndo,
           action: SnackBarAction(
             label: 'Undo',
             textColor: AppColors.cream,
-            onPressed: () {
-              _undoComplete(plan, activity);
-            },
+            onPressed: () => _undoComplete(plan, activity),
           ),
         ),
       );
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-
       setState(() {
         _plans[previousIndex] = plan;
       });
-
       _announce("This activity wasn't marked complete");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("This activity wasn't marked complete"),
-          duration: Duration(seconds: 4),
+          duration: AppMotion.snackbarDefault,
           backgroundColor: AppColors.error,
         ),
       );
     }
   }
 
-  // Reverses a previously recorded completion back to planned status.
   Future<void> _undoComplete(PlanItem plan, Activity activity) async {
     final targetIndex = _plans.indexWhere((p) => p.id == plan.id);
     if (targetIndex == -1) return;
@@ -666,10 +527,11 @@ class _TodayScreenState extends State<TodayScreen> {
       childId: plan.childId,
       activityId: plan.activityId,
       scheduledDate: plan.scheduledDate,
-      status: 'planned',
+      status: PlanItem.statusPlanned,
       completedAt: null,
       durationMinutes: plan.durationMinutes,
       feedbackNote: plan.feedbackNote,
+      customActivity: plan.customActivity,
       createdAt: plan.createdAt,
       updatedAt: DateTime.now(),
     );
@@ -679,11 +541,10 @@ class _TodayScreenState extends State<TodayScreen> {
     });
 
     try {
-      final planService = _resolvePlanService();
-      await planService.updatePlanStatus(
+      await _resolvePlanService().updatePlanStatus(
         childId: _effectiveChildId,
         planId: plan.id,
-        status: 'planned',
+        status: PlanItem.statusPlanned,
       );
       _announce('Completion undone for ${activity.title}');
     } catch (_) {
@@ -691,13 +552,12 @@ class _TodayScreenState extends State<TodayScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Could not undo completion. Please try again.'),
-          duration: Duration(seconds: 4),
+          duration: AppMotion.snackbarDefault,
         ),
       );
     }
   }
 
-  // Marks the non-diagnostic advisory banner as dismissed and persists the state.
   void _dismissAdvisory() {
     setState(() {
       _advisorySeen = true;
@@ -706,7 +566,6 @@ class _TodayScreenState extends State<TodayScreen> {
     _announce('Advisory minimized. Persistent link available.');
   }
 
-  // Displays a modal dialog with the full non-diagnostic advisory guidance.
   void _showAdvisoryDialog() {
     showDialog<void>(
       context: context,
@@ -729,24 +588,37 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  // Resets all quick filter chips back to unselected.
   void _clearFilters() {
     setState(() {
       _filterUnder10Mins = false;
       _filterNoMaterials = false;
-      _filterIndoor = false;
+      _selectedSettingFilter = null;
     });
     _announce('All activity filters cleared');
   }
 
-  // Filters the current list of plans based on active filter criteria.
+  Future<void> _openWeatherIdeaHelper(String setting) async {
+    final settingLabel = setting == PlaySetting.either
+        ? 'play'
+        : formatSettingLabel(setting).toLowerCase();
+    _announce('Opening Idea helper for $settingLabel ideas');
+    if (widget.onOpenIdeaHelper != null) {
+      widget.onOpenIdeaHelper!(setting);
+      return;
+    }
+    await Navigator.pushNamed(context, AppRoutes.aiSuggest, arguments: setting);
+    if (mounted && widget.initialPlans == null && widget.initialState == null) {
+      await _loadTodayPlan();
+    }
+  }
+
   List<PlanItem> _getFilteredPlans() {
     return _plans.where((plan) {
       final activity = _activityLookup[plan.activityId];
       if (activity == null) return true;
 
-      if (_filterUnder10Mins) {
-        if (activity.durationMinutes > 10) return false;
+      if (_filterUnder10Mins && activity.durationMinutes > 10) {
+        return false;
       }
 
       if (_filterNoMaterials) {
@@ -756,13 +628,36 @@ class _TodayScreenState extends State<TodayScreen> {
         if (hasMaterials) return false;
       }
 
-      if (_filterIndoor) {
-        final setting = activity.setting.toLowerCase();
-        if (setting != 'indoor' && setting != 'either') return false;
+      final setting = activity.setting.toLowerCase();
+      if (_selectedSettingFilter != null &&
+          setting != _selectedSettingFilter &&
+          setting != PlaySetting.either) {
+        return false;
       }
 
       return true;
     }).toList();
+  }
+
+  Activity _resolveActivityForPlan(PlanItem plan) {
+    return plan.customActivity?.toActivity(plan.activityId) ??
+        _activityLookup[plan.activityId] ??
+        Activity(
+          id: plan.activityId,
+          title: 'Scheduled activity',
+          type: 'activity',
+          language: AppLanguages.english,
+          domain: AppDomains.language,
+          ageBand: '0-5y',
+          durationMinutes: plan.durationMinutes ?? 10,
+          durationEstimate: '${plan.durationMinutes ?? 10} mins',
+          setting: PlaySetting.indoor,
+          materials: const [],
+          instructions: const [],
+          limitations: '',
+          status: Activity.statusSourceChecked,
+          provenanceSource: 'LittleSteps',
+        );
   }
 
   @override
@@ -782,7 +677,6 @@ class _TodayScreenState extends State<TodayScreen> {
     );
   }
 
-  // Renders the appropriate view corresponding to the current TodayViewState.
   Widget _buildBody() {
     switch (_viewState) {
       case TodayViewState.loading:
@@ -793,1022 +687,139 @@ class _TodayScreenState extends State<TodayScreen> {
           onRetry: _loadTodayPlan,
         );
       case TodayViewState.empty:
-        return _buildEmptyState();
       case TodayViewState.offline:
       case TodayViewState.ready:
-        return _buildPopulatedView();
+        return _buildDashboardView();
     }
   }
 
-  // Renders the shared Today header, advisory, and weather hint.
-  Widget _buildHeaderBlock() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ScreenHeader(title: 'Today', subtitle: _greetingSubtitle),
-        const SizedBox(height: AppSpacing.space12),
-        _buildAdvisorySection(),
-        const SizedBox(height: AppSpacing.space12),
-        _buildWeatherHintSection(),
-      ],
-    );
-  }
-
-  // Arranges the plan column beside reflection and milestone shortcuts on wide screens.
-  Widget _buildDashboardContent({required Widget mainColumn}) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 860) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: mainColumn),
-              const SizedBox(width: AppSpacing.space24),
-              SizedBox(width: 340, child: _buildSideCards()),
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            mainColumn,
-            const SizedBox(height: AppSpacing.space20),
-            _buildSideCards(),
-          ],
-        );
-      },
-    );
-  }
-
-  // Renders the empty state when no activities are scheduled for today.
-  Widget _buildEmptyState() {
-    return RefreshIndicator(
-      onRefresh: _loadTodayPlan,
-      color: AppColors.forest,
-      child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        children: [
-          _buildHeaderBlock(),
-          _buildDashboardContent(
-            mainColumn: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "$_childName's plan for today",
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space12),
-                _buildEmptyPlanCard(),
-                const SizedBox(height: AppSpacing.space24),
-                _buildHistorySection(completedCount: 0),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Renders the main populated list with filters, weather hint, and activity cards.
-  Widget _buildPopulatedView() {
-    final filteredPlans = _getFilteredPlans();
+  Widget _buildDashboardView() {
+    final isEmptyState = _viewState == TodayViewState.empty;
+    final filteredPlans = isEmptyState
+        ? const <PlanItem>[]
+        : _getFilteredPlans();
     final hasActiveFilters =
-        _filterUnder10Mins || _filterNoMaterials || _filterIndoor;
-    final completedCount = _plans.where((plan) => plan.isCompleted).length;
+        _filterUnder10Mins ||
+        _filterNoMaterials ||
+        _selectedSettingFilter != null;
+    final completedCount = isEmptyState
+        ? 0
+        : _plans.where((plan) => plan.isCompleted).length;
+    final hint = _weatherHint;
+    final showWeather =
+        !_weatherDismissed &&
+        hint != null &&
+        hint.hint != null &&
+        !hint.isUnavailable;
 
-    return RefreshIndicator(
-      onRefresh: _loadTodayPlan,
-      color: AppColors.forest,
-      child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.space16),
-        children: [
-          _buildHeaderBlock(),
-          _buildDashboardContent(
-            mainColumn: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "$_childName's plan for today",
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space8),
-                _buildFilterChips(),
-                const SizedBox(height: AppSpacing.space12),
-                if (filteredPlans.isEmpty && hasActiveFilters)
-                  _buildEmptyFilterState()
-                else if (_plans.isEmpty)
-                  _buildEmptyPlanCard()
-                else
-                  ...filteredPlans.map((plan) {
-                    final activity =
-                        plan.customActivity?.toActivity(plan.activityId) ??
-                        _activityLookup[plan.activityId] ??
-                        Activity(
-                          id: plan.activityId,
-                          title: 'Scheduled activity',
-                          type: 'activity',
-                          language: 'en',
-                          domain: 'play',
-                          ageBand: '0-5y',
-                          durationMinutes: plan.durationMinutes ?? 10,
-                          durationEstimate:
-                              '${plan.durationMinutes ?? 10} mins',
-                          setting: 'indoor',
-                          materials: const [],
-                          instructions: const [],
-                          limitations: '',
-                          status: 'synthetic_fixture',
-                          provenanceSource: 'LittleSteps',
-                        );
-                    return _TodayActivityCard(
-                      plan: plan,
-                      activity: activity,
-                      onCompleteToggle: () => _markComplete(plan, activity),
-                    );
-                  }),
-                const SizedBox(height: AppSpacing.space20),
-                _buildHistorySection(completedCount: completedCount),
-              ],
-            ),
-          ),
-        ],
-      ),
+    final sideCards = TodaySideCards(
+      childName: _childName,
+      milestoneCues: _milestoneCues,
+      onOpenReflection: widget.onNavigateTab != null
+          ? () => widget.onNavigateTab!(4)
+          : null,
+      onOpenMilestones: widget.onNavigateTab != null
+          ? () => widget.onNavigateTab!(2)
+          : null,
     );
-  }
 
-  // Renders the white card shown when no activities are planned yet for today.
-  Widget _buildEmptyPlanCard() {
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.space20),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.today_outlined,
-                size: 20,
-                color: AppColors.forest,
-              ),
-              const SizedBox(width: AppSpacing.space8),
-              Expanded(
-                child: Text(
-                  'No activities planned for today',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space8),
-          Text(
-            'Want a quick idea? Most take 10 minutes or less.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space16),
-          OutlinedButton(
-            onPressed: _openFindIdea,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, AppSizes.touchTarget),
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.space16,
-              ),
-              side: const BorderSide(color: AppColors.borderInput),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.control),
-              ),
-            ),
-            child: const Text('Find an idea'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Renders the History summary section below today's play plan.
-  Widget _buildHistorySection({required int completedCount}) {
-    final theme = Theme.of(context);
-    final summaryText = completedCount == 0
-        ? 'Completed activities for $_childName will show here.'
-        : completedCount == 1
-        ? '1 activity completed for $_childName today.'
-        : '$completedCount activities completed for $_childName today.';
-    return Column(
+    final mainColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'History',
-          style: theme.textTheme.titleLarge?.copyWith(
+          "$_childName's plan for today",
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: AppSpacing.space8),
-        Text(
-          summaryText,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Renders the "This week" and "Milestones to notice" summary shortcut cards.
-  Widget _buildSideCards() {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'This week',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Reflect on everyday moments and shared play from this week.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: widget.onNavigateTab != null
-                      ? () => widget.onNavigateTab!(4)
-                      : null,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, AppSizes.touchTarget),
-                    side: const BorderSide(color: AppColors.borderInput),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.control),
-                    ),
-                  ),
-                  child: const Text('View reflection'),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space16),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.space20),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.borderSubtle),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Milestones to notice',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Text(
-                'Everyday cues to notice for $_childName:',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space12),
-              ..._milestoneCues.map(
-                (cue) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 2),
-                        child: Icon(
-                          Icons.visibility_outlined,
-                          size: 16,
-                          color: AppColors.forest,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      Expanded(
-                        child: Text(
-                          cue,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: widget.onNavigateTab != null
-                      ? () => widget.onNavigateTab!(2)
-                      : null,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, AppSizes.touchTarget),
-                    side: const BorderSide(color: AppColors.borderInput),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.control),
-                    ),
-                  ),
-                  child: const Text('View milestones'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Renders the advisory banner or persistent link depending on dismissal state.
-  Widget _buildAdvisorySection() {
-    if (!_advisorySeen) {
-      return Container(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAdvisory,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.borderAdvisory),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.space12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(
-              Icons.info_outline,
-              size: 20,
-              color: AppColors.textPrimary,
-            ),
-            const SizedBox(width: AppSpacing.space12),
-            Expanded(
-              child: Text(
-                'Not a diagnostic tool. Observational play suggestions only. You know your child best.',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: AppColors.textPrimary),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Dismiss advisory',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              onPressed: _dismissAdvisory,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        onPressed: _showAdvisoryDialog,
-        icon: const Icon(
-          Icons.info_outline,
-          size: 16,
-          color: AppColors.textSecondary,
-        ),
-        label: Text(
-          'Not a diagnostic tool',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-            decoration: TextDecoration.underline,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Renders the dismissible weather guidance hint with Open-Meteo attribution.
-  Widget _buildWeatherHintSection() {
-    final hint = _weatherHint;
-    if (_weatherDismissed ||
-        hint == null ||
-        hint.hint == null ||
-        hint.isUnavailable) {
-      return const SizedBox.shrink();
-    }
-
-    final showIndoorAction =
-        hint.suggestedSetting == 'indoor' ||
-        (hint.hint?.contains('Indoor') ?? false);
-    // Strip trailing action suffix when the banner already renders an explicit
-    // indoor action button so the label is not repeated twice.
-    final rawHint = hint.hint!;
-    final displayHint = showIndoorAction
-        ? rawHint.replaceFirst(
-            RegExp(r'\s*·\s*Indoor ideas$', caseSensitive: false),
-            '',
-          )
-        : rawHint;
-    final indoorActionLabel = _plans.isEmpty
-        ? 'Find indoor ideas'
-        : 'Filter indoor';
-
-    return Semantics(
-      liveRegion: true,
-      label: 'Weather guidance: $displayHint',
-      child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.space16),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space12,
-          vertical: AppSpacing.space8,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.softGreen,
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.borderSubtle),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(
-                  hint.isRainy ? Icons.cloud_outlined : Icons.wb_sunny_outlined,
-                  size: 18,
-                  color: AppColors.forest,
-                ),
-                const SizedBox(width: AppSpacing.space8),
-                Expanded(
-                  child: Text(
-                    displayHint,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  tooltip: 'Dismiss weather hint',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 48,
-                    minHeight: 48,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _weatherDismissed = true;
-                    });
-                  },
-                ),
-              ],
-            ),
-            Wrap(
-              spacing: AppSpacing.space12,
-              runSpacing: AppSpacing.space4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                InkWell(
-                  onTap: () =>
-                      openExternalUrl(context, 'https://open-meteo.com'),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.space8,
-                    ),
-                    child: Text(
-                      hint.attribution,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ),
-                if (showIndoorAction)
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.space8,
-                      ),
-                      minimumSize: const Size(0, AppSizes.touchTarget),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _filterIndoor = true;
-                      });
-                      if (_plans.isEmpty) {
-                        if (widget.onOpenIndoorIdeas != null) {
-                          widget.onOpenIndoorIdeas!();
-                        } else if (widget.onNavigateTab != null) {
-                          widget.onNavigateTab!(1);
-                        }
-                        _announce(
-                          'Opening Explore filtered to indoor play ideas',
-                        );
-                      } else {
-                        _announce('Indoor filter applied from weather hint');
-                      }
-                    },
-                    icon: const Icon(Icons.arrow_forward, size: 16),
-                    label: Text(indoorActionLabel),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Renders quick filter chips for duration, materials, and setting.
-  Widget _buildFilterChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.only(right: AppSpacing.space16),
-      child: Row(
-        children: [
-          FilterChip(
-            label: const Text('Under 10 mins'),
-            selected: _filterUnder10Mins,
-            onSelected: (selected) {
-              setState(() {
-                _filterUnder10Mins = selected;
-              });
+        if (!isEmptyState) ...[
+          const SizedBox(height: AppSpacing.space8),
+          TodayQuickFilterChips(
+            under10Mins: _filterUnder10Mins,
+            noMaterials: _filterNoMaterials,
+            selectedSetting: _selectedSettingFilter,
+            onUnder10MinsChanged: (selected) {
+              setState(() => _filterUnder10Mins = selected);
               _announce(
                 selected
                     ? 'Filtered to under 10 minutes'
                     : 'Under 10 minutes filter removed',
               );
             },
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          FilterChip(
-            label: const Text('No materials needed'),
-            selected: _filterNoMaterials,
-            onSelected: (selected) {
-              setState(() {
-                _filterNoMaterials = selected;
-              });
+            onNoMaterialsChanged: (selected) {
+              setState(() => _filterNoMaterials = selected);
               _announce(
                 selected
                     ? 'Filtered to no materials needed'
                     : 'No materials filter removed',
               );
             },
-          ),
-          const SizedBox(width: AppSpacing.space8),
-          FilterChip(
-            label: const Text('Indoor'),
-            selected: _filterIndoor,
-            onSelected: (selected) {
-              setState(() {
-                _filterIndoor = selected;
-              });
-              _announce(
-                selected
-                    ? 'Filtered to indoor activities'
-                    : 'Indoor filter removed',
-              );
+            onSettingChanged: (setting) {
+              final previous = _selectedSettingFilter;
+              setState(() => _selectedSettingFilter = setting);
+              if (setting != null) {
+                final label = formatSettingLabel(setting).toLowerCase();
+                _announce('Filtered to $label activities');
+              } else if (previous != null) {
+                final label = formatSettingLabel(previous);
+                _announce('$label filter removed');
+              }
             },
           ),
         ],
-      ),
+        const SizedBox(height: AppSpacing.space12),
+        if (!isEmptyState && filteredPlans.isEmpty && hasActiveFilters)
+          TodayEmptyFilterState(onClearFilters: _clearFilters)
+        else if (isEmptyState || _plans.isEmpty)
+          TodayEmptyPlanCard(onFindIdea: _openFindIdea)
+        else
+          ...filteredPlans.map((plan) {
+            final activity = _resolveActivityForPlan(plan);
+            return TodayActivityCard(
+              plan: plan,
+              activity: activity,
+              onCompleteToggle: () => _markComplete(plan, activity),
+            );
+          }),
+        SizedBox(
+          height: isEmptyState ? AppSpacing.space24 : AppSpacing.space20,
+        ),
+        TodayHistorySection(
+          childName: _childName,
+          completedCount: completedCount,
+        ),
+      ],
     );
-  }
 
-  // Renders the empty state when no activities match active filters with a clear filter action.
-  Widget _buildEmptyFilterState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.space32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return RefreshIndicator(
+      onRefresh: _loadTodayPlan,
+      color: AppColors.forest,
+      child: ListView(
+        padding: const EdgeInsets.all(AppSpacing.space16),
         children: [
-          const Icon(
-            Icons.filter_list_off,
-            size: 48,
-            color: AppColors.textTertiary,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ScreenHeader(title: 'Today', subtitle: _greetingSubtitle),
+              const SizedBox(height: AppSpacing.space12),
+              TodayAdvisorySection(
+                advisorySeen: _advisorySeen,
+                onDismiss: _dismissAdvisory,
+                onShowDialog: _showAdvisoryDialog,
+              ),
+              const SizedBox(height: AppSpacing.space12),
+              if (showWeather)
+                WeatherHintBanner(
+                  hint: hint,
+                  margin: const EdgeInsets.only(bottom: AppSpacing.space16),
+                  onDismiss: () => setState(() => _weatherDismissed = true),
+                  onFindIdeas: _openWeatherIdeaHelper,
+                ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.space16),
-          Text(
-            'No activities match your filters',
-            style: Theme.of(context).textTheme.titleMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.space8),
-          Text(
-            'Try clearing one or more filters to see planned activities.',
-            style: Theme.of(context).textTheme.bodyMedium
-                ?.copyWith(color: AppColors.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.space16),
-          FilledButton.tonal(
-            onPressed: _clearFilters,
-            child: const Text('Clear filters'),
-          ),
+          AdaptiveTwoPane(primary: mainColumn, secondary: sideCards),
         ],
-      ),
-    );
-  }
-}
-
-// Card widget rendering a planned activity with duration, domain, completion badge, and action.
-class _TodayActivityCard extends StatelessWidget {
-  // Creates a [_TodayActivityCard] with the given plan and activity data.
-  const _TodayActivityCard({
-    required this.plan,
-    required this.activity,
-    required this.onCompleteToggle,
-  });
-
-  // The plan item tracking schedule and completion state.
-  final PlanItem plan;
-
-  // The resolved catalog activity details.
-  final Activity activity;
-
-  // Callback invoked when the caregiver toggles completion.
-  final VoidCallback onCompleteToggle;
-
-  String _formatDomain(String domain) {
-    switch (domain.toLowerCase()) {
-      case 'socioemotional':
-      case 'socio-emotional':
-        return 'Socio-emotional';
-      case 'cognitive':
-        return 'Cognitive';
-      case 'motor':
-        return 'Motor';
-      case 'language':
-        return 'Language';
-      default:
-        return domain.isEmpty
-            ? domain
-            : '${domain[0].toUpperCase()}${domain.substring(1)}';
-    }
-  }
-
-  String _formatSetting(String setting) {
-    switch (setting.toLowerCase()) {
-      case 'indoor':
-        return 'Indoor';
-      case 'outdoor':
-        return 'Outdoor';
-      case 'either':
-        return 'Indoor or outdoor';
-      default:
-        return setting;
-    }
-  }
-
-  void _showActivityDetails(BuildContext context) {
-    final theme = Theme.of(context);
-    final sourceLabel = plan.customActivity?.sourceLabel;
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      isScrollControlled: true,
-      constraints: const BoxConstraints(maxWidth: 600),
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.space24,
-            AppSpacing.space8,
-            AppSpacing.space24,
-            AppSpacing.space24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (sourceLabel != null && sourceLabel.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space8,
-                    vertical: AppSpacing.space4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAdvisory,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                    border: Border.all(color: AppColors.borderAdvisory),
-                  ),
-                  child: Text(
-                    sourceLabel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space8),
-              ],
-              Text(
-                activity.title,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.space8),
-              Wrap(
-                spacing: AppSpacing.space8,
-                runSpacing: AppSpacing.space4,
-                children: [
-                  _TagBadge(label: _formatDomain(activity.domain)),
-                  _TagBadge(label: '${activity.durationMinutes} mins'),
-                  _TagBadge(label: _formatSetting(activity.setting)),
-                ],
-              ),
-              if (activity.materials.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space16),
-                Text(
-                  'Materials needed',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space4),
-                Text(
-                  activity.materials.join(', '),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-              if (activity.instructions.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space16),
-                Text(
-                  'Steps to play',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.space8),
-                ...activity.instructions.asMap().entries.map(
-                  (entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.space8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${entry.key + 1}. ',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            entry.value,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              if (activity.limitations.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.space12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAdvisory,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                    border: Border.all(color: AppColors.borderAdvisory),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.shield_outlined,
-                        size: 18,
-                        color: AppColors.artworkForest,
-                      ),
-                      const SizedBox(width: AppSpacing.space8),
-                      Expanded(
-                        child: Text(
-                          activity.limitations,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              if (activity.provenanceSource.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Text(
-                  'Source: ${activity.provenanceSource}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isCompleted = plan.isCompleted;
-    final hasDetails = activity.instructions.isNotEmpty;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.space12),
-      color: AppColors.surfaceCard,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        side: const BorderSide(color: AppColors.borderSubtle),
-      ),
-      child: InkWell(
-        onTap: hasDetails ? () => _showActivityDetails(context) : null,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.space16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          activity.title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space4),
-                        Wrap(
-                          spacing: AppSpacing.space8,
-                          runSpacing: AppSpacing.space4,
-                          children: [
-                            _TagBadge(label: _formatDomain(activity.domain)),
-                            _TagBadge(
-                              label: '${activity.durationMinutes} mins',
-                            ),
-                            _TagBadge(label: _formatSetting(activity.setting)),
-                            if (activity.materials.isEmpty ||
-                                activity.materials.every(
-                                  (m) => m.toLowerCase() == 'none',
-                                ))
-                              const _TagBadge(label: 'No materials')
-                            else
-                              _TagBadge(
-                                label:
-                                    '${activity.materials.length} ${activity.materials.length == 1 ? 'material' : 'materials'}',
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.space8),
-                  _buildCompletionAction(context),
-                ],
-              ),
-              if (isCompleted) ...[
-                const SizedBox(height: AppSpacing.space12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space12,
-                    vertical: AppSpacing.space4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.softGreen,
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                    border: Border.all(
-                      color: AppColors.forest.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: AppColors.forest,
-                      ),
-                      const SizedBox(width: AppSpacing.space4),
-                      Text(
-                        'Completed today',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppColors.forest,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Renders the accessible 48x48dp button or checkbox for completing an activity.
-  Widget _buildCompletionAction(BuildContext context) {
-    if (plan.isCompleted) {
-      return Semantics(
-        label: 'Marked complete. Tapping will toggle status.',
-        child: IconButton(
-          icon: const Icon(
-            Icons.check_circle,
-            color: AppColors.forest,
-            size: 28,
-          ),
-          tooltip: 'Completed today',
-          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          onPressed: onCompleteToggle,
-        ),
-      );
-    }
-
-    return Semantics(
-      label: 'Mark ${activity.title} complete',
-      child: OutlinedButton(
-        onPressed: onCompleteToggle,
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 48),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space12),
-          side: const BorderSide(color: AppColors.forest),
-        ),
-        child: const Text('Mark complete'),
-      ),
-    );
-  }
-}
-
-// Badge widget rendering a metadata tag chip.
-class _TagBadge extends StatelessWidget {
-  // Creates a [_TagBadge] with a text label.
-  const _TagBadge({required this.label});
-
-  // Label text displayed inside the badge.
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.space8,
-        vertical: AppSpacing.space4,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCanvas,
-        borderRadius: BorderRadius.circular(AppRadius.chip),
-        border: Border.all(color: AppColors.borderSubtle),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.bodySmall
-            ?.copyWith(color: AppColors.textSecondary),
       ),
     );
   }

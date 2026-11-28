@@ -64,10 +64,10 @@ Compile-time environment settings are centralized in `lib/config/app_config.dart
    adb reverse tcp:5001 tcp:5001
    adb reverse tcp:9099 tcp:9099
    ```
-3. Build or run with the device profile:
+3. Build or run with the device profile (use `--profile` or `--debug` for local emulators; `--release` enforces live HTTPS via `AppConfig.validateForRelease()` and requires `config/production.json`):
    ```bash
-   flutter build apk --release --dart-define-from-file=config/local.device.json
-   adb install -r build/app/outputs/flutter-apk/app-release.apk
+   flutter build apk --profile --dart-define-from-file=config/local.device.json
+   adb install -r build/app/outputs/flutter-apk/app-profile.apk
    ```
 
 ### Android network security & release signing

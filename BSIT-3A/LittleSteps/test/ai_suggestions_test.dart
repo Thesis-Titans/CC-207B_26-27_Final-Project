@@ -170,13 +170,52 @@ void main() {
       expect(find.text('Steps to play:'), findsOneWidget);
       expect(find.text("Add to today's plan"), findsOneWidget);
       expect(find.text('Generate another'), findsOneWidget);
-      expect(find.text('Change answers'), findsOneWidget);
+      expect(find.text('Edit preferences'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('Change answers'));
-      await tester.tap(find.text('Change answers'));
+      await tester.ensureVisible(find.text('Edit preferences'));
+      await tester.tap(find.text('Edit preferences'));
       await tester.pumpAndSettle();
       expect(find.text('Idea helper'), findsWidgets);
       expect(find.byType(TextFormField), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'preselects initialSetting and sends it in recommendation payload',
+    (tester) async {
+      configureViewport(tester);
+
+      http.Request? capturedRequest;
+      final client = MockClient((request) async {
+        if (request.url.path.contains('/api/v1/ai/recommendations')) {
+          capturedRequest = request;
+          return http.Response(jsonEncode(sampleAiSuccessResponse), 200);
+        }
+        return http.Response(jsonEncode({}), 200);
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AiSuggestionsScreen(
+            apiClient: ApiClient(baseUrl: 'http://test', httpClient: client),
+            initialChild: testChild,
+            initialSetting: 'outdoor',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final outdoorChip = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Outdoor'),
+      );
+      expect(outdoorChip.selected, isTrue);
+
+      await tester.ensureVisible(find.text('Find play ideas'));
+      await tester.tap(find.text('Find play ideas'));
+      await tester.pumpAndSettle();
+
+      final body = jsonDecode(capturedRequest!.body) as Map<String, dynamic>;
+      expect(body['setting'], 'outdoor');
     },
   );
 

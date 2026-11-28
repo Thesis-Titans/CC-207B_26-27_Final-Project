@@ -66,10 +66,10 @@ class BookCard extends StatelessWidget {
                           book.coverUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return _buildFallbackCover();
+                            return _buildFallbackCover(theme);
                           },
                         )
-                      : _buildFallbackCover(),
+                      : _buildFallbackCover(theme),
                 ),
               ),
               Positioned(
@@ -89,8 +89,8 @@ class BookCard extends StatelessWidget {
                       customBorder: const CircleBorder(),
                       onTap: isSaving ? null : onToggleSave,
                       child: Container(
-                        width: 48,
-                        height: 48,
+                        width: AppSizes.touchTarget,
+                        height: AppSizes.touchTarget,
                         alignment: Alignment.center,
                         child: isSaving
                             ? const SizedBox(
@@ -168,13 +168,15 @@ class BookCard extends StatelessWidget {
                             AppRadius.control,
                           ),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space8,
+                        ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Get a play idea',
-                        style: TextStyle(
-                          fontSize: 13,
+                        style: theme.textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: AppColors.forest,
                         ),
                       ),
                     ),
@@ -188,7 +190,7 @@ class BookCard extends StatelessWidget {
     );
   }
 
-  Widget _buildFallbackCover() {
+  Widget _buildFallbackCover(ThemeData theme) {
     return Container(
       color: AppColors.softGreen,
       padding: const EdgeInsets.all(AppSpacing.space16),
@@ -203,10 +205,9 @@ class BookCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: theme.textTheme.labelMedium?.copyWith(
               color: AppColors.forest,
               fontWeight: FontWeight.bold,
-              fontSize: 12,
             ),
           ),
         ],

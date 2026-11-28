@@ -1,23 +1,18 @@
 import 'age_band.dart';
 
-/// The longest nickname the API accepts, after trimming spaces.
+/// Maximum nickname length accepted by the API after trimming whitespace.
 const int maxNicknameLength = 50;
 
-/// Matches invisible control characters (such as tabs or line breaks),
-/// which the API rejects in a nickname.
+// Matches invisible ASCII control characters rejected by the API.
 final RegExp _controlCharacters = RegExp(r'[\x00-\x1F\x7F]');
 
-/// Matches a nickname made only of letters (any language), spaces,
-/// hyphens, apostrophes and periods, such as "Mary-Ann" or "José".
-///
-/// This is stricter than the API, which also accepts numbers and symbols.
+// Restricts nicknames to letters (any script), spaces, hyphens, apostrophes,
+// and periods (stricter than the backend validator for cleaner display names).
 final RegExp _allowedNickname = RegExp(r"^[\p{L}\p{M} '.-]+$", unicode: true);
 
-/// Returns an error message if [value] is not a valid nickname,
-/// or null if it is valid.
+/// Returns a validation error message if [value] is invalid, or `null` if valid.
 ///
-/// Spaces at the start and end are ignored, so a nickname of only
-/// spaces counts as empty.
+/// Leading and trailing spaces are trimmed before checking length and content.
 String? validateNickname(String? value) {
   final nickname = (value ?? '').trim();
 
@@ -36,11 +31,8 @@ String? validateNickname(String? value) {
   return null;
 }
 
-/// Returns an error message if a child born in [year]/[month] is
-/// outside the supported age range on [now], or null if it is valid.
-///
-/// The oldest supported age comes from the last band in [ageBands],
-/// so the two files always agree.
+/// Returns a validation error if [year]/[month] is outside supported [ageBands]
+/// on [now], or `null` if valid.
 String? validateBirthMonthYear({
   required int year,
   required int month,

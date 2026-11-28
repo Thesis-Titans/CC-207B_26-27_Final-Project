@@ -83,5 +83,35 @@ void main() {
 
       expect(find.text('Home Shell Screen'), findsOneWidget);
     });
+
+    testWidgets(
+      'respects disableAnimations and renders without overflow at 200% text scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sessionState = AuthSessionState(authService: _FakeAuthService());
+
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              size: Size(320, 640),
+              disableAnimations: true,
+              textScaler: TextScaler.linear(2.0),
+            ),
+            child: _buildSplashApp(sessionState: sessionState),
+          ),
+        );
+
+        expect(find.text('LittleSteps'), findsOneWidget);
+        expect(find.text('Small steps. Brighter tomorrows.'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpAndSettle(const Duration(milliseconds: 600));
+        expect(find.byType(SignInScreen), findsOneWidget);
+      },
+    );
   });
 }

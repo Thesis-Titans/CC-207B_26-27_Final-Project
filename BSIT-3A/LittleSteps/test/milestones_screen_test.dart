@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:littlesteps/models/milestone.dart';
 import 'package:littlesteps/screens/milestones/milestones_screen.dart';
 
+import 'fixtures/sample_milestone_prompts.dart';
+
 void main() {
   Widget createTestWidget({
     MilestonesViewState state = MilestonesViewState.ready,
@@ -11,6 +13,7 @@ void main() {
     return MaterialApp(
       home: MilestonesScreen(
         initialState: state,
+        prompts: sampleMilestonePrompts,
         initialObservations: observations,
       ),
     );

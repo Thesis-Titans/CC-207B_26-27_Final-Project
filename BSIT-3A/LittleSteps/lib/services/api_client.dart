@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import '../theme/app_tokens.dart';
 import 'local_cache.dart';
 
 /// Base exception thrown when an HTTP or backend API request fails.
@@ -99,7 +100,7 @@ class ApiClient {
     this.onRefreshToken,
     this.onSessionExpired,
     LocalDataCache? cache,
-    this.requestTimeout = const Duration(seconds: 10),
+    this.requestTimeout = AppMotion.apiRequestTimeout,
   }) : _httpClient = httpClient ?? http.Client(),
        baseUrl = baseUrl ?? defaultBaseUrl(host: host),
        cache = cache ?? LocalDataCache();
@@ -153,6 +154,11 @@ class ApiClient {
     cache.clear();
   }
 
+  /// Releases resources held by this client.
+  void dispose() {
+    isOfflineNotifier.dispose();
+  }
+
   /// Returns the default host based on [AppConfig] or runtime platform.
   static String get defaultHost => AppConfig.emulatorHost;
 
@@ -165,10 +171,11 @@ class ApiClient {
     return 'http://$selectedHost:5001/demo-littlesteps/asia-southeast1/api';
   }
 
-  // Determines whether an endpoint [path] is protected by authentication.
   /// Returns whether [path] requires an authenticated bearer token.
   static bool isProtectedPath(String path) {
     if (path.contains('/catalog/activities') ||
+        path.contains('/catalog/milestones') ||
+        path.contains('/catalog/rhymes') ||
         path.contains('/catalog/books') ||
         path.contains('/catalog/weather') ||
         path.contains('/health')) {
@@ -224,8 +231,11 @@ class ApiClient {
     }
 
     try {
-      final uri = Uri.parse('$baseUrl$path')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse('$baseUrl$path').replace(
+        queryParameters: queryParams != null && queryParams.isNotEmpty
+            ? queryParams
+            : null,
+      );
       final response = await _sendWithRetry(
         path,
         (headers) =>

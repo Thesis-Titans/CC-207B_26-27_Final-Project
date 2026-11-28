@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 /// A private caregiver journal entry recorded for a child.
+@immutable
 class JournalEntry {
   /// Creates a [JournalEntry].
   const JournalEntry({
@@ -9,6 +12,18 @@ class JournalEntry {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Creates a [JournalEntry] from a decoded JSON object.
+  factory JournalEntry.fromJson(Map<String, dynamic> json) {
+    return JournalEntry(
+      id: json['id'] as String,
+      childId: json['childId'] as String,
+      entryDate: json['entryDate'] as String,
+      content: json['content'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
 
   /// Unique identifier of the journal entry.
   final String id;
@@ -27,18 +42,6 @@ class JournalEntry {
 
   /// Timestamp when the entry was last updated.
   final DateTime updatedAt;
-
-  /// Creates a [JournalEntry] from a decoded JSON object.
-  factory JournalEntry.fromJson(Map<String, dynamic> json) {
-    return JournalEntry(
-      id: json['id'] as String,
-      childId: json['childId'] as String,
-      entryDate: json['entryDate'] as String,
-      content: json['content'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-    );
-  }
 
   /// Serializes this [JournalEntry] to a JSON map.
   Map<String, dynamic> toJson() {
