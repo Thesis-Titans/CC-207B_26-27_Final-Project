@@ -145,15 +145,23 @@ abstract final class AppRouter {
           },
         );
       case AppRoutes.exploreActivity:
-        final activity = settings.arguments as Activity?;
-        if (activity == null) {
+        final args = settings.arguments;
+        if (args is ActivityDetailArgs) {
           return MaterialPageRoute(
-            builder: (_) =>
-                const Scaffold(body: Center(child: Text('Activity not found'))),
+            builder: (_) => ActivityDetailScreen(
+              activity: args.activity,
+              startInAdaptMode: args.startInAdaptMode,
+            ),
+          );
+        }
+        if (args is Activity) {
+          return MaterialPageRoute(
+            builder: (_) => ActivityDetailScreen(activity: args),
           );
         }
         return MaterialPageRoute(
-          builder: (_) => ActivityDetailScreen(activity: activity),
+          builder: (_) =>
+              const Scaffold(body: Center(child: Text('Activity not found'))),
         );
       default:
         return MaterialPageRoute(

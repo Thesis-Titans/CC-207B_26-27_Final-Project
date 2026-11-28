@@ -22,6 +22,7 @@ import '../../widgets/auth_scope.dart';
 import '../../widgets/responsive_layout.dart';
 import '../../widgets/screen_header.dart';
 import '../../widgets/state_views.dart';
+import 'activity_detail_screen.dart';
 import 'storybooks_section.dart';
 import 'widgets/explore_activity_card.dart';
 import 'widgets/explore_filter_controls.dart';
@@ -624,6 +625,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
               activity: activity,
               domainLabel: friendlyDomainLabel(activity.domain),
               onAdd: () => _addToPlan(activity),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ActivityDetailScreen(
+                    activity: activity,
+                    onAddToPlan: _addToPlan,
+                  ),
+                ),
+              ),
+              onAdapt: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ActivityDetailScreen(
+                    activity: activity,
+                    startInAdaptMode: true,
+                    onAddToPlan: _addToPlan,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
